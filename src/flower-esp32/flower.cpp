@@ -78,8 +78,8 @@ void Flower::servoAnimationUpdate(const AnimationParam& param) {
   }
   else {
     int newAngle = servoAngle + (servoTargetAngle - servoAngle) * param.progress;
-    Serial.print("angle ");
-    Serial.println(newAngle);
+    //Serial.print("angle ");
+    //Serial.println(newAngle);
 
     setServoPowerOn(true);
     servo.write(newAngle);
