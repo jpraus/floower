@@ -3,7 +3,7 @@
 #include <ESP32Servo.h>
 #include <WiFi.h>
 #include <AsyncUDP.h>
-#include "blossom.h"
+#include "flower.h"
 
 bool remoteMode = false;
 bool remoteMaster = false;
@@ -11,10 +11,10 @@ bool deepSleepEnabled = true;
 
 ///////////// PERSISTENT CONFIGURATION
 
-boolean writeConfiguration = true;
+boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
-int configServoClosed = 600;
+int configServoClosed = 650;
 int configServoOpen = configServoClosed + 750;
 byte configLedsModel = 0; // 0 - WS2812b, 1 - SK6812
 
@@ -79,8 +79,6 @@ int servoPosition;
 int servoTarget;
 byte servoDir = SERVO_DIR_CLOSING;
 byte petalsOpenness = 0; // 0-100%
-
-Servo servo;
 
 ///////////// LEDS
 
@@ -148,6 +146,8 @@ byte colorsCount = 7;
 
 ///////////// CODE
 
+Flower flower;
+
 int everySecondTimer = 0;
 unsigned long deltaMsRef = 0;
 int initTimeout = 0; // give the electronics some time to warm up before starting WiFi
@@ -161,9 +161,6 @@ void setup() {
 
   setPixelsPowerOn(false);
   pinMode(NEOPIXEL_PWR_PIN, OUTPUT);
-
-  setServoPowerOn(false);
-  pinMode(SERVO_PWR_PIN, OUTPUT);
 
   configure();
   pixels.init(configLedsModel);
@@ -187,10 +184,10 @@ void setup() {
   //pixels.Show();
 
   // configure servo
-  setServoPowerOn(false);
-  servo.setPeriodHertz(50); // standard 50 hz servo
-  servo.attach(SERVO_PIN, configServoClosed, configServoOpen);
-  servo.write(servoPosition);
+  //setServoPowerOn(false);
+  //servo.setPeriodHertz(50); // standard 50 hz servo
+  //servo.attach(SERVO_PIN, configServoClosed, configServoOpen);
+  //servo.write(servoPosition);
 
   // configure ADC
   analogReadResolution(12); // se0t 12bit resolution (0-4095)
@@ -216,12 +213,17 @@ void setup() {
   // do blossom calibration
   Serial.println("Tulip INITIALIZING");
   setPetalsOpenness(0);
+
+  flower.init(configServoClosed);
+  flower.setPetalsOpenLevel(100, 5000);
 }
 
 int counter = 0;
 byte speed = 10;
 
 void loop() {
+  flower.update();
+  
   int deltaMs = getDeltaMs();
 
   if (remoteMode || remoteMaster) {
@@ -419,7 +421,7 @@ boolean movePetals() {
       servoTarget = configServoOpen - 50; // close back a little bit to prevent servo stalling
     }
     else {
-      setServoPowerOn(false);
+      //setServoPowerOn(false);
       return true; // finished
     }
   }
@@ -431,17 +433,9 @@ boolean movePetals() {
     servoPosition ++;
   }
   
-  setServoPowerOn(true);
-  servo.write(servoPosition);
+  //setServoPowerOn(true);
+  //servo.write(servoPosition);
   return false;
-}
-
-void movePetalsInstantly() {
-  if (servoTarget == servoPosition || servoTarget < configServoClosed || servoTarget > configServoOpen) {
-    return; // un-safe or finished
-  }
-  servoPosition = servoTarget;
-  servo.write(servoPosition);
 }
 
 // power management
@@ -458,23 +452,6 @@ bool setPixelsPowerOn(boolean powerOn) {
     pixelsPowerOn = false;
     Serial.println("LEDs power OFF");
     digitalWrite(NEOPIXEL_PWR_PIN, HIGH);
-    return true;
-  }
-  return false; // no change
-}
-
-bool setServoPowerOn(boolean powerOn) {
-  if (powerOn && !servoPowerOn) {
-    servoPowerOn = true;
-    Serial.println("Servo power ON");
-    digitalWrite(SERVO_PWR_PIN, LOW);
-    delay(5);
-    return true;
-  }
-  if (!powerOn && servoPowerOn) {
-    servoPowerOn = false;
-    Serial.println("Servo power OFF");
-    digitalWrite(SERVO_PWR_PIN, HIGH);
     return true;
   }
   return false; // no change
