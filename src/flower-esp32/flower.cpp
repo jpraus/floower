@@ -6,20 +6,15 @@
 #define SERVO_PIN 26
 #define SERVO_PWR_PIN 33
 
-#define SERVO_ANGLES_DIFFERENCE 750
-#define SERVO_DIR_OPENING 1
-#define SERVO_DIR_CLOSING 2
-
 Flower::Flower() : animations(2) {
 }
 
-void Flower::init(int closedAngle) {
+void Flower::init(int closedAngle, int openAngle) {
   // default servo configuration
-  servoOpenAngle = closedAngle + SERVO_ANGLES_DIFFERENCE;
+  servoOpenAngle = openAngle;
   servoClosedAngle = closedAngle;
   servoAngle = closedAngle;
   servoTargetAngle = closedAngle;
-  servoDir = SERVO_DIR_CLOSING;
   petalsOpenLevel = 0; // 0-100%
 
   servoPowerOn = false;
@@ -54,12 +49,6 @@ void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
     newAngle = servoClosedAngle + position;
   }
 
-  if (newAngle < servoTargetAngle) { // closing
-    servoDir = SERVO_DIR_CLOSING;
-  }
-  else {
-    servoDir = SERVO_DIR_OPENING;
-  }
   servoTargetAngle = newAngle;
 
   Serial.print("Petals level ");
@@ -86,37 +75,6 @@ void Flower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-/*
-boolean movePetals() {
-  if (servoTarget < configServoClosed) {
-    servoTarget = configServoClosed;
-  }
-  else if (servoTarget > configServoOpen) {
-    servoTarget = configServoOpen;
-  }
-
-  if (servoTarget == servoPosition) {
-    if (servoTarget == configServoOpen && servoDir == SERVO_DIR_OPENING) {
-      servoTarget = configServoOpen - 50; // close back a little bit to prevent servo stalling
-    }
-    else {
-      setServoPowerOn(false);
-      return true; // finished
-    }
-  }
-
-  if (servoTarget < servoPosition) {
-    servoPosition --;
-  }
-  else {
-    servoPosition ++;
-  }
-  
-  setServoPowerOn(true);
-  servo.write(servoPosition);
-  return false;
-}
-*/
 bool Flower::setPixelsPowerOn(boolean powerOn) {
   if (powerOn && !pixelsPowerOn) {
     pixelsPowerOn = true;

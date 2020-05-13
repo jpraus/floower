@@ -191,7 +191,7 @@ void setup() {
   // do blossom calibration
   Serial.println("Tulip INITIALIZING");
 
-  flower.init(configServoClosed);
+  flower.init(configServoClosed, configServoOpen);
   //flower.setPetalsOpenLevel(100, 5000);
 }
 

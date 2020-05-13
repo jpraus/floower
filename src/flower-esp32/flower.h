@@ -9,7 +9,7 @@
 class Flower {
   public:
     Flower();
-    void init(int closedAngle);
+    void init(int closedAngle, int openAngle);
     void update();
 
     void setPetalsOpenLevel(byte level, int transitionTime);
