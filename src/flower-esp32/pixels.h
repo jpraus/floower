@@ -4,6 +4,9 @@
 #include "Arduino.h"
 #include <NeoPixelBus.h>
 
+#define LEDS_MODEL_WS2812B 0
+#define LEDS_MODEL_SK6812 1
+
 class Pixels {
   public:
     Pixels(int numPixels, byte ledsPin);

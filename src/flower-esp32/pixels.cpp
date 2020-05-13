@@ -5,7 +5,7 @@ Pixels::Pixels(int numPixels, byte ledsPin)
 }
 
 void Pixels::init(byte ledsModel) {
-  if (ledsModel == 0) { // WS2812b
+  if (ledsModel == LEDS_MODEL_WS2812B) {
     pixelsWS = new NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod>(numPixels, ledsPin); // WS2812b
   }
   else {
@@ -15,7 +15,7 @@ void Pixels::init(byte ledsModel) {
 }
 
 void Pixels::Begin() {
-  if (ledsModel == 0) { // WS2812b
+  if (ledsModel == LEDS_MODEL_WS2812B) {
     pixelsWS->Begin();
   }
   else {
@@ -24,7 +24,7 @@ void Pixels::Begin() {
 }
 
 void Pixels::SetPixelColor(uint16_t indexPixel, RgbColor color) {
-  if (ledsModel == 0) { // WS2812b
+  if (ledsModel == LEDS_MODEL_WS2812B) {
     pixelsWS->SetPixelColor(indexPixel, color);
   }
   else {
@@ -33,7 +33,7 @@ void Pixels::SetPixelColor(uint16_t indexPixel, RgbColor color) {
 }
 
 void Pixels::ClearTo(RgbColor color) {
-  if (ledsModel == 0) { // WS2812b
+  if (ledsModel == LEDS_MODEL_WS2812B) {
     pixelsWS->ClearTo(color);
   }
   else {
@@ -42,7 +42,7 @@ void Pixels::ClearTo(RgbColor color) {
 }
 
 void Pixels::Show() {
-  if (ledsModel == 0) { // WS2812b
+  if (ledsModel == LEDS_MODEL_WS2812B) {
     pixelsWS->Show();
   }
   else {

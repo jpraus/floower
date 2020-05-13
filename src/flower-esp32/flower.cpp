@@ -6,10 +6,10 @@
 #define SERVO_PIN 26
 #define SERVO_PWR_PIN 33
 
-Flower::Flower() : animations(2) {
+Flower::Flower() : animations(2), pixels(7, NEOPIXEL_PIN) {
 }
 
-void Flower::init(int closedAngle, int openAngle) {
+void Flower::init(int closedAngle, int openAngle, byte ledsModel) {
   // default servo configuration
   servoOpenAngle = openAngle;
   servoClosedAngle = closedAngle;
@@ -18,7 +18,8 @@ void Flower::init(int closedAngle, int openAngle) {
   servoTargetAngle = closedAngle;
   petalsOpenLevel = 0; // 0-100%
 
-  servoPowerOn = false;
+  // servo
+  servoPowerOn = true; // to make setServoPowerOn effective
   setServoPowerOn(false);
   pinMode(SERVO_PWR_PIN, OUTPUT);
 
@@ -26,12 +27,28 @@ void Flower::init(int closedAngle, int openAngle) {
   servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
   servo.write(servoAngle);
 
+  // LEDs
+  pixelsPowerOn = true; // to make setPixelsPowerOn effective
   setPixelsPowerOn(false);
   pinMode(NEOPIXEL_PWR_PIN, OUTPUT);
+  pixels.init(ledsModel);
+
+  pixelsColor = colorBlack;
+  RgbColor pixelsOriginColor = colorBlack;
+  RgbColor pixelsTargetColor = colorBlack;
+  pixels.Begin();
 }
 
 void Flower::update() {
   animations.UpdateAnimations();
+
+  if (pixelsColor.CalculateBrightness() > 0) {
+    setPixelsPowerOn(true);
+    pixels.Show();
+  }
+  else {
+    setPixelsPowerOn(false);
+  }
 }
 
 void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
@@ -59,13 +76,11 @@ void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
   Serial.print(newAngle);
   Serial.println(")");
 
-  animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
+  animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
 }
 
 void Flower::servoAnimationUpdate(const AnimationParam& param) {
   servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * param.progress;
-  //Serial.print("angle ");
-  //Serial.println(servoAngle);
 
   setServoPowerOn(true);
   servo.write(servoAngle);
@@ -75,7 +90,37 @@ void Flower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-bool Flower::setPixelsPowerOn(boolean powerOn) {
+void Flower::setColor(RgbColor color, int transitionTime) {
+  if (color.R == pixelsColor.R && color.G == pixelsColor.G && color.B == pixelsColor.B) {
+    return; // no change
+  }
+  pixelsOriginColor = pixelsColor;
+  pixelsTargetColor = color;
+
+  Serial.print("Flower color ");
+  Serial.print(color.R);
+  Serial.print(",");
+  Serial.print(color.G);
+  Serial.print(",");
+  Serial.println(color.B);
+
+  animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsAnimationUpdate(param); });
+}
+
+void Flower::pixelsAnimationUpdate(const AnimationParam& param) {
+  pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, param.progress);
+  pixels.ClearTo(pixelsColor);
+}
+
+boolean Flower::isAnimating() {
+  return animations.IsAnimating();
+}
+
+boolean Flower::isIdle() {
+  return !isAnimating();
+}
+
+boolean Flower::setPixelsPowerOn(boolean powerOn) {
   if (powerOn && !pixelsPowerOn) {
     pixelsPowerOn = true;
     Serial.println("LEDs power ON");
@@ -92,7 +137,7 @@ bool Flower::setPixelsPowerOn(boolean powerOn) {
   return false; // no change
 }
 
-bool Flower::setServoPowerOn(boolean powerOn) {
+boolean Flower::setServoPowerOn(boolean powerOn) {
   if (powerOn && !servoPowerOn) {
     servoPowerOn = true;
     Serial.println("Servo power ON");
