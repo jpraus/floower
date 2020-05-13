@@ -24,7 +24,7 @@ class Pixels {
   
     byte ledsModel = 0; // 0 - WS2812b, 1 - SK6812
 
-    int numPixels;
+    unsigned int numPixels;
     byte ledsPin;
   
 };

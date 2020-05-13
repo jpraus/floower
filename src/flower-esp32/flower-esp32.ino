@@ -20,8 +20,8 @@ bool deepSleepEnabled = false;
 boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
-int configServoClosed = 650;
-int configServoOpen = configServoClosed + 750;
+unsigned int configServoClosed = 650;
+unsigned int configServoOpen = configServoClosed + 750;
 byte configLedsModel = LEDS_MODEL_WS2812B;
 //byte configLedsModel = LEDS_MODEL_SK6812;
 
@@ -49,7 +49,7 @@ const char* password = "packofflowers"; // must be at least 8 characters
 
 byte remoteState = REMOTE_STATE_NOTHING;
 bool remoteActive = false;
-int reconnectTimer = CHECK_CONNECTION_SECONDS;
+unsigned int reconnectTimer = CHECK_CONNECTION_SECONDS;
 
 #define PACKET_DATA_SIZE 4
 typedef struct CommandData {

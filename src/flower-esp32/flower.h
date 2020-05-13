@@ -44,16 +44,16 @@ class Flower {
 
     // servo config
     Servo servo;
-    int servoOpenAngle;
-    int servoClosedAngle;
+    unsigned int servoOpenAngle;
+    unsigned int servoClosedAngle;
 
     // servo state
     int petalsOpenLevel; // 0-100% (target angle in percentage)
-    int servoAngle; // current angle
-    int servoOriginAngle; // angle before animation
-    int servoTargetAngle; // angle after animation
+    unsigned int servoAngle; // current angle
+    unsigned int servoOriginAngle; // angle before animation
+    unsigned int servoTargetAngle; // angle after animation
     bool servoPowerOn;
-    long servoPowerOffTime; // time when servo should power off (after animation is finished)
+    unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
 
     // leds
     Pixels pixels;
@@ -68,7 +68,7 @@ class Flower {
     void (*touchCallback)();
 
     // acty
-    long actyOffTime;
+    unsigned long actyOffTime;
 };
 
 #endif
