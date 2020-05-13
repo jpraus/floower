@@ -5,6 +5,16 @@
 
 #define SERVO_PIN 26
 #define SERVO_PWR_PIN 33
+#define SERVO_POWER_OFF_DELAY 500
+
+#define TOUCH_SENSOR_PIN 4
+#define TOUCH_TRESHOLD 45 // 45
+#define TOUCH_TIMEOUT 500 // 
+
+#define BATTERY_ANALOG_IN 36 // VP
+
+#define ACTY_LED_PIN 2
+#define ACTY_BLINK_TIME 50
 
 Flower::Flower() : animations(2), pixels(7, NEOPIXEL_PIN) {
 }
@@ -16,7 +26,7 @@ void Flower::init(int closedAngle, int openAngle, byte ledsModel) {
   servoAngle = closedAngle;
   servoOriginAngle = closedAngle;
   servoTargetAngle = closedAngle;
-  petalsOpenLevel = 0; // 0-100%
+  petalsOpenLevel = -1; // 0-100% (-1 unknown)
 
   // servo
   servoPowerOn = true; // to make setServoPowerOn effective
@@ -37,11 +47,23 @@ void Flower::init(int closedAngle, int openAngle, byte ledsModel) {
   RgbColor pixelsOriginColor = colorBlack;
   RgbColor pixelsTargetColor = colorBlack;
   pixels.Begin();
+
+  // configure ADC for battery level reading
+  analogReadResolution(12); // se0t 12bit resolution (0-4095)
+  analogSetAttenuation(ADC_11db); // set AREF to be 3.6V
+  analogSetCycles(8); // num of cycles per sample, 8 is default optimal
+  analogSetSamples(1); // num of samples
+
+  // acty LED
+  pinMode(ACTY_LED_PIN, OUTPUT);
+  digitalWrite(ACTY_LED_PIN, HIGH);
 }
 
 void Flower::update() {
   animations.UpdateAnimations();
+  handleTimers();
 
+  // show pixels
   if (pixelsColor.CalculateBrightness() > 0) {
     setPixelsPowerOn(true);
     pixels.Show();
@@ -76,6 +98,7 @@ void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
   Serial.print(newAngle);
   Serial.println(")");
 
+  // TODO: support transitionTime of 0
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
 }
 
@@ -86,7 +109,7 @@ void Flower::servoAnimationUpdate(const AnimationParam& param) {
   servo.write(servoAngle);
 
   if (param.state == AnimationState_Completed) {
-    setServoPowerOn(false); // TODO: some timeout to give servo time to finish the operation?
+    servoPowerOffTime = millis() + SERVO_POWER_OFF_DELAY;
   }
 }
 
@@ -120,6 +143,16 @@ boolean Flower::isIdle() {
   return !isAnimating();
 }
 
+void Flower::onLeafTouch(void (*callback)()) {
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD);
+  touchCallback = callback;
+}
+
+void Flower::acty() {
+  digitalWrite(ACTY_LED_PIN, HIGH);
+  actyOffTime = millis() + ACTY_BLINK_TIME;
+}
+
 boolean Flower::setPixelsPowerOn(boolean powerOn) {
   if (powerOn && !pixelsPowerOn) {
     pixelsPowerOn = true;
@@ -139,6 +172,7 @@ boolean Flower::setPixelsPowerOn(boolean powerOn) {
 
 boolean Flower::setServoPowerOn(boolean powerOn) {
   if (powerOn && !servoPowerOn) {
+    servoPowerOffTime = 0;
     servoPowerOn = true;
     Serial.println("Servo power ON");
     digitalWrite(SERVO_PWR_PIN, LOW);
@@ -146,10 +180,37 @@ boolean Flower::setServoPowerOn(boolean powerOn) {
     return true;
   }
   if (!powerOn && servoPowerOn) {
+    servoPowerOffTime = 0;
     servoPowerOn = false;
     Serial.println("Servo power OFF");
     digitalWrite(SERVO_PWR_PIN, HIGH);
     return true;
   }
   return false; // no change
+}
+
+float Flower::readBatteryVoltage() {
+  float reading = analogRead(BATTERY_ANALOG_IN); // 0-4095
+  float voltage = reading / 4096.0 * 3.7 * 2; // Analog reference voltage is 3.6V, using 1:1 voltage divider (*2)
+
+  Serial.print("Battery ");
+  Serial.print(reading);
+  Serial.print(" ");
+  Serial.print(voltage);
+  Serial.println("V");
+
+  return voltage;
+}
+
+void Flower::handleTimers() {
+  long now = millis();
+
+  if (servoPowerOffTime > 0 && servoPowerOffTime < now) {
+    servoPowerOffTime = 0;
+    setServoPowerOn(false);
+  }
+  if (actyOffTime > 0 && actyOffTime < now) {
+    actyOffTime = 0;
+    digitalWrite(ACTY_LED_PIN, LOW); 
+  }
 }

@@ -22,10 +22,15 @@ class Flower {
     void init(int closedAngle, int openAngle, byte ledsModel);
     void update();
 
-    void setPetalsOpenLevel(byte level, int transitionTime);
-    void setColor(RgbColor color, int transitionTime);
+    void setPetalsOpenLevel(byte level, int transitionTime = 0);
+    void setColor(RgbColor color, int transitionTime = 0);
     bool isAnimating();
     bool isIdle();
+
+    float readBatteryVoltage();
+    void acty();
+
+    void onLeafTouch(void (*callback)());
 
   private:
     bool setServoPowerOn(boolean powerOn);
@@ -35,17 +40,20 @@ class Flower {
     void servoAnimationUpdate(const AnimationParam& param);
     void pixelsAnimationUpdate(const AnimationParam& param);
 
+    void handleTimers();
+
     // servo config
     Servo servo;
     int servoOpenAngle;
     int servoClosedAngle;
 
     // servo state
-    byte petalsOpenLevel; // 0-100% (target angle in percentage)
+    int petalsOpenLevel; // 0-100% (target angle in percentage)
     int servoAngle; // current angle
     int servoOriginAngle; // angle before animation
     int servoTargetAngle; // angle after animation
     bool servoPowerOn;
+    long servoPowerOffTime; // time when servo should power off (after animation is finished)
 
     // leds
     Pixels pixels;
@@ -55,6 +63,12 @@ class Flower {
     RgbColor pixelsOriginColor; // color before animation
     RgbColor pixelsTargetColor; // color after animation
     bool pixelsPowerOn;
+
+    // touch
+    void (*touchCallback)();
+
+    // acty
+    long actyOffTime;
 };
 
 #endif

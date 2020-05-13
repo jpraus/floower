@@ -1,7 +1,14 @@
+/**
+ * TODO:
+ * - refactor WiFi connectivity using events API
+ * - move remote controle and UDP comm to separate class
+ * - battery level indication
+ */
+
 #include <EEPROM.h>
-#include <NeoPixelBus.h>
 #include <WiFi.h>
 #include <AsyncUDP.h>
+#include <timer.h>
 #include "flower.h"
 
 bool remoteMode = false;
@@ -38,11 +45,11 @@ const char* password = "packofflowers"; // must be at least 8 characters
 #define REMOTE_STATE_CONNECTED 4
 #define REMOTE_STATE_AP 5
 
-#define CHECK_CONNECTION_EVERY_MS 5000
+#define CHECK_CONNECTION_SECONDS 5
 
 byte remoteState = REMOTE_STATE_NOTHING;
 bool remoteActive = false;
-int reconnectTimer = CHECK_CONNECTION_EVERY_MS;
+int reconnectTimer = CHECK_CONNECTION_SECONDS;
 
 #define PACKET_DATA_SIZE 4
 typedef struct CommandData {
@@ -61,11 +68,6 @@ typedef union CommandPacket {
 
 AsyncUDP udp;
 
-///////////// TOUCH
-
-#define TOUCH_SENSOR_PIN 4
-#define TOUCH_TRESHOLD 45 // 45
-
 ///////////// STATE OF FLOWER
 
 #define MODE_INIT 0
@@ -81,8 +83,6 @@ AsyncUDP udp;
 #define MODE_FADED 11
 #define MODE_FALLINGASLEEP 12
 
-#define ACTY_LED_PIN 2
-
 byte mode = MODE_INIT;
 byte statusColor = 0; // TODO: prettier
 
@@ -97,46 +97,28 @@ RgbColor colors[] = {
 };
 byte colorsCount = 7;
 
-///////////// POWER MANAGEMENT
-
-#define BATTERY_ANALOG_IN 36 // VP
-
 ///////////// CODE
 
 Flower flower;
-
-int everySecondTimer = 0;
-unsigned long deltaMsRef = 0;
-int initTimeout = 0; // give the electronics some time to warm up before starting WiFi
+Timer<1> timer;
 
 void setup() {
   Serial.begin(115200);
   //Serial.setDebugOutput(0);
 
-  pinMode(ACTY_LED_PIN, OUTPUT);
-  digitalWrite(ACTY_LED_PIN, HIGH);
-
+  Serial.println("Tulip INITIALIZING");
   configure();
 
   // after wake up setup
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
+    Serial.println("Waking up after Deep Sleep");
     //servoPosition = configServoClosed; // startup from sleep - tulip was closed
     changeMode(MODE_BLOOM);
   }
   else {
     //servoPosition = configServoClosed + 100; // starting from unknown position - let it open a little bit to make sure it won't crash
-    initTimeout = 2000; // 2s
   }
-
-  // configure ADC
-  analogReadResolution(12); // se0t 12bit resolution (0-4095)
-  analogSetAttenuation(ADC_11db); // set AREF to be 3.6V
-  analogSetCycles(8); // num of cycles per sample, 8 is default optimal
-  analogSetSamples(1); // num of samples
-
-  // touch
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, onLeafTouch, TOUCH_TRESHOLD);
 
   // init
   if (remoteMode || remoteMaster) {
@@ -147,38 +129,27 @@ void setup() {
     btStop();
   }
 
-  deltaMsRef = millis();
-  everySecondTimer = 1000;
-
-  // do blossom calibration
-  Serial.println("Tulip INITIALIZING");
-
   flower.init(configServoClosed, configServoOpen, configLedsModel);
-  //flower.setPetalsOpenLevel(100, 5000);
-}
+  delay(100); // wait a bit here to prevent power surge
+  flower.setPetalsOpenLevel(0, 100);
+  flower.onLeafTouch(onLeafTouch);
 
-int counter = 0;
+  timer.every(1000, everySecond);
+}
 
 void loop() {
   flower.update();
-  
-  int deltaMs = getDeltaMs();
+  timer.tick();
 
   if (remoteMode || remoteMaster) {
     remoteControl();
   }
 
-  if (remoteMode && remoteActive) {
-    // remote control is active
-  }
-  else {
+  if (!remoteMode || !remoteActive) {
     // autonomous mode is active
     switch (mode) {
       case MODE_INIT:
-        if (initTimeout > 0) {
-          initTimeout -= deltaMs;
-        }
-        else if (flower.isIdle()) {
+        if (flower.isIdle()) {
           if (remoteMaster) {
             // init AP here
           }
@@ -242,28 +213,20 @@ void loop() {
         break;
     }
   }
+}
 
-  everySecondTimer -= deltaMs;
-  reconnectTimer -= deltaMs;
+bool everySecond(void *) {
+  broadcastMasterState();
+  flower.acty();
+  //flower.readBatteryVoltage(); // show low battery somehow (only half of LEDs or only middle LED is light up)
+  reconnectTimer--;
 
-  if (everySecondTimer <= 0) {
-    everySecondTimer += 1000;
-    digitalWrite(ACTY_LED_PIN, HIGH);
-    broadcastMasterState();
-
-    float batteryVoltage = readBatteryVoltage();
-  }
-  else {
-    digitalWrite(ACTY_LED_PIN, LOW);
-  }
-
-  //delay(1);
+  return true;
 }
 
 void changeMode(byte newMode) {
   if (mode != newMode) {
     mode = newMode;
-    counter = 0;
     Serial.print("Change mode: ");
     Serial.println(newMode);
   }
@@ -340,7 +303,7 @@ void remoteControl() {
 
     case REMOTE_STATE_CONNECTED:
       if (reconnectTimer <= 0) {
-        reconnectTimer = CHECK_CONNECTION_EVERY_MS;
+        reconnectTimer = CHECK_CONNECTION_SECONDS;
         if (WiFi.status() != WL_CONNECTED) {
           remoteActive = false;
           remoteState = REMOTE_STATE_DISCONNECTED;
@@ -476,30 +439,4 @@ int EEPROMReadInt(int address) {
   long one = EEPROM.read(address + 1);
  
   return ((two << 0) & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
-}
-
-// utility functions
-
-int getDeltaMs() {
-  unsigned long time = millis();
-  if (time < deltaMsRef) {
-    deltaMsRef = time; // overflow of millis happen, we lost some millis but that does not matter for us, keep moving on
-    return time;
-  }
-  int deltaMs = time - deltaMsRef;
-  deltaMsRef += deltaMs;
-  return deltaMs;
-}
-
-float readBatteryVoltage() {
-  float reading = analogRead(BATTERY_ANALOG_IN); // 0-4095
-  float voltage = reading / 4096.0 * 3.7 * 2; // Analog reference voltage is 3.6V, using 1:1 voltage divider (*2)
-
-  Serial.print("Battery ");
-  Serial.print(reading);
-  Serial.print(" ");
-  Serial.print(voltage);
-  Serial.println("V");
-
-  return voltage;
 }
