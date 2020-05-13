@@ -1,22 +1,22 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
-#include <ESP32Servo.h>
 #include <WiFi.h>
 #include <AsyncUDP.h>
-#include "blossom.h"
+#include "flower.h"
 
 bool remoteMode = false;
 bool remoteMaster = false;
-bool deepSleepEnabled = true;
+bool deepSleepEnabled = false;
 
 ///////////// PERSISTENT CONFIGURATION
 
-boolean writeConfiguration = true;
+boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
-int configServoClosed = 600;
+int configServoClosed = 650;
 int configServoOpen = configServoClosed + 750;
-byte configLedsModel = 0; // 0 - WS2812b, 1 - SK6812
+byte configLedsModel = LEDS_MODEL_WS2812B;
+//byte configLedsModel = LEDS_MODEL_SK6812;
 
 #define EEPROM_SIZE 10 // 10 bytes
 
@@ -66,39 +66,6 @@ AsyncUDP udp;
 #define TOUCH_SENSOR_PIN 4
 #define TOUCH_TRESHOLD 45 // 45
 
-///////////// SERVO
-
-#define SERVO_PIN 26 // original 18
-#define SERVO_PWR_PIN 33
-
-#define SERVO_DIR_OPENING 1
-#define SERVO_DIR_CLOSING 2
-
-bool servoPowerOn = false;
-int servoPosition;
-int servoTarget;
-byte servoDir = SERVO_DIR_CLOSING;
-byte petalsOpenness = 0; // 0-100%
-
-Servo servo;
-
-///////////// LEDS
-
-#define NEOPIXEL_PIN 27 // original 19
-#define NEOPIXEL_PWR_PIN 25
-#define RED 0
-#define GREEN 1
-#define BLUE 2
-
-bool pixelsPowerOn = false;
-Pixels pixels(7, NEOPIXEL_PIN);
-
-// TODO: use animations
-float currentRGB[] = {0, 0, 0};
-float changeRGB[] = {0, 0, 0};
-byte newRGB[] = {0, 0, 0};
-RgbColor renderedColor(0);
-
 ///////////// STATE OF FLOWER
 
 #define MODE_INIT 0
@@ -119,18 +86,6 @@ RgbColor renderedColor(0);
 byte mode = MODE_INIT;
 byte statusColor = 0; // TODO: prettier
 
-#define COLOR_SATURATION 100 // original 128
-
-RgbColor colorRed(128, 2, 0);
-RgbColor colorGreen(0, 128, 0);
-RgbColor colorBlue(0, 20, 128);
-RgbColor colorYellow(128, 70, 0);
-RgbColor colorOrange(128, 30, 0);
-RgbColor colorWhite(128);
-RgbColor colorPurple(128, 0, 128);
-RgbColor colorPink(128, 0, 50);
-RgbColor colorBlack(0);
-
 RgbColor colors[] = {
   colorWhite,
   colorYellow,
@@ -148,6 +103,8 @@ byte colorsCount = 7;
 
 ///////////// CODE
 
+Flower flower;
+
 int everySecondTimer = 0;
 unsigned long deltaMsRef = 0;
 int initTimeout = 0; // give the electronics some time to warm up before starting WiFi
@@ -159,38 +116,18 @@ void setup() {
   pinMode(ACTY_LED_PIN, OUTPUT);
   digitalWrite(ACTY_LED_PIN, HIGH);
 
-  setPixelsPowerOn(false);
-  pinMode(NEOPIXEL_PWR_PIN, OUTPUT);
-
-  setServoPowerOn(false);
-  pinMode(SERVO_PWR_PIN, OUTPUT);
-
   configure();
-  pixels.init(configLedsModel);
-  servoTarget = configServoClosed;
 
   // after wake up setup
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
-    servoPosition = configServoClosed; // startup from sleep - tulip was closed
+    //servoPosition = configServoClosed; // startup from sleep - tulip was closed
     changeMode(MODE_BLOOM);
   }
   else {
-    servoPosition = configServoClosed + 100; // starting from unknown position - let it open a little bit to make sure it won't crash
+    //servoPosition = configServoClosed + 100; // starting from unknown position - let it open a little bit to make sure it won't crash
     initTimeout = 2000; // 2s
   }
-
-  // configure leds
-  //setPixelsPowerOn(true);
-  pixels.Begin();
-  //pixels.ClearTo(colorBlack);
-  //pixels.Show();
-
-  // configure servo
-  setServoPowerOn(false);
-  servo.setPeriodHertz(50); // standard 50 hz servo
-  servo.attach(SERVO_PIN, configServoClosed, configServoOpen);
-  servo.write(servoPosition);
 
   // configure ADC
   analogReadResolution(12); // se0t 12bit resolution (0-4095)
@@ -215,13 +152,16 @@ void setup() {
 
   // do blossom calibration
   Serial.println("Tulip INITIALIZING");
-  setPetalsOpenness(0);
+
+  flower.init(configServoClosed, configServoOpen, configLedsModel);
+  //flower.setPetalsOpenLevel(100, 5000);
 }
 
 int counter = 0;
-byte speed = 10;
 
 void loop() {
+  flower.update();
+  
   int deltaMs = getDeltaMs();
 
   if (remoteMode || remoteMaster) {
@@ -230,20 +170,15 @@ void loop() {
 
   if (remoteMode && remoteActive) {
     // remote control is active
-    crossFade();
-    movePetals();
   }
   else {
     // autonomous mode is active
-    boolean done = true;
     switch (mode) {
       case MODE_INIT:
-        done = crossFade() && done;
-        done = movePetals() && done;
         if (initTimeout > 0) {
           initTimeout -= deltaMs;
         }
-        else if (done) {
+        else if (flower.isIdle()) {
           if (remoteMaster) {
             // init AP here
           }
@@ -255,54 +190,46 @@ void loop() {
 
       // faded -> bloomed
       case MODE_BLOOM:
-        prepareCrossFadeBloom(1000);
-        setPetalsOpenness(100);
+        flower.setColor(colors[random(0, colorsCount)], 5000);
+        flower.setPetalsOpenLevel(100, 5000);
         changeMode(MODE_BLOOMING);
         break;
   
       case MODE_BLOOMING:
-        done = crossFade() && done;
-        done = movePetals() && done;
-        if (done) {
+        if (flower.isIdle()) {
           changeMode(MODE_BLOOMED);
         }
         break;
 
       // bloomed -> closed with color on
       case MODE_CLOSE:
-        setPetalsOpenness(0);
+        flower.setPetalsOpenLevel(0, 5000);
         changeMode(MODE_CLOSING);
         break;
 
       case MODE_CLOSING:
-        done = movePetals() && done;
-        if (done) {
+        if (flower.isIdle()) {
           changeMode(MODE_CLOSED);
         }
         break;
 
       // closed -> faded
       case MODE_FADE:
-        prepareCrossFade(0, 0, 0, 500);
-        setPetalsOpenness(0);
+        flower.setColor(colorBlack, 5000);
+        flower.setPetalsOpenLevel(0, 5000);
         changeMode(MODE_FADING);
         break;
   
       case MODE_FADING:
-        done = crossFade() && done;
-        done = movePetals() && done;
-        if (done) {
+        if (flower.isIdle()) {
           changeMode(MODE_FALLINGASLEEP);
-          //changeMode(MODE_FADED);
         }
         break;
   
       case MODE_FALLINGASLEEP:
-        done = crossFade() && done;
-        done = movePetals() && done;
-        if (done) {
+        if (flower.isIdle()) {
           changeMode(MODE_SLEEPING);
-          setPixelsPowerOn(false);
+          //setPixelsPowerOn(false);
 
           if (deepSleepEnabled) {
             esp_sleep_enable_touchpad_wakeup();
@@ -330,8 +257,7 @@ void loop() {
     digitalWrite(ACTY_LED_PIN, LOW);
   }
 
-  renderPistil();
-  delay(speed);
+  //delay(1);
 }
 
 void changeMode(byte newMode) {
@@ -354,130 +280,6 @@ void onLeafTouch() {
   else if (mode == MODE_CLOSED) {
     changeMode(MODE_FADE);
   }
-}
-
-// animations
-
-byte nextColor = 0;
-
-// TODO: use animations from library
-void prepareCrossFadeBloom(unsigned int duration) {
-  setPixelsPowerOn(true);
-
-  RgbColor color = colors[random(0, colorsCount)];
-  //RgbColor color = colors[nextColor];
-  prepareCrossFade(color.R, color.G, color.B, duration);
-
-  nextColor++;
-  if (nextColor >= colorsCount) {
-    nextColor = 0;
-  }
-}
-
-// servo function
-
-void setPetalsOpenness(byte openness) {
-  int newTarget;
-
-  if (openness == petalsOpenness) {
-    return; // no change, keep doing the old movement until done
-  }
-  petalsOpenness = openness;
-
-  if (openness >= 100) {
-    newTarget = configServoOpen;
-  }
-  else {
-    float position = (configServoOpen - configServoClosed);
-    position = position * openness / 100.0;
-    newTarget = configServoClosed + position;
-  }
-
-  if (newTarget < servoTarget) { // closing
-    servoDir = SERVO_DIR_CLOSING;
-  }
-  else {
-    servoDir = SERVO_DIR_OPENING;
-  }
-  servoTarget = newTarget;
-
-  Serial.print(petalsOpenness);
-  Serial.print(" -> ");
-  Serial.println(newTarget);
-}
-
-boolean movePetals() {
-  if (servoTarget < configServoClosed) {
-    servoTarget = configServoClosed;
-  }
-  else if (servoTarget > configServoOpen) {
-    servoTarget = configServoOpen;
-  }
-
-  if (servoTarget == servoPosition) {
-    if (servoTarget == configServoOpen && servoDir == SERVO_DIR_OPENING) {
-      servoTarget = configServoOpen - 50; // close back a little bit to prevent servo stalling
-    }
-    else {
-      setServoPowerOn(false);
-      return true; // finished
-    }
-  }
-
-  if (servoTarget < servoPosition) {
-    servoPosition --;
-  }
-  else {
-    servoPosition ++;
-  }
-  
-  setServoPowerOn(true);
-  servo.write(servoPosition);
-  return false;
-}
-
-void movePetalsInstantly() {
-  if (servoTarget == servoPosition || servoTarget < configServoClosed || servoTarget > configServoOpen) {
-    return; // un-safe or finished
-  }
-  servoPosition = servoTarget;
-  servo.write(servoPosition);
-}
-
-// power management
-
-bool setPixelsPowerOn(boolean powerOn) {
-  if (powerOn && !pixelsPowerOn) {
-    pixelsPowerOn = true;
-    Serial.println("LEDs power ON");
-    digitalWrite(NEOPIXEL_PWR_PIN, LOW);
-    delay(5);
-    return true;
-  }
-  if (!powerOn && pixelsPowerOn) {
-    pixelsPowerOn = false;
-    Serial.println("LEDs power OFF");
-    digitalWrite(NEOPIXEL_PWR_PIN, HIGH);
-    return true;
-  }
-  return false; // no change
-}
-
-bool setServoPowerOn(boolean powerOn) {
-  if (powerOn && !servoPowerOn) {
-    servoPowerOn = true;
-    Serial.println("Servo power ON");
-    digitalWrite(SERVO_PWR_PIN, LOW);
-    delay(5);
-    return true;
-  }
-  if (!powerOn && servoPowerOn) {
-    servoPowerOn = false;
-    Serial.println("Servo power OFF");
-    digitalWrite(SERVO_PWR_PIN, HIGH);
-    return true;
-  }
-  return false; // no change
 }
 
 // remote control
@@ -552,10 +354,11 @@ void remoteControl() {
 void broadcastMasterState() {
   if (remoteActive && remoteMaster) {
     CommandData command;
-    command.blossomOpenness = petalsOpenness;
-    command.red = newRGB[RED];
-    command.green = newRGB[GREEN];
-    command.blue = newRGB[BLUE];
+    // TODO
+    //command.blossomOpenness = petalsOpenness;
+    //command.red = newRGB[RED];
+    //command.green = newRGB[GREEN];
+    //command.blue = newRGB[BLUE];
     broadcastRemoteCommand(command);
   }
 }
@@ -612,11 +415,8 @@ void commmandReceived(CommandData command) {
     Serial.print(", Blue: ");
     Serial.println(command.blue);
 
-    if (command.red != newRGB[RED] || command.green != newRGB[GREEN] || command.blue != newRGB[BLUE]) {
-      prepareCrossFade(command.red, command.green, command.blue, 500); // TODO
-    }
-
-    setPetalsOpenness(command.blossomOpenness);
+    flower.setPetalsOpenLevel(command.blossomOpenness, 500); // TODO some default speed
+    flower.setColor(RgbColor(command.red, command.green, command.blue), 500); // TODO some default speed
   }
 }
 
@@ -676,93 +476,6 @@ int EEPROMReadInt(int address) {
   long one = EEPROM.read(address + 1);
  
   return ((two << 0) & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
-}
-
-// LED functions
-
-// TODO: rewrite using NeoPixel BUS animations
-void renderPistil() {
-  // status color
-  if (statusColor) {
-    pixels.ClearTo(colorBlack);
-    switch (statusColor) {
-      case 1:
-        pixels.SetPixelColor(0, colorRed);
-        break;
-      case 2:
-        pixels.SetPixelColor(0, colorYellow);
-        break;
-      case 3:
-        pixels.SetPixelColor(0, colorGreen);
-        break;
-      case 4:
-        statusColor = 0; // 4 is reset color
-        break;
-    }
-    pixels.Show();
-  }
-  // single color
-  else if (renderedColor.R != currentRGB[RED] || renderedColor.G != currentRGB[GREEN] || renderedColor.B != currentRGB[BLUE]) {
-    renderedColor = RgbColor(currentRGB[RED], currentRGB[GREEN], currentRGB[BLUE]);
-    pixels.ClearTo(renderedColor);
-    pixels.Show();
-  }
-}
-
-// deprecated
-void prepareCrossFade(byte red, byte green, byte blue, unsigned int duration) {
-  float rchange = red - currentRGB[RED];
-  float gchange = green - currentRGB[GREEN];
-  float bchange = blue - currentRGB[BLUE];
-
-  changeRGB[RED] = rchange / (float) duration;
-  changeRGB[GREEN] = gchange / (float) duration;
-  changeRGB[BLUE] = bchange / (float) duration;
-
-  newRGB[RED] = red;
-  newRGB[GREEN] = green;
-  newRGB[BLUE] = blue;
-/*
-  Serial.print(newRGB[RED]);
-  Serial.print(" ");
-  Serial.print(newRGB[GREEN]);
-  Serial.print(" ");
-  Serial.print(newRGB[BLUE]);
-  Serial.print(" (");
-  Serial.print(changeRGB[RED]);
-  Serial.print(" ");
-  Serial.print(changeRGB[GREEN]);
-  Serial.print(" ");
-  Serial.print(changeRGB[BLUE]);
-  Serial.println(")");
-*/
-}
-
-// deprecated
-boolean crossFade() {
-  if (currentRGB[RED] == newRGB[RED] && currentRGB[GREEN] == newRGB[GREEN] && currentRGB[BLUE] == newRGB[BLUE]) {
-    return true;
-  }
-  for (byte i = 0; i < 3; i++) {
-    if (changeRGB[i] > 0 && currentRGB[i] < newRGB[i]) {
-      currentRGB[i] = currentRGB[i] + changeRGB[i];
-    }
-    else if (changeRGB[i] < 0 && currentRGB[i] > newRGB[i]) {
-      currentRGB[i] = currentRGB[i] + changeRGB[i];
-    }
-    else {
-      currentRGB[i] = newRGB[i];
-    }
-  }
-/*
-  Serial.print(currentRGB[RED]);
-  Serial.print(" ");
-  Serial.print(currentRGB[GREEN]);
-  Serial.print(" ");
-  Serial.print(currentRGB[BLUE]);
-  Serial.println();
-*/
-  return false;
 }
 
 // utility functions
