@@ -27,11 +27,11 @@ class Flower {
     int servoClosedAngle;
 
     // servo state
+    byte petalsOpenLevel; // 0-100% (target angle in percentage)
+    int servoAngle; // current angle
+    int servoOriginAngle; // angle before animation
+    int servoTargetAngle; // angle after animation
     bool servoPowerOn;
-    int servoAngle;
-    int servoTargetAngle;
-    byte servoDir;
-    byte petalsOpenLevel; // 0-100%
 
     // leds
     bool pixelsPowerOn = false;

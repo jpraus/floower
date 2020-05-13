@@ -14,6 +14,7 @@ void Flower::init(int closedAngle, int openAngle) {
   servoOpenAngle = openAngle;
   servoClosedAngle = closedAngle;
   servoAngle = closedAngle;
+  servoOriginAngle = closedAngle;
   servoTargetAngle = closedAngle;
   petalsOpenLevel = 0; // 0-100%
 
@@ -49,6 +50,7 @@ void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
     newAngle = servoClosedAngle + position;
   }
 
+  servoOriginAngle = servoAngle;
   servoTargetAngle = newAngle;
 
   Serial.print("Petals level ");
@@ -61,17 +63,15 @@ void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
 }
 
 void Flower::servoAnimationUpdate(const AnimationParam& param) {
-  if (param.state == AnimationState_Completed) {
-    servoAngle = servoTargetAngle;
-    setServoPowerOn(false);
-  }
-  else {
-    int newAngle = servoAngle + (servoTargetAngle - servoAngle) * param.progress;
-    //Serial.print("angle ");
-    //Serial.println(newAngle);
+  servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * param.progress;
+  //Serial.print("angle ");
+  //Serial.println(servoAngle);
 
-    setServoPowerOn(true);
-    servo.write(newAngle);
+  setServoPowerOn(true);
+  servo.write(servoAngle);
+
+  if (param.state == AnimationState_Completed) {
+    setServoPowerOn(false); // TODO: some timeout to give servo time to finish the operation?
   }
 }
 
