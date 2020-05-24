@@ -48,10 +48,10 @@ class Flower {
     unsigned int servoClosedAngle;
 
     // servo state
-    int petalsOpenLevel; // 0-100% (target angle in percentage)
-    unsigned int servoAngle; // current angle
-    unsigned int servoOriginAngle; // angle before animation
-    unsigned int servoTargetAngle; // angle after animation
+    signed int petalsOpenLevel; // 0-100% (target angle in percentage)
+    signed int servoAngle; // current angle
+    signed int servoOriginAngle; // angle before animation
+    signed int servoTargetAngle; // angle after animation
     bool servoPowerOn;
     unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
 
