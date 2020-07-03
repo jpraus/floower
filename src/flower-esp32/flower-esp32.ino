@@ -235,13 +235,13 @@ bool everySecond(void *) {
     Serial.println("V)");
     changeMode(MODE_SHUTTINGDOWN);
   }
-  else if (voltage < POWER_LOW_ENTER_THRESHOLD) {
+  else if (!flower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
     Serial.println("Entering low power mode (");
     Serial.print(voltage);
     Serial.println("V)");
     flower.setLowPowerMode(true);
   }
-  else if (voltage >= POWER_LOW_LEAVE_THRESHOLD) {
+  else if (flower.isLowPowerMode() && voltage >= POWER_LOW_LEAVE_THRESHOLD) {
     Serial.print("Leaving low power mode (");
     Serial.print(voltage);
     Serial.println("V)");
