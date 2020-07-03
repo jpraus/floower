@@ -27,8 +27,10 @@ class Flower {
     bool isAnimating();
     bool isIdle();
 
-    float readBatteryVoltage();
     void acty();
+    float readBatteryVoltage();
+    void setLowPowerMode(boolean lowPowerMode);
+    bool isLowPowerMode();
 
     void onLeafTouch(void (*callback)());
 
@@ -66,6 +68,10 @@ class Flower {
 
     // touch
     void (*touchCallback)();
+
+    // battery
+    float batteryVoltage;
+    bool lowPowerMode;
 
     // acty
     unsigned long actyOffTime;

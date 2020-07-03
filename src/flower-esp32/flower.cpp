@@ -191,15 +191,28 @@ boolean Flower::setServoPowerOn(boolean powerOn) {
 
 float Flower::readBatteryVoltage() {
   float reading = analogRead(BATTERY_ANALOG_IN); // 0-4095
-  float voltage = reading / 4096.0 * 3.7 * 2; // Analog reference voltage is 3.6V, using 1:1 voltage divider (*2)
+  float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
+
+  byte level = _min(_max(0, voltage - 3.4) * 140, 100); // 3.4 .. 0%, 4.1 .. 100%
 
   Serial.print("Battery ");
   Serial.print(reading);
   Serial.print(" ");
   Serial.print(voltage);
-  Serial.println("V");
+  Serial.print("V ");
+  Serial.print(level);
+  Serial.println("%");
 
+  batteryVoltage = voltage;
   return voltage;
+}
+
+void Flower::setLowPowerMode(boolean lowPowerMode) {
+  this->lowPowerMode = lowPowerMode;
+}
+
+bool Flower::isLowPowerMode() {
+  return lowPowerMode;
 }
 
 void Flower::handleTimers() {

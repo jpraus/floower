@@ -21,7 +21,7 @@ boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
 unsigned int configServoClosed = 650;
-unsigned int configServoOpen = configServoClosed + 750;
+unsigned int configServoOpen = configServoClosed + 700;
 byte configLedsModel = LEDS_MODEL_WS2812B;
 //byte configLedsModel = LEDS_MODEL_SK6812;
 
@@ -68,6 +68,13 @@ typedef union CommandPacket {
 
 AsyncUDP udp;
 
+///////////// POWER MODE
+
+#define POWER_LOW_ENTER_THRESHOLD 3.7 // enter state when voltage drop below this threshold
+#define POWER_LOW_LEAVE_THRESHOLD 3.8 // leave state when voltage rise above this threshold
+#define POWER_DEAD_ENTER_THRESHOLD 3.3 // enter state when voltage drop below this threshold
+#define POWER_DEAD_LEAVE_THRESHOLD 3.4 // leave state when voltage rise above this threshold
+
 ///////////// STATE OF FLOWER
 
 #define MODE_INIT 0
@@ -82,6 +89,7 @@ AsyncUDP udp;
 #define MODE_FADING 10
 #define MODE_FADED 11
 #define MODE_FALLINGASLEEP 12
+#define MODE_SHUTTINGDOWN 20
 
 byte mode = MODE_INIT;
 byte statusColor = 0; // TODO: prettier
@@ -218,8 +226,27 @@ void loop() {
 bool everySecond(void *) {
   broadcastMasterState();
   flower.acty();
-  //flower.readBatteryVoltage(); // show low battery somehow (only half of LEDs or only middle LED is light up)
   reconnectTimer--;
+
+  float voltage = flower.readBatteryVoltage();
+  if (voltage < POWER_DEAD_ENTER_THRESHOLD) {
+    Serial.print("Shutting down, battery is dead (");
+    Serial.print(voltage);
+    Serial.println("V)");
+    changeMode(MODE_SHUTTINGDOWN);
+  }
+  else if (voltage < POWER_LOW_ENTER_THRESHOLD) {
+    Serial.println("Entering low power mode (");
+    Serial.print(voltage);
+    Serial.println("V)");
+    flower.setLowPowerMode(true);
+  }
+  else if (voltage >= POWER_LOW_LEAVE_THRESHOLD) {
+    Serial.print("Leaving low power mode (");
+    Serial.print(voltage);
+    Serial.println("V)");
+    flower.setLowPowerMode(false);
+  }
 
   return true;
 }
