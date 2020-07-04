@@ -247,6 +247,10 @@ float Flower::readBatteryVoltage() {
   return voltage;
 }
 
+bool Flower::isCharging() {
+  return false; // TODO: fix hardware
+}
+
 void Flower::setLowPowerMode(boolean lowPowerMode) {
   if (this->lowPowerMode != lowPowerMode) {
     this->lowPowerMode = lowPowerMode;
