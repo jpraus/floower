@@ -12,7 +12,7 @@
 
 bool remoteMode = false; // not used
 bool remoteMaster = false; // not used
-bool deepSleepEnabled = false;
+bool deepSleepEnabled = true;
 
 ///////////// PERSISTENT CONFIGURATION
 
@@ -110,6 +110,9 @@ long colorsUsed = 0;
 
 ///////////// CODE
 
+#define DEEP_SLEEP_INACTIVITY_TIMEOUT 20000 // fall in deep sleep after timeout
+#define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
+
 Flower flower;
 long everySecondTime = 0;
 
@@ -135,8 +138,7 @@ void setup() {
   if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
     // battery is dead, do not wake up, shutdown after a status color
     Serial.println("Battery is dead, shutting down");
-    changeModeTo = MODE_SHUTDOWN;
-    changeModeTime = millis() + 5000; // shutdown in 5s
+    planChangeMode(MODE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
     flower.setColor(colorRed, FlowerColorMode::PULSE, 1000);
   }
   else {
@@ -170,6 +172,10 @@ void loop() {
       if (flower.isIdle()) {
         changeMode(MODE_STANDBY);
         Serial.println("Tulip READY");
+
+        if (deepSleepEnabled) {
+          planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
+        }
       }
       break;
 
@@ -209,7 +215,7 @@ void loop() {
       if (flower.isIdle()) {
         changeMode(MODE_STANDBY);
         if (deepSleepEnabled) {
-          enterDeepSleep();
+          planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
         }
       }
       break;
@@ -236,12 +242,22 @@ void everySecond() {
   powerWatchDog();
 }
 
+void planChangeMode(byte newMode, long timeout) {
+  changeModeTo = newMode;
+  changeModeTime = millis() + timeout;
+  Serial.print("Planned change mode: ");
+  Serial.print(newMode);
+  Serial.print(" in ");
+  Serial.println(timeout);
+}
+
 void changeMode(byte newMode) {
   if (mode != newMode) {
     mode = newMode;
     Serial.print("Change mode: ");
     Serial.println(newMode);
   }
+  changeModeTime = 0;
 }
 
 void onLeafTouch() {
