@@ -132,7 +132,21 @@ void Flower::setColor(RgbColor color, int transitionTime) {
 
 void Flower::pixelsAnimationUpdate(const AnimationParam& param) {
   pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, param.progress);
-  pixels.ClearTo(pixelsColor);
+  showColor(pixelsColor);
+}
+
+void Flower::showColor(RgbColor color) {
+  if (!lowPowerMode) {
+    pixels.ClearTo(color);
+  }
+  else {
+    pixels.ClearTo(colorBlack);
+    pixels.SetPixelColor(0, color);
+    //pixels.SetPixelColor(1, color);
+    //pixels.SetPixelColor(3, color);
+    //pixels.SetPixelColor(5, color);
+    
+  }
 }
 
 boolean Flower::isAnimating() {
@@ -193,7 +207,7 @@ float Flower::readBatteryVoltage() {
   float reading = analogRead(BATTERY_ANALOG_IN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
 
-  byte level = _min(_max(0, voltage - 3.4) * 140, 100); // 3.4 .. 0%, 4.1 .. 100%
+  byte level = _min(_max(0, voltage - 3.3) * 125, 100); // 3.3 .. 0%, 4.1 .. 100%
 
   Serial.print("Battery ");
   Serial.print(reading);
@@ -208,7 +222,10 @@ float Flower::readBatteryVoltage() {
 }
 
 void Flower::setLowPowerMode(boolean lowPowerMode) {
-  this->lowPowerMode = lowPowerMode;
+  if (this->lowPowerMode != lowPowerMode) {
+    this->lowPowerMode = lowPowerMode;
+    showColor(pixelsColor);
+  }
 }
 
 bool Flower::isLowPowerMode() {

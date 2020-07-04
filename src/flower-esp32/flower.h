@@ -41,6 +41,7 @@ class Flower {
     NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
     void servoAnimationUpdate(const AnimationParam& param);
     void pixelsAnimationUpdate(const AnimationParam& param);
+    void showColor(RgbColor color);
 
     void handleTimers();
 

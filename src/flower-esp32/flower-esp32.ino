@@ -8,7 +8,6 @@
 #include <EEPROM.h>
 #include <WiFi.h>
 #include <AsyncUDP.h>
-#include <timer.h>
 #include "flower.h"
 
 bool remoteMode = false; // not used
@@ -88,7 +87,6 @@ AsyncUDP udp;
 #define MODE_FADE 9
 #define MODE_FADING 10
 #define MODE_FADED 11
-#define MODE_FALLINGASLEEP 12
 
 #define MODE_SHUTDOWN 20
 #define MODE_SHUTTINGDOWN 21
@@ -109,7 +107,7 @@ byte colorsCount = 7;
 ///////////// CODE
 
 Flower flower;
-Timer<1> timer;
+long everySecondTime = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -139,14 +137,20 @@ void setup() {
   flower.setPetalsOpenLevel(0, 100);
   flower.onLeafTouch(onLeafTouch);
 
-  timer.every(1000, everySecond);
-}
+  everySecondTime = millis(); // TODO millis overflow
+} 
 
 void loop() {
   flower.update();
-  timer.tick();
 
-  // autonomous mode is active
+  // timers
+  long now = millis();
+  if (everySecondTime > 0 && everySecondTime < now) {
+    everySecondTime = now + 1000;
+    everySecond();
+  }
+
+  // autonomous mode
   switch (mode) {
     case MODE_INIT:
       if (flower.isIdle()) {
@@ -157,8 +161,6 @@ void loop() {
 
     // faded -> bloomed
     case MODE_BLOOM:
-      
-    
       flower.setColor(colors[random(0, colorsCount)], 5000);
       flower.setPetalsOpenLevel(100, 5000);
       changeMode(MODE_BLOOMING);
@@ -170,7 +172,7 @@ void loop() {
       }
       break;
 
-    // bloomed -> closed with color on
+    // bloomed -> closed with color ON
     case MODE_CLOSE:
       flower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_CLOSING);
@@ -184,28 +186,21 @@ void loop() {
 
     // closed -> faded
     case MODE_FADE:
-      flower.setColor(colorBlack, 5000);
+      flower.setColor(colorBlack, 2500);
       flower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_FADING);
       break;
 
     case MODE_FADING:
       if (flower.isIdle()) {
-        changeMode(MODE_FALLINGASLEEP);
-      }
-      break;
-
-    case MODE_FALLINGASLEEP:
-      if (flower.isIdle()) {
         changeMode(MODE_SLEEPING);
-        //setPixelsPowerOn(false);
-
         if (deepSleepEnabled) {
           enterDeepSleep();
         }
       }
       break;
 
+    // shutdown to protect the flower
     case MODE_SHUTDOWN:
       flower.setColor(colorBlack, 500);
       flower.setPetalsOpenLevel(0, 5000);
@@ -220,13 +215,11 @@ void loop() {
   }
 }
 
-bool everySecond(void *) {
+void everySecond() {
   //broadcastMasterState();
   //reconnectTimer--;
   flower.acty();
   powerWatchDog();
-  
-  return true;
 }
 
 void changeMode(byte newMode) {
