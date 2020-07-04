@@ -11,8 +11,8 @@
 #include <timer.h>
 #include "flower.h"
 
-bool remoteMode = false;
-bool remoteMaster = false;
+bool remoteMode = false; // not used
+bool remoteMaster = false; // not used
 bool deepSleepEnabled = false;
 
 ///////////// PERSISTENT CONFIGURATION
@@ -89,10 +89,11 @@ AsyncUDP udp;
 #define MODE_FADING 10
 #define MODE_FADED 11
 #define MODE_FALLINGASLEEP 12
-#define MODE_SHUTTINGDOWN 20
+
+#define MODE_SHUTDOWN 20
+#define MODE_SHUTTINGDOWN 21
 
 byte mode = MODE_INIT;
-byte statusColor = 0; // TODO: prettier
 
 RgbColor colors[] = {
   colorWhite,
@@ -112,30 +113,26 @@ Timer<1> timer;
 
 void setup() {
   Serial.begin(115200);
-  //Serial.setDebugOutput(0);
-
   Serial.println("Tulip INITIALIZING");
   configure();
+
+  // check if there is enough power
+  float voltage = flower.readBatteryVoltage();
+  if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
+    // battery is dead, do not wake up
+    Serial.println("Battery is dead, shutting down");
+  }
 
   // after wake up setup
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
     Serial.println("Waking up after Deep Sleep");
-    //servoPosition = configServoClosed; // startup from sleep - tulip was closed
     changeMode(MODE_BLOOM);
   }
-  else {
-    //servoPosition = configServoClosed + 100; // starting from unknown position - let it open a little bit to make sure it won't crash
-  }
 
-  // init
-  if (remoteMode || remoteMaster) {
-    statusColor = 1;
-  }
-  else {
-    WiFi.mode(WIFI_OFF);
-    btStop();
-  }
+  // init hardware
+  WiFi.mode(WIFI_OFF);
+  btStop();
 
   flower.init(configServoClosed, configServoOpen, configLedsModel);
   delay(100); // wait a bit here to prevent power surge
@@ -149,105 +146,86 @@ void loop() {
   flower.update();
   timer.tick();
 
-  if (remoteMode || remoteMaster) {
-    remoteControl();
-  }
+  // autonomous mode is active
+  switch (mode) {
+    case MODE_INIT:
+      if (flower.isIdle()) {
+        changeMode(MODE_SLEEPING);
+        Serial.println("Tulip READY");
+      }
+      break;
 
-  if (!remoteMode || !remoteActive) {
-    // autonomous mode is active
-    switch (mode) {
-      case MODE_INIT:
-        if (flower.isIdle()) {
-          if (remoteMaster) {
-            // init AP here
-          }
-          changeMode(MODE_SLEEPING);
-          remoteState = REMOTE_STATE_INIT;
-          Serial.println("Tulip READY");
+    // faded -> bloomed
+    case MODE_BLOOM:
+      
+    
+      flower.setColor(colors[random(0, colorsCount)], 5000);
+      flower.setPetalsOpenLevel(100, 5000);
+      changeMode(MODE_BLOOMING);
+      break;
+
+    case MODE_BLOOMING:
+      if (flower.isIdle()) {
+        changeMode(MODE_BLOOMED);
+      }
+      break;
+
+    // bloomed -> closed with color on
+    case MODE_CLOSE:
+      flower.setPetalsOpenLevel(0, 5000);
+      changeMode(MODE_CLOSING);
+      break;
+
+    case MODE_CLOSING:
+      if (flower.isIdle()) {
+        changeMode(MODE_CLOSED);
+      }
+      break;
+
+    // closed -> faded
+    case MODE_FADE:
+      flower.setColor(colorBlack, 5000);
+      flower.setPetalsOpenLevel(0, 5000);
+      changeMode(MODE_FADING);
+      break;
+
+    case MODE_FADING:
+      if (flower.isIdle()) {
+        changeMode(MODE_FALLINGASLEEP);
+      }
+      break;
+
+    case MODE_FALLINGASLEEP:
+      if (flower.isIdle()) {
+        changeMode(MODE_SLEEPING);
+        //setPixelsPowerOn(false);
+
+        if (deepSleepEnabled) {
+          enterDeepSleep();
         }
-        break;
+      }
+      break;
 
-      // faded -> bloomed
-      case MODE_BLOOM:
-        flower.setColor(colors[random(0, colorsCount)], 5000);
-        flower.setPetalsOpenLevel(100, 5000);
-        changeMode(MODE_BLOOMING);
-        break;
-  
-      case MODE_BLOOMING:
-        if (flower.isIdle()) {
-          changeMode(MODE_BLOOMED);
-        }
-        break;
+    case MODE_SHUTDOWN:
+      flower.setColor(colorBlack, 500);
+      flower.setPetalsOpenLevel(0, 5000);
+      changeMode(MODE_SHUTTINGDOWN);
+      break;
 
-      // bloomed -> closed with color on
-      case MODE_CLOSE:
-        flower.setPetalsOpenLevel(0, 5000);
-        changeMode(MODE_CLOSING);
-        break;
-
-      case MODE_CLOSING:
-        if (flower.isIdle()) {
-          changeMode(MODE_CLOSED);
-        }
-        break;
-
-      // closed -> faded
-      case MODE_FADE:
-        flower.setColor(colorBlack, 5000);
-        flower.setPetalsOpenLevel(0, 5000);
-        changeMode(MODE_FADING);
-        break;
-  
-      case MODE_FADING:
-        if (flower.isIdle()) {
-          changeMode(MODE_FALLINGASLEEP);
-        }
-        break;
-  
-      case MODE_FALLINGASLEEP:
-        if (flower.isIdle()) {
-          changeMode(MODE_SLEEPING);
-          //setPixelsPowerOn(false);
-
-          if (deepSleepEnabled) {
-            esp_sleep_enable_touchpad_wakeup();
-            Serial.println("Going to sleep now");
-            WiFi.mode(WIFI_OFF);
-            btStop();
-            esp_deep_sleep_start();
-          }
-        }
-        break;
-    }
+    case MODE_SHUTTINGDOWN:
+      if (flower.isIdle()) {
+        enterDeepSleep();
+      }
+      break;
   }
 }
 
 bool everySecond(void *) {
-  broadcastMasterState();
+  //broadcastMasterState();
+  //reconnectTimer--;
   flower.acty();
-  reconnectTimer--;
-
-  float voltage = flower.readBatteryVoltage();
-  if (voltage < POWER_DEAD_ENTER_THRESHOLD) {
-    Serial.print("Shutting down, battery is dead (");
-    Serial.print(voltage);
-    Serial.println("V)");
-    changeMode(MODE_SHUTTINGDOWN);
-  }
-  else if (!flower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
-    Serial.println("Entering low power mode (");
-    Serial.print(voltage);
-    Serial.println("V)");
-    flower.setLowPowerMode(true);
-  }
-  else if (flower.isLowPowerMode() && voltage >= POWER_LOW_LEAVE_THRESHOLD) {
-    Serial.print("Leaving low power mode (");
-    Serial.print(voltage);
-    Serial.println("V)");
-    flower.setLowPowerMode(false);
-  }
-
+  powerWatchDog();
+  
   return true;
 }
 
@@ -272,7 +250,37 @@ void onLeafTouch() {
   }
 }
 
-// remote control
+void powerWatchDog() {
+  float voltage = flower.readBatteryVoltage();
+  if (voltage < POWER_DEAD_ENTER_THRESHOLD) {
+    Serial.print("Shutting down, battery is dead (");
+    Serial.print(voltage);
+    Serial.println("V)");
+    changeMode(MODE_SHUTDOWN);
+  }
+  else if (!flower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
+    Serial.print("Entering low power mode (");
+    Serial.print(voltage);
+    Serial.println("V)");
+    flower.setLowPowerMode(true);
+  }
+  else if (flower.isLowPowerMode() && voltage >= POWER_LOW_LEAVE_THRESHOLD) {
+    Serial.print("Leaving low power mode (");
+    Serial.print(voltage);
+    Serial.println("V)");
+    flower.setLowPowerMode(false);
+  }
+}
+
+void enterDeepSleep() {
+  esp_sleep_enable_touchpad_wakeup();
+  Serial.println("Going to sleep now");
+  WiFi.mode(WIFI_OFF);
+  btStop();
+  esp_deep_sleep_start();
+}
+
+// remote control (not used)
 
 void remoteControl() {
   // TODO rewrite to async
@@ -290,7 +298,6 @@ void remoteControl() {
 
         remoteState = REMOTE_STATE_AP;
         remoteActive = true;
-        statusColor = 4; // AP ready
       }
       else {
         // client
@@ -309,7 +316,6 @@ void remoteControl() {
       Serial.println("Connecting to WiFi ...");
 
       remoteState = REMOTE_STATE_CONNECTING;
-      statusColor = 2;
       break;
 
     case REMOTE_STATE_CONNECTING:
@@ -322,7 +328,6 @@ void remoteControl() {
           udp.onPacket(udpPacketReceived);
         }
 
-        statusColor = 3; // until first data packet
         remoteActive = true;
         remoteState = REMOTE_STATE_CONNECTED;
       }
@@ -371,10 +376,6 @@ void broadcastRemoteCommand(CommandData command) {
 
 void udpPacketReceived(AsyncUDPPacket packet) {
   CommandPacket command;
-
-  if (statusColor > 0) {
-    statusColor = 4; // first packet received
-  }
 
   Serial.print("UDP Packet Type: ");
   Serial.print(packet.isBroadcast() ? "Broadcast" : (packet.isMulticast() ? "Multicast" : "Unicast"));
