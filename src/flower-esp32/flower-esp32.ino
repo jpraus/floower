@@ -106,7 +106,7 @@ RgbColor colors[] = {
   colorBlue
 };
 const byte colorsCount = 7; // must match the size of colors array!
-bool colorsUsed[colorsCount];
+long colorsUsed = 0;
 
 ///////////// CODE
 
@@ -175,7 +175,7 @@ void loop() {
 
     // faded -> bloomed
     case MODE_BLOOM:
-      flower.setColor(colors[random(0, colorsCount)], FlowerColorMode::TRANSITION, 5000);
+      flower.setColor(nextRandomColor(), FlowerColorMode::TRANSITION, 5000);
       flower.setPetalsOpenLevel(100, 5000);
       changeMode(MODE_BLOOMING);
       break;
@@ -285,6 +285,26 @@ void enterDeepSleep() {
   WiFi.mode(WIFI_OFF);
   btStop();
   esp_deep_sleep_start();
+}
+
+RgbColor nextRandomColor() {
+  if (colorsUsed > 0) {
+    long maxColors = pow(2, colorsCount) - 1;
+    if (maxColors == colorsUsed) {
+      colorsUsed = 0; // all colors used, reset
+    }
+  }
+
+  byte colorIndex;
+  long colorCode;
+
+  do {
+    colorIndex = random(0, colorsCount);
+    colorCode = 1 << colorIndex;
+  } while ((colorsUsed & colorCode) > 0); // already used before all the rest colors
+
+  colorsUsed += colorCode;
+  return colors[colorIndex];
 }
 
 // remote control (not used)
