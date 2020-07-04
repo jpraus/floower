@@ -2,7 +2,6 @@
  * TODO:
  * - refactor WiFi connectivity using events API
  * - move remote controle and UDP comm to separate class
- * - battery level indication
  */
 
 #include <EEPROM.h>
@@ -72,8 +71,7 @@ AsyncUDP udp;
 // tuned for 1600mAh LIPO battery
 #define POWER_LOW_ENTER_THRESHOLD 0 // enter state when voltage drop below this threshold (3.55)
 #define POWER_LOW_LEAVE_THRESHOLD 0 // leave state when voltage rise above this threshold (3.6)
-#define POWER_DEAD_ENTER_THRESHOLD 3.3 // enter state when voltage drop below this threshold
-#define POWER_DEAD_LEAVE_THRESHOLD 3.4 // leave state when voltage rise above this threshold
+#define POWER_DEAD_THRESHOLD 3.4
 
 ///////////// STATE OF FLOWER
 
@@ -140,11 +138,11 @@ void setup() {
 
   // check if there is enough power to run
   float voltage = flower.readBatteryVoltage();
-  if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
+  if (voltage < POWER_DEAD_THRESHOLD) {
     delay(500);
     voltage = flower.readBatteryVoltage(); // re-verify the voltage after .5s
   }
-  if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
+  if (voltage < POWER_DEAD_THRESHOLD) {
     // battery is dead, do not wake up, shutdown after a status color
     Serial.println("Battery is dead, shutting down");
     changeMode(MODE_BATTERYDEAD);
@@ -299,7 +297,7 @@ void powerWatchDog() {
   }
 
   float voltage = flower.readBatteryVoltage();
-  if (voltage < POWER_DEAD_ENTER_THRESHOLD) {
+  if (voltage < POWER_DEAD_THRESHOLD) {
     Serial.print("Shutting down, battery is dead (");
     Serial.print(voltage);
     Serial.println("V)");
