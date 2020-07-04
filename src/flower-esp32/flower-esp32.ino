@@ -77,7 +77,7 @@ AsyncUDP udp;
 ///////////// STATE OF FLOWER
 
 #define MODE_INIT 0
-#define MODE_SLEEPING 1
+#define MODE_STANDBY 1
 #define MODE_BLOOM 3
 #define MODE_BLOOMING 4
 #define MODE_BLOOMED 5
@@ -93,6 +93,9 @@ AsyncUDP udp;
 
 byte mode = MODE_INIT;
 
+long changeModeTime = 0;
+byte changeModeTo;
+
 RgbColor colors[] = {
   colorWhite,
   colorYellow,
@@ -102,7 +105,8 @@ RgbColor colors[] = {
   colorPurple,
   colorBlue
 };
-byte colorsCount = 7;
+const byte colorsCount = 7; // must match the size of colors array!
+bool colorsUsed[colorsCount];
 
 ///////////// CODE
 
@@ -114,13 +118,6 @@ void setup() {
   Serial.println("Tulip INITIALIZING");
   configure();
 
-  // check if there is enough power
-  float voltage = flower.readBatteryVoltage();
-  if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
-    // battery is dead, do not wake up
-    Serial.println("Battery is dead, shutting down");
-  }
-
   // after wake up setup
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
@@ -131,11 +128,24 @@ void setup() {
   // init hardware
   WiFi.mode(WIFI_OFF);
   btStop();
+  flower.init(configLedsModel);
 
-  flower.init(configServoClosed, configServoOpen, configLedsModel);
-  delay(100); // wait a bit here to prevent power surge
-  flower.setPetalsOpenLevel(0, 100);
-  flower.onLeafTouch(onLeafTouch);
+  // check if there is enough power to run
+  float voltage = flower.readBatteryVoltage();
+  if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
+    // battery is dead, do not wake up, shutdown after a status color
+    Serial.println("Battery is dead, shutting down");
+    changeModeTo = MODE_SHUTDOWN;
+    changeModeTime = millis() + 5000; // shutdown in 5s
+    flower.setColor(colorRed, FlowerColorMode::PULSE, 1000);
+  }
+  else {
+    // normal operation
+    flower.initServo(configServoClosed, configServoOpen);
+    delay(100); // wait a bit here to prevent power surge
+    flower.setPetalsOpenLevel(0, 100);
+    flower.onLeafTouch(onLeafTouch);
+  }
 
   everySecondTime = millis(); // TODO millis overflow
 } 
@@ -149,19 +159,23 @@ void loop() {
     everySecondTime = now + 1000;
     everySecond();
   }
+  if (changeModeTime > 0 && changeModeTime < now) {
+    changeModeTime = 0;
+    changeMode(changeModeTo);
+  }
 
   // autonomous mode
   switch (mode) {
     case MODE_INIT:
       if (flower.isIdle()) {
-        changeMode(MODE_SLEEPING);
+        changeMode(MODE_STANDBY);
         Serial.println("Tulip READY");
       }
       break;
 
     // faded -> bloomed
     case MODE_BLOOM:
-      flower.setColor(colors[random(0, colorsCount)], 5000);
+      flower.setColor(colors[random(0, colorsCount)], FlowerColorMode::TRANSITION, 5000);
       flower.setPetalsOpenLevel(100, 5000);
       changeMode(MODE_BLOOMING);
       break;
@@ -186,14 +200,14 @@ void loop() {
 
     // closed -> faded
     case MODE_FADE:
-      flower.setColor(colorBlack, 2500);
+      flower.setColor(colorBlack, FlowerColorMode::TRANSITION, 2500);
       flower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_FADING);
       break;
 
     case MODE_FADING:
       if (flower.isIdle()) {
-        changeMode(MODE_SLEEPING);
+        changeMode(MODE_STANDBY);
         if (deepSleepEnabled) {
           enterDeepSleep();
         }
@@ -202,7 +216,7 @@ void loop() {
 
     // shutdown to protect the flower
     case MODE_SHUTDOWN:
-      flower.setColor(colorBlack, 500);
+      flower.setColor(colorBlack, FlowerColorMode::TRANSITION, 500);
       flower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_SHUTTINGDOWN);
       break;
@@ -232,7 +246,7 @@ void changeMode(byte newMode) {
 
 void onLeafTouch() {
   Serial.println("Touched");
-  if (mode == MODE_SLEEPING) {
+  if (mode == MODE_STANDBY) {
     changeMode(MODE_BLOOM);
   }
   else if (mode == MODE_BLOOMED) {
@@ -400,7 +414,7 @@ void commmandReceived(CommandData command) {
     Serial.println(command.blue);
 
     flower.setPetalsOpenLevel(command.blossomOpenness, 500); // TODO some default speed
-    flower.setColor(RgbColor(command.red, command.green, command.blue), 500); // TODO some default speed
+    flower.setColor(RgbColor(command.red, command.green, command.blue), FlowerColorMode::TRANSITION, 500); // TODO some default speed
   }
 }
 

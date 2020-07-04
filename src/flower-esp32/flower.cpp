@@ -19,24 +19,7 @@
 Flower::Flower() : animations(2), pixels(7, NEOPIXEL_PIN) {
 }
 
-void Flower::init(int closedAngle, int openAngle, byte ledsModel) {
-  // default servo configuration
-  servoOpenAngle = openAngle;
-  servoClosedAngle = closedAngle;
-  servoAngle = closedAngle;
-  servoOriginAngle = closedAngle;
-  servoTargetAngle = closedAngle;
-  petalsOpenLevel = -1; // 0-100% (-1 unknown)
-
-  // servo
-  servoPowerOn = true; // to make setServoPowerOn effective
-  setServoPowerOn(false);
-  pinMode(SERVO_PWR_PIN, OUTPUT);
-
-  servo.setPeriodHertz(50); // standard 50 Hz servo
-  servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
-  servo.write(servoAngle);
-
+void Flower::init(byte ledsModel) {
   // LEDs
   pixelsPowerOn = true; // to make setPixelsPowerOn effective
   setPixelsPowerOn(false);
@@ -57,6 +40,25 @@ void Flower::init(int closedAngle, int openAngle, byte ledsModel) {
   // acty LED
   pinMode(ACTY_LED_PIN, OUTPUT);
   digitalWrite(ACTY_LED_PIN, HIGH);
+}
+
+void Flower::initServo(int closedAngle, int openAngle) {
+  // default servo configuration
+  servoOpenAngle = openAngle;
+  servoClosedAngle = closedAngle;
+  servoAngle = closedAngle;
+  servoOriginAngle = closedAngle;
+  servoTargetAngle = closedAngle;
+  petalsOpenLevel = -1; // 0-100% (-1 unknown)
+
+  // servo
+  servoPowerOn = true; // to make setServoPowerOn effective
+  setServoPowerOn(false);
+  pinMode(SERVO_PWR_PIN, OUTPUT);
+
+  servo.setPeriodHertz(50); // standard 50 Hz servo
+  servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
+  servo.write(servoAngle);
 }
 
 void Flower::update() {
@@ -113,11 +115,12 @@ void Flower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-void Flower::setColor(RgbColor color, int transitionTime) {
-  if (color.R == pixelsColor.R && color.G == pixelsColor.G && color.B == pixelsColor.B) {
+void Flower::setColor(RgbColor color, FlowerColorMode colorMode, int transitionTime) {
+  if (color.R == pixelsTargetColor.R && color.G == pixelsTargetColor.G && color.B == pixelsTargetColor.B && pixelsColorMode == colorMode) {
     return; // no change
   }
-  pixelsOriginColor = pixelsColor;
+
+  pixelsColorMode = colorMode;
   pixelsTargetColor = color;
 
   Serial.print("Flower color ");
@@ -127,12 +130,39 @@ void Flower::setColor(RgbColor color, int transitionTime) {
   Serial.print(",");
   Serial.println(color.B);
 
-  animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsAnimationUpdate(param); });
+  if (colorMode == TRANSITION) {
+    pixelsOriginColor = pixelsColor;
+    animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
+  }
+  if (colorMode == PULSE) {
+    pixelsOriginColor = colorBlack; //RgbColor::LinearBlend(color, colorBlack, 0.95);
+    animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsPulseAnimationUpdate(param); });
+  }
 }
 
-void Flower::pixelsAnimationUpdate(const AnimationParam& param) {
-  pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, param.progress);
+void Flower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
+  float progress = NeoEase::CubicOut(param.progress);
+  pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
   showColor(pixelsColor);
+}
+
+void Flower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
+  if (param.progress < 0.5) {
+    float progress = NeoEase::CubicInOut(param.progress * 2);
+    pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
+  }
+  else {
+    float progress = NeoEase::CubicInOut((1 - param.progress) * 2);
+    pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
+  }
+
+  showColor(pixelsColor);
+
+  if (param.state == AnimationState_Completed) {
+    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
+      animations.RestartAnimation(param.index);
+    }
+  }
 }
 
 void Flower::showColor(RgbColor color) {
@@ -142,10 +172,6 @@ void Flower::showColor(RgbColor color) {
   else {
     pixels.ClearTo(colorBlack);
     pixels.SetPixelColor(0, color);
-    //pixels.SetPixelColor(1, color);
-    //pixels.SetPixelColor(3, color);
-    //pixels.SetPixelColor(5, color);
-    
   }
 }
 

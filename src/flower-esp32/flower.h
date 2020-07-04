@@ -16,14 +16,20 @@ const RgbColor colorPurple(128, 0, 128);
 const RgbColor colorPink(128, 0, 50);
 const RgbColor colorBlack(0);
 
+enum FlowerColorMode {
+  TRANSITION,
+  PULSE
+};
+
 class Flower {
   public:
     Flower();
-    void init(int closedAngle, int openAngle, byte ledsModel);
+    void init(byte ledsModel);
+    void initServo(int closedAngle, int openAngle);
     void update();
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
-    void setColor(RgbColor color, int transitionTime = 0);
+    void setColor(RgbColor color, FlowerColorMode colorMode, int transitionTime = 0);
     bool isAnimating();
     bool isIdle();
 
@@ -40,7 +46,8 @@ class Flower {
 
     NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
     void servoAnimationUpdate(const AnimationParam& param);
-    void pixelsAnimationUpdate(const AnimationParam& param);
+    void pixelsTransitionAnimationUpdate(const AnimationParam& param);
+    void pixelsPulseAnimationUpdate(const AnimationParam& param);
     void showColor(RgbColor color);
 
     void handleTimers();
@@ -65,6 +72,7 @@ class Flower {
     RgbColor pixelsColor; // current color
     RgbColor pixelsOriginColor; // color before animation
     RgbColor pixelsTargetColor; // color after animation
+    FlowerColorMode pixelsColorMode;
     bool pixelsPowerOn;
 
     // touch
