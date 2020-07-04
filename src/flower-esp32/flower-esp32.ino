@@ -88,8 +88,9 @@ AsyncUDP udp;
 #define MODE_FADING 10
 #define MODE_FADED 11
 
-#define MODE_SHUTDOWN 20
-#define MODE_SHUTTINGDOWN 21
+#define MODE_BATTERYDEAD 20
+#define MODE_SHUTDOWN 21
+#define MODE_SHUTTINGDOWN 22
 
 byte mode = MODE_INIT;
 
@@ -138,7 +139,9 @@ void setup() {
   if (voltage < POWER_DEAD_LEAVE_THRESHOLD) {
     // battery is dead, do not wake up, shutdown after a status color
     Serial.println("Battery is dead, shutting down");
+    changeMode(MODE_BATTERYDEAD);
     planChangeMode(MODE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
+    flower.setLowPowerMode(true);
     flower.setColor(colorRed, FlowerColorMode::PULSE, 1000);
   }
   else {
@@ -233,6 +236,11 @@ void loop() {
       }
       break;
   }
+
+  // save some power when flower is idle
+  if (flower.isIdle()) {
+    delay(10);
+  }
 }
 
 void everySecond() {
@@ -274,6 +282,10 @@ void onLeafTouch() {
 }
 
 void powerWatchDog() {
+  if (mode == MODE_BATTERYDEAD) {
+    return;
+  }
+
   float voltage = flower.readBatteryVoltage();
   if (voltage < POWER_DEAD_ENTER_THRESHOLD) {
     Serial.print("Shutting down, battery is dead (");
