@@ -297,11 +297,13 @@ RgbColor nextRandomColor() {
 
   byte colorIndex;
   long colorCode;
+  int maxIterations = colorsCount * 3;
 
   do {
     colorIndex = random(0, colorsCount);
     colorCode = 1 << colorIndex;
-  } while ((colorsUsed & colorCode) > 0); // already used before all the rest colors
+    maxIterations--;
+  } while ((colorsUsed & colorCode) > 0 && maxIterations > 0); // already used before all the rest colors
 
   colorsUsed += colorCode;
   return colors[colorIndex];
