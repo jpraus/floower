@@ -137,12 +137,17 @@ void setup() {
   delay(100); // wait for init
 
   // check if there is enough power to run
-  float voltage = flower.readBatteryVoltage();
-  if (voltage < POWER_DEAD_THRESHOLD) {
-    delay(500);
-    voltage = flower.readBatteryVoltage(); // re-verify the voltage after .5s
+  bool isBatteryDead = false;
+  if (!flower.isUSBPowered()) {
+    float voltage = flower.readBatteryVoltage();
+    if (voltage < POWER_DEAD_THRESHOLD) {
+      delay(500);
+      voltage = flower.readBatteryVoltage(); // re-verify the voltage after .5s
+      isBatteryDead = voltage < POWER_DEAD_THRESHOLD;
+    }
   }
-  if (voltage < POWER_DEAD_THRESHOLD) {
+
+  if (isBatteryDead) {
     // battery is dead, do not wake up, shutdown after a status color
     Serial.println("Battery is dead, shutting down");
     changeMode(MODE_BATTERYDEAD);
@@ -153,12 +158,11 @@ void setup() {
   else {
     // normal operation
     flower.initServo(configServoClosed, configServoOpen);
-    delay(100); // wait a bit here to prevent power surge
     flower.setPetalsOpenLevel(0, 100);
   }
 
   everySecondTime = millis(); // TODO millis overflow
-} 
+}
 
 void loop() {
   flower.update();
@@ -291,7 +295,7 @@ void powerWatchDog() {
     return;
   }
 
-  if (flower.isCharging()) {
+  if (flower.isUSBPowered()) {
     flower.setLowPowerMode(false);
     return;
   }

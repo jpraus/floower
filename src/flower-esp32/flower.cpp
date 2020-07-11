@@ -12,6 +12,7 @@
 #define TOUCH_TIMEOUT 500 // 
 
 #define BATTERY_ANALOG_IN 36 // VP
+#define USB_ANALOG_IN 39 // VN
 
 #define ACTY_LED_PIN 2
 #define ACTY_BLINK_TIME 50
@@ -245,6 +246,11 @@ float Flower::readBatteryVoltage() {
 
   batteryVoltage = voltage;
   return voltage;
+}
+
+bool Flower::isUSBPowered() {
+  float reading = analogRead(USB_ANALOG_IN); // 0-4095
+  return reading > 2000; // ~2900 is 5V
 }
 
 bool Flower::isCharging() {

@@ -36,6 +36,7 @@ class Flower {
     void acty();
     float readBatteryVoltage();
     bool isCharging();
+    bool isUSBPowered();
     void setLowPowerMode(boolean lowPowerMode);
     bool isLowPowerMode();
 
