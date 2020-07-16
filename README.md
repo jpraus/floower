@@ -29,9 +29,10 @@ https://floower.io
 
 ### Logic Boards History
 
-- **rev5** - 
-- **rev5.5** (marked as A) - 
-- **rev6** - 
+- **rev5** - Serial numbers 0001 - 0011
+-- The history starts here
+- **rev6**
+-- Added USB power sense circuitry
 
 ## Connecting flower to the computer
 
