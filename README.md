@@ -8,16 +8,16 @@ https://floower.io
 
 ## Features
 
-- 6 petals that open and close - operated by servo motor inside the flowerpot
-- 7 RGB LEDs in the center of the blossom
-- capacitive touch sensor in the leaf
-- ESP32 microcontroller
-- Arduino IDE or MicroPython support
-- Bluetooth & WiFi connectivity
-- USB-C interface for programming (CP2102N USB-to-UART)
-- 1600 mAh LIPO battery (TP4056 charging IC)
-- deep sleep mode to extend battery life
-- red charging and blue activity LEDs in the flowerpot
+* 6 petals that open and close - operated by servo motor inside the flowerpot
+* 7 RGB LEDs in the center of the blossom
+* capacitive touch sensor in the leaf
+* ESP32 microcontroller
+* Arduino IDE or MicroPython support
+* Bluetooth & WiFi connectivity
+* USB-C interface for programming (CP2102N USB-to-UART)
+* 1600 mAh LIPO battery (TP4056 charging IC)
+* deep sleep mode to extend battery life
+* red charging and blue activity LEDs in the flowerpot
 
 ## How do I get one?
 
@@ -29,10 +29,10 @@ https://floower.io
 
 ### Logic Boards History
 
-- **rev5** - Serial numbers 0001 - 0011
-- - The history starts here
-- **rev6**
-- - Added USB power sense circuitry
+* **rev5** - Serial numbers 0001 - 0011
+  * The history starts here
+* **rev6**
+  * Added USB power sense circuitry
 
 ## Connecting flower to the computer
 
@@ -40,21 +40,21 @@ https://floower.io
 
 Floower can be programmed using the Arduino IDE. However, the ESP32 microcontroller is not supported by default, so you need to install & configure it:
 
-- Prerequisites: Arduino IDE Installed
-- Install [CP2102 Universal Driver](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
-- Install ESP32 Add-on in Arduino IDE
-- Open **File > Preferences**
-- Enter **https://dl.espressif.com/dl/package_esp32_index.json** into the **Additional Board Manager URLs** field and click **OK** button. (If you already have other boards URL, separate the URLs with a comma)
+* Prerequisites: Arduino IDE Installed
+* Install [CP2102 Universal Driver](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
+* Install ESP32 Add-on in Arduino IDE
+* Open **File > Preferences**
+* Enter **https://dl.espressif.com/dl/package_esp32_index.json** into the **Additional Board Manager URLs** field and click **OK** button. (If you already have other boards URL, separate the URLs with a comma)
 
 ![Additional Board Manager URLs](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-preferences.png?raw=true)
 
-- Open **Tools > Boards > Boards Manager...** and search for esp32
-- Click Install button for the **ESP32 by Espressif Systems**. It should be installed after a few seconds.
+* Open **Tools > Boards > Boards Manager...** and search for esp32
+* Click Install button for the **ESP32 by Espressif Systems**. It should be installed after a few seconds.
 
 ![Installing ESP32 by Espressif Systems](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-boards-manager.png?raw=true)
 
-- Open **Tools > Boards** and select **DOIT ESP32 DEVKIT V1**
-- That's it!
+* Open **Tools > Boards** and select **DOIT ESP32 DEVKIT V1**
+* That's it!
 
 ![Selecting DOIT ESP32 DEVKIT V1 board](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-board.png?raw=true)
 
