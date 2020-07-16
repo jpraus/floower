@@ -9,7 +9,7 @@ https://floower.io
 ## Features
 
 - 6 petals that open and close - operated by servo motor inside the flowerpot
-- 7 RGS LEDs in the center of the blossom
+- 7 RGB LEDs in the center of the blossom
 - capacitive touch sensor in the leaf
 - ESP32 microcontroller
 - Arduino IDE or MicroPython support
