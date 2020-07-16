@@ -1,4 +1,4 @@
-# Floower
+# [Floower](https://floower.io/wp-content/uploads/2020/04/floower.png)
 
 The most advanced flower in the world. Electrical & Mechanical flower lamp that blooms with all the colors of rainbow thanks to the set of RGB LEDs.
 
