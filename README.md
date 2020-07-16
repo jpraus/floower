@@ -21,7 +21,7 @@ https://floower.io
 
 ## How do I get one?
 
-...
+Currently prototypes available on https://floower.io/. Join waitlist to get notified every time the new batch is ready.
 
 ## Understanding Floower hardware
 
@@ -33,7 +33,7 @@ https://floower.io
   * Serial numbers 0001 - 0011
   * The history starts here
 * **rev6**
-  * Added USB power sense circuitry
+  * Added USB power detection circuitry
 
 ## Connecting flower to the computer
 
