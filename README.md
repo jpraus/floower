@@ -21,7 +21,7 @@ The most advanced flower in the world. Electrical & Mechanical flower lamp that 
 
 ## How do I get one?
 
-Currently prototypes available on [floower.io](https://floower.io). Join waitlist to get notified every time the new batch is ready.
+Earlybird Prototypes currently available on [floower.io](https://floower.io). Join waitlist to get notified every time the new batch is ready.
 
 ## Understanding Floower hardware
 
