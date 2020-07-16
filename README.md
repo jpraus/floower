@@ -4,7 +4,7 @@ The most advanced everblooming flower in the world.
 
 https://floower.io
 
-![Everblooming Flowers]()
+![Everblooming Flowers](https://github.com/jpraus/floower/blob/master/doc/floower.jpg?raw=true)
 
 ## Features
 
@@ -45,17 +45,17 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 - Open **File > Preferences**
 - Enter **https://dl.espressif.com/dl/package_esp32_index.json** into the **Additional Board Manager URLs** field and click **OK** button. (If you already have other boards URL, separate the URLs with a comma)
 
-![Additional Board Manager URLs]()
+![Additional Board Manager URLs](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-preferences.png?raw=true)
 
 - Open **Tools > Boards > Boards Manager...** and search for esp32
 - Click Install button for the **ESP32 by Espressif Systems**. It should be installed after a few seconds.
 
-![Installing ESP32 by Espressif Systems]()
+![Installing ESP32 by Espressif Systems](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-boards-manager.png?raw=true)
 
 - Open **Tools > Boards** and select **DOIT ESP32 DEVKIT V1**
 - That's it!
 
-![Selecting DOIT ESP32 DEVKIT V1 board]()
+![Selecting DOIT ESP32 DEVKIT V1 board](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-board.png?raw=true)
 
 ### First upload
 
@@ -63,4 +63,4 @@ Checkout this repository and open [flower-esp32.ino](src/flower-esp32/flower-esp
 
 Run **Sketch > Upload**. You should get a sweet *'avrdude done. Thank you.'* message at the end of the console. Now you can make your own personalized Floower.
 
-![Arduino IDE upload](https://raw.githubusercontent.com/jpraus/arduinoflake/master/doc/arduinoide-upload.png)
+![Arduino IDE upload](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-upload.png?raw=true)
