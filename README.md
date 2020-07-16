@@ -1,6 +1,6 @@
 # Floower
 
-The most advanced everblooming flower in the world.
+The most advanced flower in the world. Electrical & Mechanical flower lamp that blooms with all the colors of rainbow thanks to the set of RGB LEDs.
 
 https://floower.io
 
