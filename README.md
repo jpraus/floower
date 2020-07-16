@@ -1,6 +1,6 @@
 # Floower
 
-The most advanced flower in the world.
+The most advanced everblooming flower in the world.
 
 https://floower.io
 
