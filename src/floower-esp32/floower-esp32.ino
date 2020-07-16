@@ -1,13 +1,13 @@
 /**
  * TODO:
  * - refactor WiFi connectivity using events API
- * - move remote controle and UDP comm to separate class
+ * - move remote control and UDP commons to separate class
  */
 
 #include <EEPROM.h>
 #include <WiFi.h>
 #include <AsyncUDP.h>
-#include "flower.h"
+#include "floower.h"
 
 bool remoteMode = false; // not used
 bool remoteMaster = false; // not used
@@ -113,7 +113,7 @@ long colorsUsed = 0;
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 20000 // fall in deep sleep after timeout
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
 
-Flower flower;
+Floower floower;
 long everySecondTime = 0;
 
 void setup() {
@@ -131,18 +131,18 @@ void setup() {
   // init hardware
   WiFi.mode(WIFI_OFF);
   btStop();
-  flower.init(configLedsModel);
-  flower.readBatteryVoltage(); // calibrate the ADC
-  flower.onLeafTouch(onLeafTouch);
+  floower.init(configLedsModel);
+  floower.readBatteryVoltage(); // calibrate the ADC
+  floower.onLeafTouch(onLeafTouch);
   delay(100); // wait for init
 
   // check if there is enough power to run
   bool isBatteryDead = false;
-  if (!flower.isUSBPowered()) {
-    float voltage = flower.readBatteryVoltage();
+  if (!floower.isUSBPowered()) {
+    float voltage = floower.readBatteryVoltage();
     if (voltage < POWER_DEAD_THRESHOLD) {
       delay(500);
-      voltage = flower.readBatteryVoltage(); // re-verify the voltage after .5s
+      voltage = floower.readBatteryVoltage(); // re-verify the voltage after .5s
       isBatteryDead = voltage < POWER_DEAD_THRESHOLD;
     }
   }
@@ -152,20 +152,20 @@ void setup() {
     Serial.println("Battery is dead, shutting down");
     changeMode(MODE_BATTERYDEAD);
     planChangeMode(MODE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
-    flower.setLowPowerMode(true);
-    flower.setColor(colorRed, FlowerColorMode::PULSE, 1000);
+    floower.setLowPowerMode(true);
+    floower.setColor(colorRed, FloowerColorMode::PULSE, 1000);
   }
   else {
     // normal operation
-    flower.initServo(configServoClosed, configServoOpen);
-    flower.setPetalsOpenLevel(0, 100);
+    floower.initServo(configServoClosed, configServoOpen);
+    floower.setPetalsOpenLevel(0, 100);
   }
 
   everySecondTime = millis(); // TODO millis overflow
 }
 
 void loop() {
-  flower.update();
+  floower.update();
 
   // timers
   long now = millis();
@@ -181,7 +181,7 @@ void loop() {
   // autonomous mode
   switch (mode) {
     case MODE_INIT:
-      if (flower.isIdle()) {
+      if (floower.isIdle()) {
         changeMode(MODE_STANDBY);
         Serial.println("Tulip READY");
 
@@ -193,38 +193,38 @@ void loop() {
 
     // faded -> bloomed
     case MODE_BLOOM:
-      flower.setColor(nextRandomColor(), FlowerColorMode::TRANSITION, 5000);
-      flower.setPetalsOpenLevel(100, 5000);
+      floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+      floower.setPetalsOpenLevel(100, 5000);
       changeMode(MODE_BLOOMING);
       break;
 
     case MODE_BLOOMING:
-      if (flower.isIdle()) {
+      if (floower.isIdle()) {
         changeMode(MODE_BLOOMED);
       }
       break;
 
     // bloomed -> closed with color ON
     case MODE_CLOSE:
-      flower.setPetalsOpenLevel(0, 5000);
+      floower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_CLOSING);
       break;
 
     case MODE_CLOSING:
-      if (flower.isIdle()) {
+      if (floower.isIdle()) {
         changeMode(MODE_CLOSED);
       }
       break;
 
     // closed -> faded
     case MODE_FADE:
-      flower.setColor(colorBlack, FlowerColorMode::TRANSITION, 2500);
-      flower.setPetalsOpenLevel(0, 5000);
+      floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+      floower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_FADING);
       break;
 
     case MODE_FADING:
-      if (flower.isIdle()) {
+      if (floower.isIdle()) {
         changeMode(MODE_STANDBY);
         if (deepSleepEnabled) {
           planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
@@ -234,20 +234,20 @@ void loop() {
 
     // shutdown to protect the flower
     case MODE_SHUTDOWN:
-      flower.setColor(colorBlack, FlowerColorMode::TRANSITION, 500);
-      flower.setPetalsOpenLevel(0, 5000);
+      floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 500);
+      floower.setPetalsOpenLevel(0, 5000);
       changeMode(MODE_SHUTTINGDOWN);
       break;
 
     case MODE_SHUTTINGDOWN:
-      if (flower.isIdle()) {
+      if (floower.isIdle()) {
         enterDeepSleep();
       }
       break;
   }
 
   // save some power when flower is idle
-  if (flower.isIdle()) {
+  if (floower.isIdle()) {
     delay(10);
   }
 }
@@ -255,7 +255,7 @@ void loop() {
 void everySecond() {
   //broadcastMasterState();
   //reconnectTimer--;
-  flower.acty();
+  floower.acty();
   powerWatchDog();
 }
 
@@ -295,29 +295,31 @@ void powerWatchDog() {
     return;
   }
 
-  if (flower.isUSBPowered()) {
-    flower.setLowPowerMode(false);
+  floower.isCharging();
+
+  if (floower.isUSBPowered()) {
+    floower.setLowPowerMode(false);
     return;
   }
 
-  float voltage = flower.readBatteryVoltage();
+  float voltage = floower.readBatteryVoltage();
   if (voltage < POWER_DEAD_THRESHOLD) {
     Serial.print("Shutting down, battery is dead (");
     Serial.print(voltage);
     Serial.println("V)");
     changeMode(MODE_SHUTDOWN);
   }
-  else if (!flower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
+  else if (!floower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
     Serial.print("Entering low power mode (");
     Serial.print(voltage);
     Serial.println("V)");
-    flower.setLowPowerMode(true);
+    floower.setLowPowerMode(true);
   }
-  else if (flower.isLowPowerMode() && voltage >= POWER_LOW_LEAVE_THRESHOLD) {
+  else if (floower.isLowPowerMode() && voltage >= POWER_LOW_LEAVE_THRESHOLD) {
     Serial.print("Leaving low power mode (");
     Serial.print(voltage);
     Serial.println("V)");
-    flower.setLowPowerMode(false);
+    floower.setLowPowerMode(false);
   }
 }
 
@@ -477,8 +479,8 @@ void commmandReceived(CommandData command) {
     Serial.print(", Blue: ");
     Serial.println(command.blue);
 
-    flower.setPetalsOpenLevel(command.blossomOpenness, 500); // TODO some default speed
-    flower.setColor(RgbColor(command.red, command.green, command.blue), FlowerColorMode::TRANSITION, 500); // TODO some default speed
+    floower.setPetalsOpenLevel(command.blossomOpenness, 500); // TODO some default speed
+    floower.setColor(RgbColor(command.red, command.green, command.blue), FloowerColorMode::TRANSITION, 500); // TODO some default speed
   }
 }
 

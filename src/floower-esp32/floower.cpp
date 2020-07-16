@@ -1,4 +1,4 @@
-#include "flower.h"
+#include "floower.h"
 
 #define NEOPIXEL_PIN 27
 #define NEOPIXEL_PWR_PIN 25
@@ -11,16 +11,17 @@
 #define TOUCH_TRESHOLD 45 // 45
 #define TOUCH_TIMEOUT 500 // 
 
-#define BATTERY_ANALOG_IN 36 // VP
-#define USB_ANALOG_IN 39 // VN
+#define BATTERY_ANALOG_PIN 36 // VP
+#define USB_ANALOG_PIN 39 // VN
+#define CHARGE_PIN 15
 
 #define ACTY_LED_PIN 2
 #define ACTY_BLINK_TIME 50
 
-Flower::Flower() : animations(2), pixels(7, NEOPIXEL_PIN) {
+Floower::Floower() : animations(2), pixels(7, NEOPIXEL_PIN) {
 }
 
-void Flower::init(byte ledsModel) {
+void Floower::init(byte ledsModel) {
   // LEDs
   pixelsPowerOn = true; // to make setPixelsPowerOn effective
   setPixelsPowerOn(false);
@@ -38,12 +39,14 @@ void Flower::init(byte ledsModel) {
   analogSetCycles(8); // num of cycles per sample, 8 is default optimal
   analogSetSamples(1); // num of samples
 
+  pinMode(CHARGE_PIN, INPUT_PULLUP);
+
   // acty LED
   pinMode(ACTY_LED_PIN, OUTPUT);
   digitalWrite(ACTY_LED_PIN, HIGH);
 }
 
-void Flower::initServo(int closedAngle, int openAngle) {
+void Floower::initServo(int closedAngle, int openAngle) {
   // default servo configuration
   servoOpenAngle = openAngle;
   servoClosedAngle = closedAngle;
@@ -62,7 +65,7 @@ void Flower::initServo(int closedAngle, int openAngle) {
   servo.write(servoAngle);
 }
 
-void Flower::update() {
+void Floower::update() {
   animations.UpdateAnimations();
   handleTimers();
 
@@ -76,7 +79,7 @@ void Flower::update() {
   }
 }
 
-void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
+void Floower::setPetalsOpenLevel(byte level, int transitionTime) {
   if (level == petalsOpenLevel) {
     return; // no change, keep doing the old movement until done
   }
@@ -105,7 +108,7 @@ void Flower::setPetalsOpenLevel(byte level, int transitionTime) {
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
 }
 
-void Flower::servoAnimationUpdate(const AnimationParam& param) {
+void Floower::servoAnimationUpdate(const AnimationParam& param) {
   servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * param.progress;
 
   setServoPowerOn(true);
@@ -116,7 +119,7 @@ void Flower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-void Flower::setColor(RgbColor color, FlowerColorMode colorMode, int transitionTime) {
+void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime) {
   if (color.R == pixelsTargetColor.R && color.G == pixelsTargetColor.G && color.B == pixelsTargetColor.B && pixelsColorMode == colorMode) {
     return; // no change
   }
@@ -124,7 +127,7 @@ void Flower::setColor(RgbColor color, FlowerColorMode colorMode, int transitionT
   pixelsColorMode = colorMode;
   pixelsTargetColor = color;
 
-  Serial.print("Flower color ");
+  Serial.print("Floower color ");
   Serial.print(color.R);
   Serial.print(",");
   Serial.print(color.G);
@@ -141,13 +144,13 @@ void Flower::setColor(RgbColor color, FlowerColorMode colorMode, int transitionT
   }
 }
 
-void Flower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
+void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
   float progress = NeoEase::CubicOut(param.progress);
   pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
   showColor(pixelsColor);
 }
 
-void Flower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
+void Floower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
   if (param.progress < 0.5) {
     float progress = NeoEase::CubicInOut(param.progress * 2);
     pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
@@ -166,7 +169,7 @@ void Flower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-void Flower::showColor(RgbColor color) {
+void Floower::showColor(RgbColor color) {
   if (!lowPowerMode) {
     pixels.ClearTo(color);
   }
@@ -176,25 +179,25 @@ void Flower::showColor(RgbColor color) {
   }
 }
 
-boolean Flower::isAnimating() {
+boolean Floower::isAnimating() {
   return animations.IsAnimating();
 }
 
-boolean Flower::isIdle() {
+boolean Floower::isIdle() {
   return !isAnimating();
 }
 
-void Flower::onLeafTouch(void (*callback)()) {
+void Floower::onLeafTouch(void (*callback)()) {
   touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD);
   touchCallback = callback;
 }
 
-void Flower::acty() {
+void Floower::acty() {
   digitalWrite(ACTY_LED_PIN, HIGH);
   actyOffTime = millis() + ACTY_BLINK_TIME;
 }
 
-boolean Flower::setPixelsPowerOn(boolean powerOn) {
+boolean Floower::setPixelsPowerOn(boolean powerOn) {
   if (powerOn && !pixelsPowerOn) {
     pixelsPowerOn = true;
     Serial.println("LEDs power ON");
@@ -211,7 +214,7 @@ boolean Flower::setPixelsPowerOn(boolean powerOn) {
   return false; // no change
 }
 
-boolean Flower::setServoPowerOn(boolean powerOn) {
+boolean Floower::setServoPowerOn(boolean powerOn) {
   if (powerOn && !servoPowerOn) {
     servoPowerOffTime = 0;
     servoPowerOn = true;
@@ -230,8 +233,8 @@ boolean Flower::setServoPowerOn(boolean powerOn) {
   return false; // no change
 }
 
-float Flower::readBatteryVoltage() {
-  float reading = analogRead(BATTERY_ANALOG_IN); // 0-4095
+float Floower::readBatteryVoltage() {
+  float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
 
   byte level = _min(_max(0, voltage - 3.3) * 125, 100); // 3.3 .. 0%, 4.1 .. 100%
@@ -248,27 +251,28 @@ float Flower::readBatteryVoltage() {
   return voltage;
 }
 
-bool Flower::isUSBPowered() {
-  float reading = analogRead(USB_ANALOG_IN); // 0-4095
+bool Floower::isUSBPowered() {
+  float reading = analogRead(USB_ANALOG_PIN); // 0-4095
   return reading > 2000; // ~2900 is 5V
 }
 
-bool Flower::isCharging() {
-  return false; // TODO: fix hardware
+bool Floower::isCharging() {
+  Serial.println(digitalRead(CHARGE_PIN));
+  return digitalRead(CHARGE_PIN) == HIGH;
 }
 
-void Flower::setLowPowerMode(boolean lowPowerMode) {
+void Floower::setLowPowerMode(boolean lowPowerMode) {
   if (this->lowPowerMode != lowPowerMode) {
     this->lowPowerMode = lowPowerMode;
     showColor(pixelsColor);
   }
 }
 
-bool Flower::isLowPowerMode() {
+bool Floower::isLowPowerMode() {
   return lowPowerMode;
 }
 
-void Flower::handleTimers() {
+void Floower::handleTimers() {
   long now = millis();
 
   if (servoPowerOffTime > 0 && servoPowerOffTime < now) {

@@ -1,5 +1,5 @@
-#ifndef FLOWER_H
-#define FLOWER_H
+#ifndef FLOOWER_H
+#define FLOOWER_H
 
 #include "Arduino.h"
 #include <ESP32Servo.h>
@@ -16,20 +16,20 @@ const RgbColor colorPurple(128, 0, 128);
 const RgbColor colorPink(128, 0, 50);
 const RgbColor colorBlack(0);
 
-enum FlowerColorMode {
+enum FloowerColorMode {
   TRANSITION,
   PULSE
 };
 
-class Flower {
+class Floower {
   public:
-    Flower();
+    Floower();
     void init(byte ledsModel);
     void initServo(int closedAngle, int openAngle);
     void update();
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
-    void setColor(RgbColor color, FlowerColorMode colorMode, int transitionTime = 0);
+    void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
     bool isAnimating();
     bool isIdle();
 
@@ -74,7 +74,7 @@ class Flower {
     RgbColor pixelsColor; // current color
     RgbColor pixelsOriginColor; // color before animation
     RgbColor pixelsTargetColor; // color after animation
-    FlowerColorMode pixelsColorMode;
+    FloowerColorMode pixelsColorMode;
     bool pixelsPowerOn;
 
     // touch

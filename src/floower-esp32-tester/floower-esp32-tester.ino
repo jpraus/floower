@@ -2,7 +2,7 @@
 #include <ESP32Servo.h>
 
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(7, 27); // WS2812b
-NeoPixelBus<NeoGrbwFeature, Neo800KbpsMethod> strip(7, 27); // SK6812
+//NeoPixelBus<NeoGrbwFeature, Neo800KbpsMethod> strip(7, 27); // SK6812
 
 #define colorSaturation 128
 RgbColor red(colorSaturation, 0, 0);
