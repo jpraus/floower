@@ -1,8 +1,8 @@
-# ![Floower](https://floower.io/wp-content/uploads/2020/04/floower.png)
+# [![Floower](https://floower.io/wp-content/uploads/2020/04/floower.png)](https://floower.io)
 
 The most advanced flower in the world. Electrical & Mechanical flower lamp that blooms with all the colors of rainbow thanks to the set of RGB LEDs.
 
-https://floower.io
+[floower.io](https://floower.io)
 
 ![Everblooming Flowers](https://github.com/jpraus/floower/blob/master/doc/floower.jpg?raw=true)
 
@@ -21,7 +21,7 @@ https://floower.io
 
 ## How do I get one?
 
-Currently prototypes available on https://floower.io/. Join waitlist to get notified every time the new batch is ready.
+Currently prototypes available on [floower.io](https://floower.io). Join waitlist to get notified every time the new batch is ready.
 
 ## Understanding Floower hardware
 
