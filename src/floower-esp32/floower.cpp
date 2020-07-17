@@ -256,11 +256,6 @@ bool Floower::isUSBPowered() {
   return reading > 2000; // ~2900 is 5V
 }
 
-bool Floower::isCharging() {
-  Serial.println(digitalRead(CHARGE_PIN));
-  return digitalRead(CHARGE_PIN) == HIGH;
-}
-
 void Floower::setLowPowerMode(boolean lowPowerMode) {
   if (this->lowPowerMode != lowPowerMode) {
     this->lowPowerMode = lowPowerMode;

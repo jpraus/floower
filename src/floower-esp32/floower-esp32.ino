@@ -295,8 +295,6 @@ void powerWatchDog() {
     return;
   }
 
-  floower.isCharging();
-
   if (floower.isUSBPowered()) {
     floower.setLowPowerMode(false);
     return;
