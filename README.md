@@ -41,7 +41,7 @@ Earlybird Prototypes currently available on [floower.io](https://floower.io). Jo
 
 Floower can be programmed using the Arduino IDE. However, the ESP32 microcontroller is not supported by default, so you need to install & configure it:
 
-* Prerequisites: Arduino IDE Installed
+* Prerequisites: [Arduino IDE](https://www.arduino.cc/en/main/software) Installed
 * Install [CP2102 Universal Driver](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
 * Install ESP32 Add-on in Arduino IDE
 * Open **File > Preferences**
