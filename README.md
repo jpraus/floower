@@ -49,20 +49,30 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 
 ![Additional Board Manager URLs](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-preferences.png?raw=true)
 
-  * Open **Tools > Boards > Boards Manager...** and search for esp32
-  * Click Install button for the **ESP32 by Espressif Systems**. It should be installed after a few seconds.
+* Open **Tools > Boards > Boards Manager...** and search for esp32
+* Click Install button for the **ESP32 by Espressif Systems**. It should be installed after a few seconds.
 
 ![Installing ESP32 by Espressif Systems](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-boards-manager.png?raw=true)
 
-  * Open **Tools > Boards** and select **DOIT ESP32 DEVKIT V1**
-* That's it!
+* Open **Tools > Boards** and select **DOIT ESP32 DEVKIT V1**
 
 ![Selecting DOIT ESP32 DEVKIT V1 board](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-board.png?raw=true)
 
-### First upload
+### Uploading code
 
-Checkout this repository and open [flower-esp32.ino](src/flower-esp32/flower-esp32.ino) project file. Connect your Floower to your computer via USB-C data cable. Make sure you are using smart/data USB cable, some of the cables are power only and thus cannot transfer data at all. Select the port of your Floower, it should be the one that just appeared.
+* Download / Clone this code repository
+
+![Code repository](https://github.com/jpraus/floower/blob/master/doc/github-code.png?raw=true)
+
+* Open src/flower-esp32/[flower-esp32.ino](src/flower-esp32/flower-esp32.ino) project file with Arduino IDE (it will automatically load all the project files)
+* Install following Arduino libraries to full-fill dependencies:
+  * Open **Tools > Manage Libraries**, search and install following dependencies:
+  * **ESP32Servo**
+  * **NeoPixelBus By Makuna**
+* Connect your Floower to your computer via USB-C data cable. Make sure you are using smart/data USB cable, some of the cables are power only and thus cannot transfer data at all. Select the port of your Floower **Tools > Port**. It should be the one that just appeared.
+
+![Arduino IDE Port](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-port.png?raw=true)
 
 Run **Sketch > Upload**. You should get a sweet *'avrdude done. Thank you.'* message at the end of the console. Now you can make your own personalized Floower.
 
-![Arduino IDE upload](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-upload.png?raw=true)
+![Arduino IDE Upload](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-upload.png?raw=true)
