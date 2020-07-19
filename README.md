@@ -43,7 +43,7 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 
 * Prerequisites: [Arduino IDE](https://www.arduino.cc/en/main/software) Installed
 * Install [CP2102 Universal Driver](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
-* Install ESP32 Add-on in Arduino IDE
+* Install ESP32 Add-on in Arduino IDE:
   * Open **File > Preferences**
   * Enter **https://dl.espressif.com/dl/package_esp32_index.json** into the **Additional Board Manager URLs** field and click **OK** button. (If you already have other boards URL, separate the URLs with a comma)
 
@@ -67,12 +67,13 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 * Open src/flower-esp32/[flower-esp32.ino](src/flower-esp32/flower-esp32.ino) project file with Arduino IDE (it will automatically load all the project files)
 * Install following Arduino libraries to full-fill dependencies:
   * Open **Tools > Manage Libraries**, search and install following dependencies:
-  * **ESP32Servo**
-  * **NeoPixelBus By Makuna**
+  * **ESP32Servo** (version 0.8.0 tested)
+  * **NeoPixelBus By Makuna** (version 2.5.7 tested)
 * Connect your Floower to your computer via USB-C data cable. Make sure you are using smart/data USB cable, some of the cables are power only and thus cannot transfer data at all. Select the port of your Floower **Tools > Port**. It should be the one that just appeared.
 
 ![Arduino IDE Port](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-port.png?raw=true)
 
-Run **Sketch > Upload**. You should get a sweet *'avrdude done. Thank you.'* message at the end of the console. Now you can make your own personalized Floower.
+* Run **Sketch > Upload**. You should get a sweet *'avrdude done. Thank you.'* message at the end of the console.
+* Now you can make your own personalized Floower.
 
 ![Arduino IDE Upload](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-upload.png?raw=true)
