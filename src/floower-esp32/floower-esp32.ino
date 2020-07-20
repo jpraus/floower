@@ -15,6 +15,7 @@ bool deepSleepEnabled = true;
 
 ///////////// PERSISTENT CONFIGURATION
 
+// never ever turn the write configuration flag you will overwrite the hardware settings and probably break the flower
 boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
@@ -295,13 +296,11 @@ void powerWatchDog() {
     return;
   }
 
+  float voltage = floower.readBatteryVoltage();
   if (floower.isUSBPowered()) {
     floower.setLowPowerMode(false);
-    return;
   }
-
-  float voltage = floower.readBatteryVoltage();
-  if (voltage < POWER_DEAD_THRESHOLD) {
+  else if (voltage < POWER_DEAD_THRESHOLD) {
     Serial.print("Shutting down, battery is dead (");
     Serial.print(voltage);
     Serial.println("V)");
