@@ -102,7 +102,6 @@ void Floower::update() {
   else if (touchStartedTime > 0) {
     unsigned int touchTime = millis() - touchStartedTime;
     if (touchTime > TOUCH_TIME_TRESHOLD && !longTouchRegistered) { // short touch below long touch
-      Serial.println(touchTime);
       touchCallback(FloowerTouchType::TOUCH);
     }
     touchStartedTime = 0;

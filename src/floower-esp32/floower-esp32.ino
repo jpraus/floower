@@ -76,18 +76,20 @@ AsyncUDP udp;
 
 ///////////// STATE OF FLOWER
 
-#define MODE_INIT 0
-#define MODE_STANDBY 1
-#define MODE_BLOOMED 2
-#define MODE_LIT 3
+#define STATE_INIT 0
+#define STATE_WAKEUP 1
+#define STATE_STANDBY 2
+#define STATE_BLOOMED 3
+#define STATE_LIT 4
 
-#define MODE_BATTERYDEAD 20
-#define MODE_SHUTDOWN 21
+#define STATE_BATTERYDEAD 10
+#define STATE_SHUTDOWN 11
 
-byte mode = MODE_INIT;
+byte state = STATE_INIT;
+bool shutdownEnabled = false; // prevent shutdown on first touch
 
-long changeModeTime = 0;
-byte changeModeTo;
+long changeStateTime = 0;
+byte changeStateTo;
 
 RgbColor colors[] = {
   colorWhite,
@@ -113,12 +115,13 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Tulip INITIALIZING");
   configure();
+  changeState(STATE_STANDBY);
 
   // after wake up setup
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
     Serial.println("Waking up after Deep Sleep");
-    //changeMode(MODE_BLOOM);
+    planChangeState(STATE_WAKEUP, 500); // if no touch will be registered then wakeup (time is aligned with long touch)
   }
 
   // init hardware
@@ -127,7 +130,7 @@ void setup() {
   floower.init(configLedsModel);
   floower.readBatteryVoltage(); // calibrate the ADC
   floower.onLeafTouch(onLeafTouch);
-  delay(100); // wait for init
+  delay(50); // wait for init
 
   // check if there is enough power to run
   bool isBatteryDead = false;
@@ -143,8 +146,8 @@ void setup() {
   if (isBatteryDead) {
     // battery is dead, do not wake up, shutdown after a status color
     Serial.println("Battery is dead, shutting down");
-    changeMode(MODE_BATTERYDEAD);
-    planChangeMode(MODE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
+    changeState(STATE_BATTERYDEAD);
+    planChangeState(STATE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
     floower.setLowPowerMode(true);
     floower.setColor(colorRed, FloowerColorMode::PULSE, 1000);
   }
@@ -155,6 +158,7 @@ void setup() {
   }
 
   everySecondTime = millis(); // TODO millis overflow
+  Serial.println("Tulip READY");
 }
 
 void loop() {
@@ -166,26 +170,23 @@ void loop() {
     everySecondTime = now + 1000;
     everySecond();
   }
-  if (changeModeTime > 0 && changeModeTime < now) {
-    changeModeTime = 0;
-    changeMode(changeModeTo);
+  if (changeStateTime > 0 && changeStateTime < now) {
+    changeStateTime = 0;
+    changeState(changeStateTo);
   }
 
-  // autonomous mode
-  switch (mode) {
-    case MODE_INIT:
-      if (floower.isIdle()) {
-        changeMode(MODE_STANDBY);
-        Serial.println("Tulip READY");
-      }
-      break;
-
-    // shutdown to protect the flower
-    case MODE_SHUTDOWN:
-      if (floower.isIdle()) {
-        enterDeepSleep();
-      }
-      break;
+  // update state machine
+  if (state == STATE_WAKEUP) {
+    floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+    changeState(STATE_LIT);
+  }
+  else if (floower.isIdle()) {
+    if (state == STATE_BLOOMED || state == STATE_LIT) {
+      shutdownEnabled = true; // prevent shutdown before entering first state
+    }
+    else if (state == STATE_SHUTDOWN) {
+      enterDeepSleep();
+    }
   }
 
   // save some power when flower is idle
@@ -201,30 +202,30 @@ void everySecond() {
   powerWatchDog();
 }
 
-void planChangeMode(byte newMode, long timeout) {
-  changeModeTo = newMode;
-  changeModeTime = millis() + timeout;
-  Serial.print("Planned change mode: ");
-  Serial.print(newMode);
+void planChangeState(byte newState, long timeout) {
+  changeStateTo = newState;
+  changeStateTime = millis() + timeout;
+  Serial.print("Planned change state: ");
+  Serial.print(newState);
   Serial.print(" in ");
   Serial.println(timeout);
 }
 
-void changeMode(byte newMode) {
-  changeModeTime = 0;
-  if (mode != newMode) {
-    mode = newMode;
-    Serial.print("Change mode: ");
-    Serial.println(newMode);
+void changeState(byte newState) {
+  changeStateTime = 0;
+  if (state != newState) {
+    state = newState;
+    Serial.print("Change state: ");
+    Serial.println(newState);
 
-    if (newMode == MODE_STANDBY && deepSleepEnabled) {
-      planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
+    if (newState == STATE_STANDBY && deepSleepEnabled) {
+      planChangeState(STATE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
     }
   }
 }
 
 void onLeafTouch(FloowerTouchType touchType) {
-  if (mode == MODE_BATTERYDEAD || mode == MODE_SHUTDOWN) {
+  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN) {
     return;
   }
 
@@ -233,38 +234,44 @@ void onLeafTouch(FloowerTouchType touchType) {
       // change color
       Serial.println("Touched");
       floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-      if (mode == MODE_STANDBY) {
-        changeMode(MODE_LIT);
+      if (state == STATE_STANDBY) {
+        changeState(STATE_LIT);
       }
       break;
     case LONG:
       // open / close
       if (!floower.arePetalsMoving()) {
         Serial.println("Long touch");
-        if (mode == MODE_STANDBY || mode == MODE_LIT) {
-          // open + change color
-          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+        if (state == STATE_STANDBY || state == STATE_LIT) {
+          // open
+          if (state == STATE_STANDBY) {
+            shutdownEnabled = false; // prevent shutdown when blooming from faded state
+            floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          }
           floower.setPetalsOpenLevel(100, 5000);
-          changeMode(MODE_BLOOMED);
+          changeState(STATE_BLOOMED);
         }
-        else if (mode == MODE_BLOOMED) {
+        else if (state == STATE_BLOOMED) {
           // close
           floower.setPetalsOpenLevel(0, 5000);
-          changeMode(MODE_LIT);
+          changeState(STATE_LIT);
         }
       }
       break;
     case HOLD:
-      Serial.println("Hold touch");
-      floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
-      floower.setPetalsOpenLevel(0, 5000);
-      changeMode(MODE_STANDBY);
+      // shut-down
+      if (shutdownEnabled) {
+        Serial.println("Hold touch");
+        floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+        floower.setPetalsOpenLevel(0, 5000);
+        changeState(STATE_STANDBY);
+      }
       break;
   }
 }
 
 void powerWatchDog() {
-  if (mode == MODE_BATTERYDEAD || mode == MODE_SHUTDOWN) {
+  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN) {
     return;
   }
 
@@ -276,7 +283,7 @@ void powerWatchDog() {
     Serial.print("Shutting down, battery is dead (");
     Serial.print(voltage);
     Serial.println("V)");
-    changeMode(MODE_SHUTDOWN);
+    changeState(STATE_SHUTDOWN);
   }
   else if (!floower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
     Serial.print("Entering low power mode (");
