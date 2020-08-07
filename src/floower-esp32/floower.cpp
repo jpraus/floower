@@ -9,7 +9,9 @@
 
 #define TOUCH_SENSOR_PIN 4
 #define TOUCH_TRESHOLD 45 // 45
-#define TOUCH_TIMEOUT 500 // 
+#define TOUCH_TIME_TRESHOLD 20 // 2 idle cycles to recognize touch
+#define TOUCH_LONG_TIME_TRESHOLD 500 // .5s to recognize long touch
+#define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
 
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
@@ -76,6 +78,36 @@ void Floower::update() {
   }
   else {
     setPixelsPowerOn(false);
+  }
+
+  // recognize various touch events
+  float touchValue = touchRead(TOUCH_SENSOR_PIN);
+  if (touchValue < TOUCH_TRESHOLD) {
+    if (touchStartedTime > 0 && (!longTouchRegistered || !holdTouchRegistered)) {
+      unsigned int touchTime = millis() - touchStartedTime;
+
+      if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_TRESHOLD) { // 0.5s long touch
+        touchCallback(FloowerTouchType::LONG);
+        longTouchRegistered = true;
+      }
+      else if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) { // 2s hold touch
+        touchCallback(FloowerTouchType::HOLD);
+        holdTouchRegistered = true;
+      }
+    }
+    else {
+      touchStartedTime = millis();
+    }
+  }
+  else if (touchStartedTime > 0) {
+    unsigned int touchTime = millis() - touchStartedTime;
+    if (touchTime > TOUCH_TIME_TRESHOLD && !longTouchRegistered) { // short touch below long touch
+      Serial.println(touchTime);
+      touchCallback(FloowerTouchType::TOUCH);
+    }
+    touchStartedTime = 0;
+    longTouchRegistered = false;
+    holdTouchRegistered = false;
   }
 }
 
@@ -179,16 +211,17 @@ void Floower::showColor(RgbColor color) {
   }
 }
 
-boolean Floower::isAnimating() {
-  return animations.IsAnimating();
+boolean Floower::arePetalsMoving() {
+  return animations.IsAnimationActive(0);
 }
 
 boolean Floower::isIdle() {
-  return !isAnimating();
+  return !animations.IsAnimating();
 }
 
-void Floower::onLeafTouch(void (*callback)()) {
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD);
+void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {
+  //touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD);
+  //touchAttachInterrupt(TOUCH_SENSOR_PIN, [](){ touched = true; }, TOUCH_TRESHOLD);  
   touchCallback = callback;
 }
 

@@ -21,6 +21,12 @@ enum FloowerColorMode {
   PULSE
 };
 
+enum FloowerTouchType {
+  TOUCH,
+  LONG,
+  HOLD
+};
+
 class Floower {
   public:
     Floower();
@@ -30,7 +36,7 @@ class Floower {
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
-    bool isAnimating();
+    bool arePetalsMoving();
     bool isIdle();
 
     void acty();
@@ -39,9 +45,12 @@ class Floower {
     void setLowPowerMode(boolean lowPowerMode);
     bool isLowPowerMode();
 
-    void onLeafTouch(void (*callback)());
+    void onLeafTouch(void (*callback)(FloowerTouchType type));
 
   private:
+    typedef void (*voidFnPtr)();
+    voidFnPtr CallBackFnPtr;
+  
     bool setServoPowerOn(boolean powerOn);
     bool setPixelsPowerOn(boolean powerOn);
 
@@ -77,7 +86,10 @@ class Floower {
     bool pixelsPowerOn;
 
     // touch
-    void (*touchCallback)();
+    void (*touchCallback)(FloowerTouchType type);
+    unsigned long touchStartedTime = 0;
+    bool longTouchRegistered = false;
+    bool holdTouchRegistered = false;
 
     // battery
     float batteryVoltage;

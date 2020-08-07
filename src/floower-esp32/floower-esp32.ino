@@ -19,8 +19,8 @@ bool deepSleepEnabled = true;
 boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
-unsigned int configServoClosed = 650;
-unsigned int configServoOpen = configServoClosed + 700;
+unsigned int configServoClosed = 650; // 650
+unsigned int configServoOpen = configServoClosed + 700; // 700
 byte configLedsModel = LEDS_MODEL_WS2812B;
 //byte configLedsModel = LEDS_MODEL_SK6812;
 
@@ -78,19 +78,11 @@ AsyncUDP udp;
 
 #define MODE_INIT 0
 #define MODE_STANDBY 1
-#define MODE_BLOOM 3
-#define MODE_BLOOMING 4
-#define MODE_BLOOMED 5
-#define MODE_CLOSE 6
-#define MODE_CLOSING 7
-#define MODE_CLOSED 8
-#define MODE_FADE 9
-#define MODE_FADING 10
-#define MODE_FADED 11
+#define MODE_BLOOMED 2
+#define MODE_LIT 3
 
 #define MODE_BATTERYDEAD 20
 #define MODE_SHUTDOWN 21
-#define MODE_SHUTTINGDOWN 22
 
 byte mode = MODE_INIT;
 
@@ -126,7 +118,7 @@ void setup() {
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
     Serial.println("Waking up after Deep Sleep");
-    changeMode(MODE_BLOOM);
+    //changeMode(MODE_BLOOM);
   }
 
   // init hardware
@@ -185,62 +177,11 @@ void loop() {
       if (floower.isIdle()) {
         changeMode(MODE_STANDBY);
         Serial.println("Tulip READY");
-
-        if (deepSleepEnabled) {
-          planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
-        }
-      }
-      break;
-
-    // faded -> bloomed
-    case MODE_BLOOM:
-      floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-      floower.setPetalsOpenLevel(100, 5000);
-      changeMode(MODE_BLOOMING);
-      break;
-
-    case MODE_BLOOMING:
-      if (floower.isIdle()) {
-        changeMode(MODE_BLOOMED);
-      }
-      break;
-
-    // bloomed -> closed with color ON
-    case MODE_CLOSE:
-      floower.setPetalsOpenLevel(0, 5000);
-      changeMode(MODE_CLOSING);
-      break;
-
-    case MODE_CLOSING:
-      if (floower.isIdle()) {
-        changeMode(MODE_CLOSED);
-      }
-      break;
-
-    // closed -> faded
-    case MODE_FADE:
-      floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
-      floower.setPetalsOpenLevel(0, 5000);
-      changeMode(MODE_FADING);
-      break;
-
-    case MODE_FADING:
-      if (floower.isIdle()) {
-        changeMode(MODE_STANDBY);
-        if (deepSleepEnabled) {
-          planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
-        }
       }
       break;
 
     // shutdown to protect the flower
     case MODE_SHUTDOWN:
-      floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 500);
-      floower.setPetalsOpenLevel(0, 5000);
-      changeMode(MODE_SHUTTINGDOWN);
-      break;
-
-    case MODE_SHUTTINGDOWN:
       if (floower.isIdle()) {
         enterDeepSleep();
       }
@@ -270,29 +211,60 @@ void planChangeMode(byte newMode, long timeout) {
 }
 
 void changeMode(byte newMode) {
+  changeModeTime = 0;
   if (mode != newMode) {
     mode = newMode;
     Serial.print("Change mode: ");
     Serial.println(newMode);
+
+    if (newMode == MODE_STANDBY && deepSleepEnabled) {
+      planChangeMode(MODE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
+    }
   }
-  changeModeTime = 0;
 }
 
-void onLeafTouch() {
-  Serial.println("Touched");
-  if (mode == MODE_STANDBY) {
-    changeMode(MODE_BLOOM);
+void onLeafTouch(FloowerTouchType touchType) {
+  if (mode == MODE_BATTERYDEAD || mode == MODE_SHUTDOWN) {
+    return;
   }
-  else if (mode == MODE_BLOOMED) {
-    changeMode(MODE_CLOSE);
-  }
-  else if (mode == MODE_CLOSED) {
-    changeMode(MODE_FADE);
+
+  switch (touchType) {
+    case TOUCH:
+      // change color
+      Serial.println("Touched");
+      floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+      if (mode == MODE_STANDBY) {
+        changeMode(MODE_LIT);
+      }
+      break;
+    case LONG:
+      // open / close
+      if (!floower.arePetalsMoving()) {
+        Serial.println("Long touch");
+        if (mode == MODE_STANDBY || mode == MODE_LIT) {
+          // open + change color
+          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          floower.setPetalsOpenLevel(100, 5000);
+          changeMode(MODE_BLOOMED);
+        }
+        else if (mode == MODE_BLOOMED) {
+          // close
+          floower.setPetalsOpenLevel(0, 5000);
+          changeMode(MODE_LIT);
+        }
+      }
+      break;
+    case HOLD:
+      Serial.println("Hold touch");
+      floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+      floower.setPetalsOpenLevel(0, 5000);
+      changeMode(MODE_STANDBY);
+      break;
   }
 }
 
 void powerWatchDog() {
-  if (mode == MODE_BATTERYDEAD) {
+  if (mode == MODE_BATTERYDEAD || mode == MODE_SHUTDOWN) {
     return;
   }
 
@@ -321,6 +293,8 @@ void powerWatchDog() {
 }
 
 void enterDeepSleep() {
+  // TODO: move to floower class
+  touchAttachInterrupt(4, [](){}, 45); // register interrupt to enable wakeup
   esp_sleep_enable_touchpad_wakeup();
   Serial.println("Going to sleep now");
   WiFi.mode(WIFI_OFF);
