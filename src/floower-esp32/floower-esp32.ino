@@ -180,13 +180,11 @@ void loop() {
     floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
     changeState(STATE_LIT);
   }
-  else if (floower.isIdle()) {
-    if (state == STATE_BLOOMED || state == STATE_LIT) {
-      shutdownEnabled = true; // prevent shutdown before entering first state
-    }
-    else if (state == STATE_SHUTDOWN) {
-      enterDeepSleep();
-    }
+  else if (state == STATE_SHUTDOWN && !floower.arePetalsMoving()) {
+    enterDeepSleep();
+  }
+  else if ((state == STATE_BLOOMED || state == STATE_LIT) && floower.isIdle()) {
+    shutdownEnabled = true; // prevent shutdown before entering first state
   }
 
   // save some power when flower is idle
@@ -283,6 +281,8 @@ void powerWatchDog() {
     Serial.print("Shutting down, battery is dead (");
     Serial.print(voltage);
     Serial.println("V)");
+    floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+    floower.setPetalsOpenLevel(0, 2500);
     changeState(STATE_SHUTDOWN);
   }
   else if (!floower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
