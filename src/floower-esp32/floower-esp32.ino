@@ -301,7 +301,7 @@ void powerWatchDog() {
 
 void enterDeepSleep() {
   // TODO: move to floower class
-  touchAttachInterrupt(4, [](){}, 45); // register interrupt to enable wakeup
+  touchAttachInterrupt(4, [](){}, 50); // register interrupt to enable wakeup
   esp_sleep_enable_touchpad_wakeup();
   Serial.println("Going to sleep now");
   WiFi.mode(WIFI_OFF);
