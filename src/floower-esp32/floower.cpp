@@ -8,7 +8,7 @@
 #define SERVO_POWER_OFF_DELAY 500
 
 #define TOUCH_SENSOR_PIN 4
-#define TOUCH_TRESHOLD 45 // 45
+#define TOUCH_TRESHOLD 50 // 45
 #define TOUCH_TIME_TRESHOLD 20 // 2 idle cycles to recognize touch
 #define TOUCH_LONG_TIME_TRESHOLD 500 // .5s to recognize long touch
 #define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
