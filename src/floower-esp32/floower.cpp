@@ -176,7 +176,8 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
 }
 
 void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
-  float progress = NeoEase::CubicOut(param.progress);
+  //float progress = NeoEase::CubicOut(param.progress);
+  float progress = param.progress;
   pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
   showColor(pixelsColor);
 }

@@ -223,20 +223,20 @@ void changeState(byte newState) {
 }
 
 void onLeafTouch(FloowerTouchType touchType) {
-  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN) {
+  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN || floower.arePetalsMoving()) {
     return;
   }
 
   switch (touchType) {
     case TOUCH:
-      // change color
+      // light up / close
       Serial.println("Touched");
       if (state == STATE_STANDBY) {
         floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
         changeState(STATE_LIT);
       }
-      else if (!floower.arePetalsMoving()) {
-        floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+      else {
+        floower.setColor(colorBlack, FloowerColorMode::TRANSITION, state == STATE_BLOOMED ? 5000 : 2000);
         floower.setPetalsOpenLevel(0, 5000);
         changeState(STATE_STANDBY);
       }
@@ -244,23 +244,21 @@ void onLeafTouch(FloowerTouchType touchType) {
     case LONG:
       // open / close
       Serial.println("Long touch");
-      if (!floower.arePetalsMoving()) {
-        if (state == STATE_STANDBY) {
-          // open + set color
-          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-          floower.setPetalsOpenLevel(100, 5000);
-          changeState(STATE_BLOOMED);
-        }
-        else if (state == STATE_LIT) {
-          // open
-          floower.setPetalsOpenLevel(100, 5000);
-          changeState(STATE_BLOOMED);
-        }
-        else if (state == STATE_BLOOMED) {
-          // close
-          floower.setPetalsOpenLevel(0, 5000);
-          changeState(STATE_LIT);
-        }
+      if (state == STATE_STANDBY) {
+        // open + set color
+        floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 10000);
+        floower.setPetalsOpenLevel(100, 5000);
+        changeState(STATE_BLOOMED);
+      }
+      else if (state == STATE_LIT) {
+        // open
+        floower.setPetalsOpenLevel(100, 5000);
+        changeState(STATE_BLOOMED);
+      }
+      else if (state == STATE_BLOOMED) {
+        // close
+        floower.setPetalsOpenLevel(0, 5000);
+        changeState(STATE_LIT);
       }
       break;
     case HOLD:
