@@ -24,7 +24,8 @@ enum FloowerColorMode {
 enum FloowerTouchType {
   TOUCH,
   LONG,
-  HOLD
+  HOLD,
+  HOLD_RELEASE
 };
 
 class Floower {
@@ -36,6 +37,8 @@ class Floower {
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
+    void startColorPicker();
+    void stopColorPicker();
     bool arePetalsMoving();
     bool isIdle();
 
@@ -58,6 +61,7 @@ class Floower {
     void servoAnimationUpdate(const AnimationParam& param);
     void pixelsTransitionAnimationUpdate(const AnimationParam& param);
     void pixelsPulseAnimationUpdate(const AnimationParam& param);
+    void colorPickerAnimationUpdate(const AnimationParam& param);
     void showColor(RgbColor color);
 
     void handleTimers();
@@ -88,7 +92,7 @@ class Floower {
     // touch
     void (*touchCallback)(FloowerTouchType type);
     unsigned long touchStartedTime = 0;
-    bool longTouchRegistered = false;
+    unsigned long touchEndedTime = 0;
     bool holdTouchRegistered = false;
 
     // battery

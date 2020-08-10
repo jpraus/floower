@@ -12,6 +12,7 @@
 #define TOUCH_TIME_TRESHOLD 20 // 2 idle cycles to recognize touch
 #define TOUCH_LONG_TIME_TRESHOLD 600 // .3s to recognize long touch
 #define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
+#define TOUCH_COOlDOWN_TIME 300 // prevent random touch within 300ms after last touch
 
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
@@ -83,28 +84,33 @@ void Floower::update() {
   // recognize various touch events
   float touchValue = touchRead(TOUCH_SENSOR_PIN);
   if (touchValue < TOUCH_TRESHOLD) {
-    if (touchStartedTime > 0 && (!longTouchRegistered || !holdTouchRegistered)) {
+    if (touchStartedTime > 0 && !holdTouchRegistered) {
       unsigned int touchTime = millis() - touchStartedTime;
 
-      if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) { // 2s hold touch
+      if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
         touchCallback(FloowerTouchType::HOLD);
         holdTouchRegistered = true;
       }
     }
-    else {
+    else if (touchEndedTime == 0 || millis() - touchEndedTime > TOUCH_COOlDOWN_TIME) {
       touchStartedTime = millis();
     }
   }
   else if (touchStartedTime > 0) {
-    unsigned int touchTime = millis() - touchStartedTime;
-    if (touchTime > TOUCH_LONG_TIME_TRESHOLD && !holdTouchRegistered) { // 0.5s long touch
+    unsigned long now = millis();
+    unsigned int touchTime = now - touchStartedTime;
+
+    if (holdTouchRegistered) {
+      touchCallback(FloowerTouchType::HOLD_RELEASE);
+    }
+    else if (touchTime > TOUCH_LONG_TIME_TRESHOLD) {
       touchCallback(FloowerTouchType::LONG);
     }
-    else if (touchTime > TOUCH_TIME_TRESHOLD) { // short touch below long touch
+    else if (touchTime > TOUCH_TIME_TRESHOLD) {
       touchCallback(FloowerTouchType::TOUCH);
     }
     touchStartedTime = 0;
-    longTouchRegistered = false;
+    touchEndedTime = now;
     holdTouchRegistered = false;
   }
 }
@@ -175,9 +181,7 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
 }
 
 void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
-  //float progress = NeoEase::CubicOut(param.progress);
-  float progress = param.progress;
-  pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
+  pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, param.progress);
   showColor(pixelsColor);
 }
 
@@ -191,6 +195,31 @@ void Floower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
     pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
   }
 
+  showColor(pixelsColor);
+
+  if (param.state == AnimationState_Completed) {
+    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
+      animations.RestartAnimation(param.index);
+    }
+  }
+}
+
+void Floower::startColorPicker() {
+  pixelsOriginColor = pixelsColor;
+  animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ colorPickerAnimationUpdate(param); });
+}
+
+void Floower::stopColorPicker() {
+  animations.StopAnimation(1);
+}
+
+void Floower::colorPickerAnimationUpdate(const AnimationParam& param) {
+  HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
+  float hue = hsbOriginal.H + param.progress;
+  if (hue > 1.0) {
+    hue = hue - 1;
+  }
+  pixelsColor = RgbColor(HsbColor(hue, hsbOriginal.S, hsbOriginal.B));
   showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {

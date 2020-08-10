@@ -223,46 +223,63 @@ void changeState(byte newState) {
 }
 
 void onLeafTouch(FloowerTouchType touchType) {
-  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN || !floower.isIdle()) {
+  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN) {
     return;
   }
 
   switch (touchType) {
     case TOUCH:
       // light up / close
-      Serial.println("Touched");
-      if (state == STATE_STANDBY) {
-        floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-        changeState(STATE_LIT);
-      }
-      else {
-        floower.setColor(colorBlack, FloowerColorMode::TRANSITION, state == STATE_BLOOMED ? 5000 : 2000);
-        floower.setPetalsOpenLevel(0, 5000);
-        changeState(STATE_STANDBY);
+      if (floower.isIdle()) {
+        Serial.println("Touched");
+        if (state == STATE_STANDBY) {
+          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          changeState(STATE_LIT);
+        }
+        else {
+          floower.setColor(colorBlack, FloowerColorMode::TRANSITION, state == STATE_BLOOMED ? 5000 : 2000);
+          floower.setPetalsOpenLevel(0, 5000);
+          changeState(STATE_STANDBY);
+        }
       }
       break;
     case LONG:
       // open / close
-      Serial.println("Long touch");
-      if (state == STATE_STANDBY) {
+      if (floower.isIdle()) {
+        Serial.println("Long touch");
+        if (state == STATE_STANDBY) {
+          // open + set color
+          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          floower.setPetalsOpenLevel(100, 5000);
+          changeState(STATE_BLOOMED);
+        }
+        else if (state == STATE_LIT) {
+          // open
+          floower.setPetalsOpenLevel(100, 5000);
+          changeState(STATE_BLOOMED);
+        }
+        else if (state == STATE_BLOOMED) {
+          // close
+          floower.setPetalsOpenLevel(0, 5000);
+          changeState(STATE_LIT);
+        }
+      }
+      break;
+    case HOLD:
+      Serial.println("Hold touch");
+      if (state == STATE_STANDBY && floower.isIdle()) {
         // open + set color
         floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
         floower.setPetalsOpenLevel(100, 5000);
         changeState(STATE_BLOOMED);
       }
-      else if (state == STATE_LIT) {
-        // open
-        floower.setPetalsOpenLevel(100, 5000);
-        changeState(STATE_BLOOMED);
-      }
-      else if (state == STATE_BLOOMED) {
-        // close
-        floower.setPetalsOpenLevel(0, 5000);
-        changeState(STATE_LIT);
+      else {
+        floower.startColorPicker();
       }
       break;
-    case HOLD:
-      floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+    case HOLD_RELEASE:
+      Serial.println("Hold release");
+      floower.stopColorPicker();
       break;
   }
 }
