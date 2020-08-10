@@ -34,6 +34,7 @@ class Floower {
     void init(byte ledsModel);
     void initServo(int closedAngle, int openAngle);
     void update();
+    void registerWakeUpTouch();
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);

@@ -16,7 +16,7 @@
 
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
-#define CHARGE_PIN 15
+//#define CHARGE_PIN 15
 
 #define ACTY_LED_PIN 2
 #define ACTY_BLINK_TIME 50
@@ -41,8 +41,6 @@ void Floower::init(byte ledsModel) {
   analogSetAttenuation(ADC_11db); // set AREF to be 3.6V
   analogSetCycles(8); // num of cycles per sample, 8 is default optimal
   analogSetSamples(1); // num of samples
-
-  pinMode(CHARGE_PIN, INPUT_PULLUP);
 
   // acty LED
   pinMode(ACTY_LED_PIN, OUTPUT);
@@ -113,6 +111,10 @@ void Floower::update() {
     touchEndedTime = now;
     holdTouchRegistered = false;
   }
+}
+
+void Floower::registerWakeUpTouch() {
+  touchStartedTime = millis();
 }
 
 void Floower::setPetalsOpenLevel(byte level, int transitionTime) {

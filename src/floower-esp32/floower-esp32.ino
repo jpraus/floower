@@ -118,10 +118,12 @@ void setup() {
   changeState(STATE_STANDBY);
 
   // after wake up setup
+  bool wasSleeping = false;
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
     Serial.println("Waking up after Deep Sleep");
-    planChangeState(STATE_WAKEUP, 500); // if no touch will be registered then wakeup (time is aligned with long touch)
+    floower.registerWakeUpTouch();
+    wasSleeping = true;
   }
 
   // init hardware
@@ -154,7 +156,9 @@ void setup() {
   else {
     // normal operation
     floower.initServo(configServoClosed, configServoOpen);
-    floower.setPetalsOpenLevel(0, 100);
+    if (!wasSleeping) {
+      floower.setPetalsOpenLevel(0, 100);
+    }
   }
 
   everySecondTime = millis(); // TODO millis overflow
