@@ -231,21 +231,28 @@ void onLeafTouch(FloowerTouchType touchType) {
     case TOUCH:
       // change color
       Serial.println("Touched");
-      floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
       if (state == STATE_STANDBY) {
+        floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
         changeState(STATE_LIT);
+      }
+      else if (!floower.arePetalsMoving()) {
+        floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+        floower.setPetalsOpenLevel(0, 5000);
+        changeState(STATE_STANDBY);
       }
       break;
     case LONG:
       // open / close
+      Serial.println("Long touch");
       if (!floower.arePetalsMoving()) {
-        Serial.println("Long touch");
-        if (state == STATE_STANDBY || state == STATE_LIT) {
+        if (state == STATE_STANDBY) {
+          // open + set color
+          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          floower.setPetalsOpenLevel(100, 5000);
+          changeState(STATE_BLOOMED);
+        }
+        else if (state == STATE_LIT) {
           // open
-          if (state == STATE_STANDBY) {
-            shutdownEnabled = false; // prevent shutdown when blooming from faded state
-            floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-          }
           floower.setPetalsOpenLevel(100, 5000);
           changeState(STATE_BLOOMED);
         }
@@ -258,12 +265,13 @@ void onLeafTouch(FloowerTouchType touchType) {
       break;
     case HOLD:
       // shut-down
+      /*
       if (shutdownEnabled) {
         Serial.println("Hold touch");
         floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
         floower.setPetalsOpenLevel(0, 5000);
         changeState(STATE_STANDBY);
-      }
+      }*/
       break;
   }
 }
