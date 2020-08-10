@@ -86,11 +86,7 @@ void Floower::update() {
     if (touchStartedTime > 0 && (!longTouchRegistered || !holdTouchRegistered)) {
       unsigned int touchTime = millis() - touchStartedTime;
 
-      if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_TRESHOLD) { // 0.5s long touch
-        touchCallback(FloowerTouchType::LONG);
-        longTouchRegistered = true;
-      }
-      else if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) { // 2s hold touch
+      if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) { // 2s hold touch
         touchCallback(FloowerTouchType::HOLD);
         holdTouchRegistered = true;
       }
@@ -101,7 +97,10 @@ void Floower::update() {
   }
   else if (touchStartedTime > 0) {
     unsigned int touchTime = millis() - touchStartedTime;
-    if (touchTime > TOUCH_TIME_TRESHOLD && !longTouchRegistered) { // short touch below long touch
+    if (touchTime > TOUCH_LONG_TIME_TRESHOLD && !holdTouchRegistered) { // 0.5s long touch
+      touchCallback(FloowerTouchType::LONG);
+    }
+    else if (touchTime > TOUCH_TIME_TRESHOLD) { // short touch below long touch
       touchCallback(FloowerTouchType::TOUCH);
     }
     touchStartedTime = 0;
@@ -220,8 +219,6 @@ boolean Floower::isIdle() {
 }
 
 void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {
-  //touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD);
-  //touchAttachInterrupt(TOUCH_SENSOR_PIN, [](){ touched = true; }, TOUCH_TRESHOLD);  
   touchCallback = callback;
 }
 
