@@ -8,9 +8,8 @@
 #define SERVO_POWER_OFF_DELAY 500
 
 #define TOUCH_SENSOR_PIN 4
-#define TOUCH_TRESHOLD 50 // 45
-#define TOUCH_TIME_TRESHOLD 20 // 2 idle cycles to recognize touch
-#define TOUCH_LONG_TIME_TRESHOLD 600 // .3s to recognize long touch
+#define TOUCH_TRESHOLD 45 // 45
+#define TOUCH_FADE_TIME 50 // 50
 #define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
 #define TOUCH_COOlDOWN_TIME 300 // prevent random touch within 300ms after last touch
 
@@ -79,42 +78,49 @@ void Floower::update() {
     setPixelsPowerOn(false);
   }
 
-  // recognize various touch events
-  float touchValue = touchRead(TOUCH_SENSOR_PIN);
-  if (touchValue < TOUCH_TRESHOLD) {
-    if (touchStartedTime > 0 && !holdTouchRegistered) {
-      unsigned int touchTime = millis() - touchStartedTime;
-
-      if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
-        touchCallback(FloowerTouchType::HOLD);
-        holdTouchRegistered = true;
-      }
-    }
-    else if (touchEndedTime == 0 || millis() - touchEndedTime > TOUCH_COOlDOWN_TIME) {
-      touchStartedTime = millis();
-    }
-  }
-  else if (touchStartedTime > 0) {
+  if (touchStartedTime > 0) {
     unsigned long now = millis();
     unsigned int touchTime = now - touchStartedTime;
+    unsigned long sinceLastTouch = millis() - lastTouchTime;
 
-    if (holdTouchRegistered) {
-      touchCallback(FloowerTouchType::HOLD_RELEASE);
-    }
-    else if (touchTime > TOUCH_LONG_TIME_TRESHOLD) {
-      touchCallback(FloowerTouchType::LONG);
-    }
-    else if (touchTime > TOUCH_TIME_TRESHOLD) {
+    if (!touchRegistered) {
+      Serial.println("Touch");
+      touchRegistered = true;
       touchCallback(FloowerTouchType::TOUCH);
     }
-    touchStartedTime = 0;
-    touchEndedTime = now;
-    holdTouchRegistered = false;
+    if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
+      Serial.println("Hold Touch");
+      holdTouchRegistered = true;
+      touchCallback(FloowerTouchType::HOLD);
+    }
+    if (sinceLastTouch > TOUCH_FADE_TIME) {
+      Serial.println("Touch release");
+      touchStartedTime = 0;
+      touchEndedTime = now;
+      touchRegistered = false;
+      holdTouchRegistered = false;
+      touchCallback(FloowerTouchType::RELEASE);
+    }
+  }
+  else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOlDOWN_TIME) {
+    Serial.println("Touch enabled");
+    touchEndedTime = 0;
   }
 }
 
-void Floower::registerWakeUpTouch() {
-  touchStartedTime = millis();
+void Floower::touchISR() {
+  lastTouchTime = millis();
+  if (touchStartedTime == 0 && touchEndedTime == 0) {
+    touchStartedTime = lastTouchTime;
+  }
+}
+
+void Floower::touchAttachInterruptProxy(void (*callback)()) {
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD); 
+}
+
+void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {
+  touchCallback = callback;
 }
 
 void Floower::setPetalsOpenLevel(byte level, int transitionTime) {
@@ -221,7 +227,7 @@ void Floower::colorPickerAnimationUpdate(const AnimationParam& param) {
   if (hue > 1.0) {
     hue = hue - 1;
   }
-  pixelsColor = RgbColor(HsbColor(hue, hsbOriginal.S, hsbOriginal.B));
+  pixelsColor = RgbColor(HsbColor(hue, 1, 0.4)); // TODO: fine tune
   showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {
@@ -247,10 +253,6 @@ boolean Floower::arePetalsMoving() {
 
 boolean Floower::isIdle() {
   return !animations.IsAnimating();
-}
-
-void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {
-  touchCallback = callback;
 }
 
 void Floower::acty() {

@@ -23,9 +23,8 @@ enum FloowerColorMode {
 
 enum FloowerTouchType {
   TOUCH,
-  LONG,
   HOLD,
-  HOLD_RELEASE
+  RELEASE
 };
 
 class Floower {
@@ -34,7 +33,10 @@ class Floower {
     void init(byte ledsModel);
     void initServo(int closedAngle, int openAngle);
     void update();
-    void registerWakeUpTouch();
+
+    void touchISR();
+    void static touchAttachInterruptProxy(void (*callback)()); // Raw touch interrupt. Need to be relayed to touchISR() due to limittation of touchAttachInterrupt function
+    void onLeafTouch(void (*callback)(FloowerTouchType type));
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
@@ -48,8 +50,6 @@ class Floower {
     bool isUSBPowered();
     void setLowPowerMode(boolean lowPowerMode);
     bool isLowPowerMode();
-
-    void onLeafTouch(void (*callback)(FloowerTouchType type));
 
   private:
     typedef void (*voidFnPtr)();
@@ -94,6 +94,8 @@ class Floower {
     void (*touchCallback)(FloowerTouchType type);
     unsigned long touchStartedTime = 0;
     unsigned long touchEndedTime = 0;
+    unsigned long lastTouchTime = 0;
+    bool touchRegistered = false;
     bool holdTouchRegistered = false;
 
     // battery

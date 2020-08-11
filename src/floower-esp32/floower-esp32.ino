@@ -16,10 +16,10 @@ bool deepSleepEnabled = true;
 ///////////// PERSISTENT CONFIGURATION
 
 // never ever turn the write configuration flag you will overwrite the hardware settings and probably break the flower
-boolean writeConfiguration = false;
+boolean writeConfiguration = true;
 
 const byte CONFIG_VERSION = 1;
-unsigned int configServoClosed = 650; // 650
+unsigned int configServoClosed = 800; // 650
 unsigned int configServoOpen = configServoClosed + 700; // 700
 byte configLedsModel = LEDS_MODEL_WS2812B;
 //byte configLedsModel = LEDS_MODEL_SK6812;
@@ -86,7 +86,7 @@ AsyncUDP udp;
 #define STATE_SHUTDOWN 11
 
 byte state = STATE_INIT;
-bool shutdownEnabled = false; // prevent shutdown on first touch
+bool colorPickerOn = false;
 
 long changeStateTime = 0;
 byte changeStateTo;
@@ -122,7 +122,7 @@ void setup() {
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
     Serial.println("Waking up after Deep Sleep");
-    floower.registerWakeUpTouch();
+    floower.touchISR();
     wasSleeping = true;
   }
 
@@ -132,6 +132,7 @@ void setup() {
   floower.init(configLedsModel);
   floower.readBatteryVoltage(); // calibrate the ADC
   floower.onLeafTouch(onLeafTouch);
+  Floower::touchAttachInterruptProxy([](){ floower.touchISR(); });
   delay(50); // wait for init
 
   // check if there is enough power to run
@@ -187,9 +188,6 @@ void loop() {
   else if (state == STATE_SHUTDOWN && !floower.arePetalsMoving()) {
     enterDeepSleep();
   }
-  else if ((state == STATE_BLOOMED || state == STATE_LIT) && floower.isIdle()) {
-    shutdownEnabled = true; // prevent shutdown before entering first state
-  }
 
   // save some power when flower is idle
   if (floower.isIdle()) {
@@ -233,32 +231,25 @@ void onLeafTouch(FloowerTouchType touchType) {
 
   switch (touchType) {
     case TOUCH:
-      // light up / close
-      if (floower.isIdle()) {
-        Serial.println("Touched");
-        if (state == STATE_STANDBY) {
-          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-          changeState(STATE_LIT);
-        }
-        else {
-          floower.setColor(colorBlack, FloowerColorMode::TRANSITION, state == STATE_BLOOMED ? 5000 : 2000);
-          floower.setPetalsOpenLevel(0, 5000);
-          changeState(STATE_STANDBY);
-        }
+      /*
+      if (floower.isIdle() && state == STATE_STANDBY) {
+        // open + set color
+        floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+        floower.setPetalsOpenLevel(100, 5000);
+        changeState(STATE_BLOOMED);
       }
+      */
       break;
-    case LONG:
-      // open / close
-      if (floower.isIdle()) {
-        Serial.println("Long touch");
+    
+    case RELEASE:
+      if (colorPickerOn) {
+        floower.stopColorPicker();
+        colorPickerOn = false;
+      }
+      else if (floower.isIdle()) {
         if (state == STATE_STANDBY) {
           // open + set color
           floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-          floower.setPetalsOpenLevel(100, 5000);
-          changeState(STATE_BLOOMED);
-        }
-        else if (state == STATE_LIT) {
-          // open
           floower.setPetalsOpenLevel(100, 5000);
           changeState(STATE_BLOOMED);
         }
@@ -267,23 +258,20 @@ void onLeafTouch(FloowerTouchType touchType) {
           floower.setPetalsOpenLevel(0, 5000);
           changeState(STATE_LIT);
         }
+        else if (state == STATE_LIT) {
+          // shutdown
+          floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
+          changeState(STATE_STANDBY);
+        }
       }
       break;
+
     case HOLD:
-      Serial.println("Hold touch");
-      if (state == STATE_STANDBY && floower.isIdle()) {
-        // open + set color
-        floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-        floower.setPetalsOpenLevel(100, 5000);
-        changeState(STATE_BLOOMED);
+      floower.startColorPicker();
+      colorPickerOn = true;
+      if (state == STATE_STANDBY) {
+        changeState(STATE_LIT);
       }
-      else {
-        floower.startColorPicker();
-      }
-      break;
-    case HOLD_RELEASE:
-      Serial.println("Hold release");
-      floower.stopColorPicker();
       break;
   }
 }
