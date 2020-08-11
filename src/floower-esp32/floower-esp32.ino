@@ -79,8 +79,9 @@ AsyncUDP udp;
 #define STATE_INIT 0
 #define STATE_WAKEUP 1
 #define STATE_STANDBY 2
-#define STATE_BLOOMED 3
-#define STATE_LIT 4
+#define STATE_LIT 3
+#define STATE_BLOOMED 4
+#define STATE_CLOSED 5
 
 #define STATE_BATTERYDEAD 10
 #define STATE_SHUTDOWN 11
@@ -230,17 +231,6 @@ void onLeafTouch(FloowerTouchType touchType) {
   }
 
   switch (touchType) {
-    case TOUCH:
-      /*
-      if (floower.isIdle() && state == STATE_STANDBY) {
-        // open + set color
-        floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-        floower.setPetalsOpenLevel(100, 5000);
-        changeState(STATE_BLOOMED);
-      }
-      */
-      break;
-    
     case RELEASE:
       if (colorPickerOn) {
         floower.stopColorPicker();
@@ -253,12 +243,17 @@ void onLeafTouch(FloowerTouchType touchType) {
           floower.setPetalsOpenLevel(100, 5000);
           changeState(STATE_BLOOMED);
         }
+        else if (state == STATE_LIT) {
+          // open
+          floower.setPetalsOpenLevel(100, 5000);
+          changeState(STATE_BLOOMED);
+        }
         else if (state == STATE_BLOOMED) {
           // close
           floower.setPetalsOpenLevel(0, 5000);
-          changeState(STATE_LIT);
+          changeState(STATE_CLOSED);
         }
-        else if (state == STATE_LIT) {
+        else if (state == STATE_CLOSED) {
           // shutdown
           floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
           changeState(STATE_STANDBY);
