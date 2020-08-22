@@ -16,7 +16,7 @@ bool deepSleepEnabled = true;
 ///////////// PERSISTENT CONFIGURATION
 
 // never ever turn the write configuration flag you will overwrite the hardware settings and probably break the flower
-boolean writeConfiguration = true;
+boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
 unsigned int configServoClosed = 800; // 650
