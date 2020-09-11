@@ -6,11 +6,10 @@
 // Floower custom service
 #define FLOOWER_SERVICE_UUID "28e17913-66c1-475f-a76e-86b5242f4cec"
 #define FLOOWER_NAME_UUID "ab130585-2b27-498e-a5a5-019391317350" // string
-#define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // 4 bytes (open level + R + G + B)
+#define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // see StatePacketData
+#define FLOOWER_STATE_CHANGE_UUID "11226015-0424-44d3-b854-9fc332756cbf" // see StateChangePacketData
 #define FLOOWER_COLOR_RGB_UUID "151a039e-68ee-4009-853d-cd9d271e4a6e" // 3 bytes (R + G + B)
 #define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R +G + B), ..]
-//#define FLOOWER__UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a"
-//#define FLOOWER__UUID "11226015-0424-44d3-b854-9fc332756cbf"
 //#define FLOOWER__UUID "c380596f-10d2-47a7-95af-95835e0361c7"
 //#define FLOOWER__UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b"
 //#define FLOOWER__UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528"
@@ -52,7 +51,7 @@ void Remote::init() {
   createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
   createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, "0016");
   createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, "1.0");
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, "6");
+  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, "1.0");
   createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MANUFACTURER_NAME_UUID, "Floower Lab s.r.o.");
   deviceInformationService->start();
 
@@ -76,9 +75,10 @@ void Remote::init() {
   colorRgbCharacteristic->setValue(color, 3);
 
   StatePacket statePacket = {{0, 69, 100, 255}};
-  BLECharacteristic* stateCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  stateCharacteristic->setCallbacks(new StateCharacteristicsCallbacks(this));
-  stateCharacteristic->setValue(statePacket.bytes, PACKET_DATA_SIZE);
+  BLECharacteristic* stateCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ);
+  stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+  BLECharacteristic* stateChangeCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE);
+  stateChangeCharacteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
 
   floowerService->start();
 
@@ -107,14 +107,16 @@ BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const ch
   return characteristic;
 }
 
-void Remote::StateCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   Serial.println("New state");
   std::string bytes = characteristic->getValue();
-  if (bytes.length() == 4) {
-    StatePacket statePacket;
-    statePacket.data = {bytes[0], bytes[1], bytes[2], bytes[3]};
-    remote->floower->setPetalsOpenLevel(statePacket.data.petalsOpenLevel, 500); // TODO: transition time
-    remote->floower->setColor(statePacket.data.getColor(), FloowerColorMode::TRANSITION, 100); // TODO: transition time
+  if (bytes.length() == STATE_CHANGE_PACKET_SIZE) {
+    StateChangePacket statePacket;
+    for (int i = 0; i < STATE_CHANGE_PACKET_SIZE; i ++) {
+      statePacket.bytes[i] = bytes[i]; 
+    }
+    remote->floower->setPetalsOpenLevel(statePacket.data.petalsOpenLevel, statePacket.data.petalsDuration * 100);
+    remote->floower->setColor(statePacket.data.getColor(), FloowerColorMode::TRANSITION, statePacket.data.colorDuration * 100);
   }
 }
 

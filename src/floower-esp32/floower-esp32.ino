@@ -4,6 +4,9 @@
  * - move remote control and UDP commons to separate class
  */
 
+#define FIRMWARE_VERRSION "1.0"
+#define HARDWARE_REVISION "6.0" // TODO: save to persistent storage
+
 #include <EEPROM.h>
 //#include <esp_wifi.h>
 //#include <WiFi.h>
@@ -33,10 +36,9 @@ byte configLedsModel = LEDS_MODEL_WS2812B;
 #define MEMORY_SERVO_CLOSED 2 // integer (2 bytes)
 #define MEMORY_SERVO_OPEN 4 // integer (2 bytes)
 #define MEMORY_LEAF_SENSITIVTY 6 // 0-255 (1 byte)
-
-///////////// REMOTE CONNECTION
-
-
+// hardware revision
+// serial number
+// name (max 50)?
 
 ///////////// POWER MODE
 
@@ -316,137 +318,6 @@ RgbColor nextRandomColor() {
   return colors[colorIndex];
 }
 
-// remote control (not used)
-/*
-void remoteControl() {
-  // TODO rewrite to async
-  switch (remoteState) {
-    case REMOTE_STATE_INIT:
-      if (remoteMaster) {
-        // server
-        Serial.print("Configuring access point ... ");
-        WiFi.softAP(ssid, password, 1, 0, 8);
-        Serial.println("OK");
-
-        udp.connect(WiFi.softAPIP(), UDP_PORT);
-        Serial.print("UDP Server started on IP: ");
-        Serial.println(WiFi.softAPIP());
-
-        remoteState = REMOTE_STATE_AP;
-        remoteActive = true;
-      }
-      else {
-        // client
-        Serial.println("Starting WiFi");
-        remoteState = REMOTE_STATE_DISCONNECTED;
-      }
-      break;
-
-    case REMOTE_STATE_AP:
-      break; // nothing
-
-    case REMOTE_STATE_DISCONNECTED:
-      WiFi.mode(WIFI_STA);
-      //wifi_station_connect();
-      WiFi.begin(ssid, password);
-      Serial.println("Connecting to WiFi ...");
-
-      remoteState = REMOTE_STATE_CONNECTING;
-      break;
-
-    case REMOTE_STATE_CONNECTING:
-      if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("Connected to WiFi");
-
-        if (udp.listen(UDP_PORT)) {
-          Serial.print("UDP Listening on IP: ");
-          Serial.println(WiFi.localIP());
-          udp.onPacket(udpPacketReceived);
-        }
-
-        remoteActive = true;
-        remoteState = REMOTE_STATE_CONNECTED;
-      }
-      break;
-
-    case REMOTE_STATE_CONNECTED:
-      if (reconnectTimer <= 0) {
-        reconnectTimer = CHECK_CONNECTION_SECONDS;
-        if (WiFi.status() != WL_CONNECTED) {
-          remoteActive = false;
-          remoteState = REMOTE_STATE_DISCONNECTED;
-          Serial.println("Disconnected from WiFi");
-        }
-      }
-      break;
-  }
-}
-
-void broadcastMasterState() {
-  if (remoteActive && remoteMaster) {
-    CommandData command;
-    // TODO
-    //command.blossomOpenness = petalsOpenness;
-    //command.red = newRGB[RED];
-    //command.green = newRGB[GREEN];
-    //command.blue = newRGB[BLUE];
-    broadcastRemoteCommand(command);
-  }
-}
-
-void broadcastRemoteCommand(CommandData command) {
-  CommandPacket packet;
-
-  Serial.print("Broadcasting command. Blossom: ");
-  Serial.print(command.blossomOpenness);
-  Serial.print(", Red: ");
-  Serial.print(command.red);
-  Serial.print(", Green: ");
-  Serial.print(command.green);
-  Serial.print(", Blue: ");
-  Serial.println(command.blue);
-
-  packet.data = command;
-  udp.broadcastTo(packet.packet, PACKET_DATA_SIZE, UDP_PORT);
-}
-
-void udpPacketReceived(AsyncUDPPacket packet) {
-  CommandPacket command;
-
-  Serial.print("UDP Packet Type: ");
-  Serial.print(packet.isBroadcast() ? "Broadcast" : (packet.isMulticast() ? "Multicast" : "Unicast"));
-  Serial.print(", From: ");
-  Serial.print(packet.remoteIP());
-  Serial.print(":");
-  Serial.print(packet.remotePort());
-  Serial.print(", To: ");
-  Serial.print(packet.localIP());
-  Serial.print(":");
-  Serial.print(packet.localPort());
-  Serial.print(", Length: ");
-  Serial.println(packet.length());
-
-  //command.packet = packet.data();
-  memcpy(command.packet, packet.data(), packet.length());
-  commmandReceived(command.data);
-}
-
-void commmandReceived(CommandData command) {
-  if (remoteMode) {
-    Serial.print("Blossom: ");
-    Serial.print(command.blossomOpenness);
-    Serial.print(", Red: ");
-    Serial.print(command.red);
-    Serial.print(", Green: ");
-    Serial.print(command.green);
-    Serial.print(", Blue: ");
-    Serial.println(command.blue);
-
-    floower.setPetalsOpenLevel(command.blossomOpenness, 500); // TODO some default speed
-    floower.setColor(RgbColor(command.red, command.green, command.blue), FloowerColorMode::TRANSITION, 500); // TODO some default speed
-  }
-}
-*/
 // configuration
 
 void configure() {

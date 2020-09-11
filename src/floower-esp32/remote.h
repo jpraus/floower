@@ -7,13 +7,13 @@
 #include <BLEUtils.h>
 #include "floower.h"
 
-#define PACKET_DATA_SIZE 4
+#define STATE_PACKET_SIZE 4
 
 typedef struct StatePacketData {
-  byte petalsOpenLevel; // 0-100%
-  byte R; // 0-255
-  byte G; // 0-255
-  byte B; // 0-255
+  byte petalsOpenLevel; // 0-100%, read-write
+  byte R; // 0-255, read-write
+  byte G; // 0-255, read-write
+  byte B; // 0-255, read-write
 
   RgbColor getColor() {
     return RgbColor(R, G, B);
@@ -22,7 +22,19 @@ typedef struct StatePacketData {
 
 typedef union StatePacket {
   StatePacketData data;
-  uint8_t bytes[PACKET_DATA_SIZE];
+  uint8_t bytes[STATE_PACKET_SIZE];
+};
+
+#define STATE_CHANGE_PACKET_SIZE 6
+
+typedef struct StateChangePacketData : StatePacketData {
+  byte petalsDuration; // 100 of milliseconds
+  byte colorDuration; // 100 of milliseconds
+};
+
+typedef union StateChangePacket {
+  StateChangePacketData data;
+  uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
 };
 
 class Remote {
@@ -42,9 +54,9 @@ class Remote {
     BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, int value);
 
     // BLE state characteristics callback
-    class StateCharacteristicsCallbacks : public BLECharacteristicCallbacks {
+    class StateChangeCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        StateCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        StateChangeCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
       private:
         Remote* remote ;
         void onWrite(BLECharacteristic *characteristic);
