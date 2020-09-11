@@ -5,12 +5,12 @@
  */
 
 #include <EEPROM.h>
-#include <WiFi.h>
-#include <AsyncUDP.h>
+//#include <esp_wifi.h>
+//#include <WiFi.h>
 #include "floower.h"
+#include "remote.h"
 
-bool remoteMode = false; // not used
-bool remoteMaster = false; // not used
+bool remoteEnabled = false;
 bool deepSleepEnabled = true;
 
 ///////////// PERSISTENT CONFIGURATION
@@ -20,7 +20,7 @@ boolean writeConfiguration = false;
 
 const byte CONFIG_VERSION = 1;
 unsigned int configServoClosed = 800; // 650
-unsigned int configServoOpen = configServoClosed + 700; // 700
+unsigned int configServoOpen = configServoClosed + 500; // 700
 byte configLedsModel = LEDS_MODEL_WS2812B;
 //byte configLedsModel = LEDS_MODEL_SK6812;
 
@@ -31,41 +31,11 @@ byte configLedsModel = LEDS_MODEL_WS2812B;
 #define MEMORY_LEDS_MODEL 1 // 0 - WS2812b, 1 - SK6812 (1 byte)
 #define MEMORY_SERVO_CLOSED 2 // integer (2 bytes)
 #define MEMORY_SERVO_OPEN 4 // integer (2 bytes)
+#define MEMORY_LEAF_SENSITIVTY 6 // 0-255 (1 byte)
 
 ///////////// REMOTE CONNECTION
 
-const char* ssid = "Tulipherd";
-const char* password = "packofflowers"; // must be at least 8 characters
 
-#define REMOTE_STATE_NOTHING 0
-#define REMOTE_STATE_INIT 1
-#define REMOTE_STATE_DISCONNECTED 2
-#define REMOTE_STATE_CONNECTING 3
-#define REMOTE_STATE_CONNECTED 4
-#define REMOTE_STATE_AP 5
-
-#define CHECK_CONNECTION_SECONDS 5
-
-byte remoteState = REMOTE_STATE_NOTHING;
-bool remoteActive = false;
-unsigned int reconnectTimer = CHECK_CONNECTION_SECONDS;
-
-#define PACKET_DATA_SIZE 4
-typedef struct CommandData {
-  byte blossomOpenness; // 0-100
-  byte red; // 0-255
-  byte green; // 0-255
-  byte blue; // 0-255
-};
-
-typedef union CommandPacket {
-  CommandData data;
-  uint8_t packet[PACKET_DATA_SIZE];
-};
-
-#define UDP_PORT 1402
-
-AsyncUDP udp;
 
 ///////////// POWER MODE
 
@@ -110,6 +80,7 @@ long colorsUsed = 0;
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
 
 Floower floower;
+Remote remote(&floower);
 long everySecondTime = 0;
 
 void setup() {
@@ -128,8 +99,8 @@ void setup() {
   }
 
   // init hardware
-  WiFi.mode(WIFI_OFF);
-  btStop();
+  //esp_wifi_stop();
+  //btStop();
   floower.init(configLedsModel);
   floower.readBatteryVoltage(); // calibrate the ADC
   floower.onLeafTouch(onLeafTouch);
@@ -163,12 +134,20 @@ void setup() {
     }
   }
 
+  // BLE remote (TODO defer)
+  if (remoteEnabled) {
+    remote.init();
+  }
+
   everySecondTime = millis(); // TODO millis overflow
   Serial.println("Tulip READY");
 }
 
 void loop() {
   floower.update();
+  if (remoteEnabled) {
+    remote.update();
+  }
 
   // timers
   long now = millis();
@@ -219,7 +198,7 @@ void changeState(byte newState) {
     Serial.print("Change state: ");
     Serial.println(newState);
 
-    if (newState == STATE_STANDBY && deepSleepEnabled) {
+    if (newState == STATE_STANDBY && deepSleepEnabled && !remoteEnabled) {
       planChangeState(STATE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
     }
   }
@@ -307,7 +286,7 @@ void enterDeepSleep() {
   touchAttachInterrupt(4, [](){}, 50); // register interrupt to enable wakeup
   esp_sleep_enable_touchpad_wakeup();
   Serial.println("Going to sleep now");
-  WiFi.mode(WIFI_OFF);
+  //esp_wifi_stop();
   btStop();
   esp_deep_sleep_start();
 }
@@ -335,7 +314,7 @@ RgbColor nextRandomColor() {
 }
 
 // remote control (not used)
-
+/*
 void remoteControl() {
   // TODO rewrite to async
   switch (remoteState) {
@@ -464,7 +443,7 @@ void commmandReceived(CommandData command) {
     floower.setColor(RgbColor(command.red, command.green, command.blue), FloowerColorMode::TRANSITION, 500); // TODO some default speed
   }
 }
-
+*/
 // configuration
 
 void configure() {

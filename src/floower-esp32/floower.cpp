@@ -8,7 +8,7 @@
 #define SERVO_POWER_OFF_DELAY 500
 
 #define TOUCH_SENSOR_PIN 4
-#define TOUCH_TRESHOLD 45 // 45
+#define TOUCH_TRESHOLD 45 // lower means lower sensitivity (45 is normal)
 #define TOUCH_FADE_TIME 50 // 50
 #define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
 #define TOUCH_COOlDOWN_TIME 300 // prevent random touch within 300ms after last touch
