@@ -27,9 +27,14 @@ typedef union StatePacket {
 
 #define STATE_CHANGE_PACKET_SIZE 6
 
+// TODO: define
+#define STATE_TRANSITION_MODE_COLOR B01
+#define STATE_TRANSITION_MODE_PETALS B10
+#define STATE_TRANSITION_MODE_COLOR_PETALS B11
+
 typedef struct StateChangePacketData : StatePacketData {
-  byte petalsDuration; // 100 of milliseconds
-  byte colorDuration; // 100 of milliseconds
+  byte duration; // 100 of milliseconds
+  byte mode; // transition mode
 };
 
 typedef union StateChangePacket {

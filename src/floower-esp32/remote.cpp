@@ -108,15 +108,18 @@ BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const ch
 }
 
 void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
-  Serial.println("New state");
   std::string bytes = characteristic->getValue();
   if (bytes.length() == STATE_CHANGE_PACKET_SIZE) {
     StateChangePacket statePacket;
     for (int i = 0; i < STATE_CHANGE_PACKET_SIZE; i ++) {
       statePacket.bytes[i] = bytes[i]; 
     }
-    remote->floower->setPetalsOpenLevel(statePacket.data.petalsOpenLevel, statePacket.data.petalsDuration * 100);
-    remote->floower->setColor(statePacket.data.getColor(), FloowerColorMode::TRANSITION, statePacket.data.colorDuration * 100);
+    if (statePacket.data.mode & B1) {
+      remote->floower->setColor(statePacket.data.getColor(), FloowerColorMode::TRANSITION, statePacket.data.duration * 100);
+    }
+    if (statePacket.data.mode & B10) {
+      remote->floower->setPetalsOpenLevel(statePacket.data.petalsOpenLevel, statePacket.data.duration * 100);
+    }
   }
 }
 
