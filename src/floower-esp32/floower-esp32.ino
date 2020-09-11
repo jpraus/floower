@@ -7,10 +7,11 @@
 #include <EEPROM.h>
 //#include <esp_wifi.h>
 //#include <WiFi.h>
+#include <esp_task_wdt.h>
 #include "floower.h"
 #include "remote.h"
 
-bool remoteEnabled = false;
+bool remoteEnabled = true;
 bool deepSleepEnabled = true;
 
 ///////////// PERSISTENT CONFIGURATION
@@ -78,10 +79,13 @@ long colorsUsed = 0;
 
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 20000 // fall in deep sleep after timeout
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
+#define PERIODIC_OPERATIONS_INTERVAL 5000
+
+long periodicOperationsTime = 0;
+long initRemoteTime = 0;
 
 Floower floower;
 Remote remote(&floower);
-long everySecondTime = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -134,30 +138,31 @@ void setup() {
     }
   }
 
-  // BLE remote (TODO defer)
   if (remoteEnabled) {
-    remote.init();
+    initRemoteTime = millis() + 5000; // defer init of BLE by 5 seconds
   }
 
-  everySecondTime = millis(); // TODO millis overflow
+  periodicOperationsTime = millis() + PERIODIC_OPERATIONS_INTERVAL; // TODO millis overflow
   Serial.println("Tulip READY");
 }
 
 void loop() {
   floower.update();
-  if (remoteEnabled) {
-    remote.update();
-  }
+  remote.update();
 
   // timers
   long now = millis();
-  if (everySecondTime > 0 && everySecondTime < now) {
-    everySecondTime = now + 1000;
-    everySecond();
+  if (periodicOperationsTime > 0 && periodicOperationsTime < now) {
+    periodicOperationsTime = now + PERIODIC_OPERATIONS_INTERVAL;
+    periodicOperation();
   }
   if (changeStateTime > 0 && changeStateTime < now) {
     changeStateTime = 0;
     changeState(changeStateTo);
+  }
+  if (initRemoteTime > 0 && initRemoteTime < now) {
+    initRemoteTime = 0;
+    remote.init();
   }
 
   // update state machine
@@ -175,9 +180,7 @@ void loop() {
   }
 }
 
-void everySecond() {
-  //broadcastMasterState();
-  //reconnectTimer--;
+void periodicOperation() {
   floower.acty();
   powerWatchDog();
 }

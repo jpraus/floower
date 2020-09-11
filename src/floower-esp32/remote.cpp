@@ -93,7 +93,7 @@ void Remote::init() {
 }
 
 void Remote::update() {
-  
+  // TODO: check if initialized
 }
 
 BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {
