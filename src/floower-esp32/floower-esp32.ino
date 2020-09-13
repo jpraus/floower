@@ -159,6 +159,7 @@ void loop() {
   if (initRemoteTime > 0 && initRemoteTime < now) {
     initRemoteTime = 0;
     remote.init();
+    remote.setColorScheme(colors, colorsCount);
   }
 
   // update state machine
@@ -257,7 +258,7 @@ void powerWatchDog() {
   bool charging = floower.isUSBPowered();
   Battery battery = floower.readBatteryState();
 
-  remote.sendBatteryLevel(battery.level, charging);
+  remote.setBatteryLevel(battery.level, charging);
 
   if (charging) {
     floower.setLowPowerMode(false);

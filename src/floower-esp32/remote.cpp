@@ -74,19 +74,21 @@ void Remote::init() {
   batteryService->start();
 
   // Floower customer service
-  BLEService *floowerService = server->createService(FLOOWER_SERVICE_UUID);
+  floowerService = server->createService(FLOOWER_SERVICE_UUID);
 
   String name = "Floower";
   BLECharacteristic* nameCharacteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
   //nameCharacteristic->setCallbacks(new ColorRgbCharacteristicsCallbacks());
   nameCharacteristic->setValue("Floower");
 
-  // TODO
-  StatePacket statePacket = {{0, 69, 100, 255}};
-  BLECharacteristic* stateCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ);
-  stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
-  BLECharacteristic* stateChangeCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE);
+  // state
+  floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ); // read
+  BLECharacteristic* stateChangeCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
   stateChangeCharacteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
+
+  // color scheme characteristics
+  BLECharacteristic* colorsSchemeCharacteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  //colorsSchemeCharacteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
 
   floowerService->start();
 
@@ -105,11 +107,21 @@ void Remote::init() {
 void Remote::update() {
   if (floower->isIdle() && initialized) {
     // do something
+    // TODO: do this only on change, probably do this from the outside?
+    setState(floower->getPetalOpenLevel(), floower->getColor());
   }
 }
 
-void Remote::sendBatteryLevel(uint8_t level, bool charging) {
-  if (floower->isIdle() && initialized && deviceConnected) {
+void Remote::setState(uint8_t petalsOpenLevel, RgbColor color) {
+  if (floowerService != NULL) {
+    StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
+    BLECharacteristic* stateCharacteristic = floowerService->getCharacteristic(FLOOWER_STATE_UUID);
+    stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+  }
+}
+
+void Remote::setBatteryLevel(uint8_t level, bool charging) {
+  if (deviceConnected && batteryService != NULL && floower->isIdle()) {
     ESP_LOGI(LOG_TAG, "level: %d, charging: %d", level, charging);
 
     BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
@@ -123,15 +135,27 @@ void Remote::sendBatteryLevel(uint8_t level, bool charging) {
   }
 }
 
+// max 10 colors?
+void Remote::setColorScheme(RgbColor* colors, uint8_t length) {
+  if (floowerService != NULL) {
+    ESP_LOGI(LOG_TAG, "%d colors", length);
+
+    size_t size = length * 3;
+    uint8_t bytes[size];
+    for (uint8_t b = 0, i = 0; b < size; b += 3, i++) {
+      bytes[b] = colors[i].R;
+      bytes[b + 1] = colors[i].G;
+      bytes[b + 2] = colors[i].B;
+    }
+
+    BLECharacteristic* characteristic = floowerService->getCharacteristic(FLOOWER_COLORS_SCHEME_UUID);
+    characteristic->setValue(bytes, size);
+  }
+}
+
 BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {
   BLECharacteristic* characteristic = service->createCharacteristic(uuid, BLECharacteristic::PROPERTY_READ);                      
   characteristic->setValue(value);
-}
-
-BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const char *uuid, int value) {
-  BLECharacteristic* characteristic = service->createCharacteristic(uuid, BLECharacteristic::PROPERTY_READ);
-  characteristic->setValue(value);
-  return characteristic;
 }
 
 void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {

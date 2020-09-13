@@ -6,14 +6,14 @@
 #include <NeoPixelAnimator.h>
 #include "pixels.h"
 
-const RgbColor colorRed(128, 2, 0);
-const RgbColor colorGreen(0, 128, 0);
-const RgbColor colorBlue(0, 20, 128);
-const RgbColor colorYellow(128, 70, 0);
-const RgbColor colorOrange(128, 30, 0);
-const RgbColor colorWhite(128);
-const RgbColor colorPurple(128, 0, 128);
-const RgbColor colorPink(128, 0, 50);
+const RgbColor colorRed(127, 2, 0);
+const RgbColor colorGreen(0, 127, 0);
+const RgbColor colorBlue(0, 20, 127);
+const RgbColor colorYellow(127, 70, 0);
+const RgbColor colorOrange(127, 30, 0);
+const RgbColor colorWhite(127);
+const RgbColor colorPurple(127, 0, 127);
+const RgbColor colorPink(127, 0, 50);
 const RgbColor colorBlack(0);
 
 enum FloowerColorMode {
@@ -44,7 +44,9 @@ class Floower {
     void onLeafTouch(void (*callback)(FloowerTouchType type));
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
+    byte getPetalOpenLevel();
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
+    RgbColor getColor();
     void startColorPicker();
     void stopColorPicker();
     bool arePetalsMoving();

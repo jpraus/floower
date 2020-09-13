@@ -163,6 +163,10 @@ void Floower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
+byte Floower::getPetalOpenLevel() {
+  return servoAngle;
+}
+
 void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime) {
   if (color.R == pixelsTargetColor.R && color.G == pixelsTargetColor.G && color.B == pixelsTargetColor.B && pixelsColorMode == colorMode) {
     return; // no change
@@ -210,6 +214,10 @@ void Floower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
       animations.RestartAnimation(param.index);
     }
   }
+}
+
+RgbColor Floower::getColor() {
+  return pixelsColor;
 }
 
 void Floower::startColorPicker() {

@@ -48,18 +48,20 @@ class Remote {
     Remote(Floower *floower);
     void init();
     void update();
-    void sendBatteryLevel(uint8_t level, bool charging);
+    void setState(uint8_t petalsOpenLevel, RgbColor color);
+    void setBatteryLevel(uint8_t level, bool charging);
+    void setColorScheme(RgbColor* colors, uint8_t length);
 
   private:
     Floower *floower;
     BLEServer *server = NULL;
+    BLEService *floowerService = NULL;
     BLEService *batteryService = NULL;
 
     bool deviceConnected = false;
     bool initialized = false;
 
     BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, const char *value);
-    BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, int value);
 
     // BLE state characteristics callback
     class StateChangeCharacteristicsCallbacks : public BLECharacteristicCallbacks {
