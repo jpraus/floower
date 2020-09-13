@@ -5,6 +5,7 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
+#include <BLE2902.h>
 #include "floower.h"
 
 #define STATE_PACKET_SIZE 4
@@ -47,13 +48,15 @@ class Remote {
     Remote(Floower *floower);
     void init();
     void update();
+    void sendBatteryLevel(int level);
 
   private:
     Floower *floower;
     BLEServer *server = NULL;
-    //BLECharacteristic * pTxCharacteristic;
+    BLEService *batteryService = NULL;
 
     bool deviceConnected = false;
+    bool initialized = false;
 
     BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, const char *value);
     BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, int value);

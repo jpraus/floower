@@ -8,7 +8,6 @@
 #define FLOOWER_NAME_UUID "ab130585-2b27-498e-a5a5-019391317350" // string
 #define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // see StatePacketData
 #define FLOOWER_STATE_CHANGE_UUID "11226015-0424-44d3-b854-9fc332756cbf" // see StateChangePacketData
-#define FLOOWER_COLOR_RGB_UUID "151a039e-68ee-4009-853d-cd9d271e4a6e" // 3 bytes (R + G + B)
 #define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R +G + B), ..]
 //#define FLOOWER__UUID "c380596f-10d2-47a7-95af-95835e0361c7"
 //#define FLOOWER__UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b"
@@ -56,8 +55,9 @@ void Remote::init() {
   deviceInformationService->start();
 
   // Battery level profile service
-  BLEService *batteryService = server->createService(BATTERY_UUID);
-  createROCharacteristics(batteryService, BATTERY_LEVEL_UUID, 65);
+  batteryService = server->createService(BATTERY_UUID);
+  BLECharacteristic* batteryLevelCharacteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  batteryLevelCharacteristic->addDescriptor(new BLE2902());
   batteryService->start();
 
   // Floower customer service
@@ -69,11 +69,7 @@ void Remote::init() {
   //nameCharacteristic->setCallbacks(new ColorRgbCharacteristicsCallbacks());
   nameCharacteristic->setValue("Floower");
 
-  uint8_t color[3] = {69, 100, 255}; // RGB
-  BLECharacteristic* colorRgbCharacteristic = floowerService->createCharacteristic(FLOOWER_COLOR_RGB_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  colorRgbCharacteristic->setCallbacks(new ColorRGBCharacteristicsCallbacks(this));
-  colorRgbCharacteristic->setValue(color, 3);
-
+  // TODO
   StatePacket statePacket = {{0, 69, 100, 255}};
   BLECharacteristic* stateCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ);
   stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
@@ -90,10 +86,25 @@ void Remote::init() {
   advertising->setMinPreferred(0x12);
   advertising->start();
   Serial.println("Waiting a client connection to notify...");
+
+  initialized = true;
 }
 
 void Remote::update() {
-  // TODO: check if initialized
+  if (floower->isIdle() && initialized) {
+    // do something
+  }
+}
+
+void Remote::sendBatteryLevel(int level) {
+  if (floower->isIdle() && initialized && deviceConnected) {
+    BLECharacteristic* batteryLevelCharacteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
+    Serial.println("sending battery level");
+    Serial.println(level);
+    batteryLevelCharacteristic->setValue(level);
+    Serial.println("notify");
+    batteryLevelCharacteristic->notify();
+  }
 }
 
 BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {

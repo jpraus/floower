@@ -296,7 +296,7 @@ boolean Floower::setServoPowerOn(boolean powerOn) {
   return false; // no change
 }
 
-float Floower::readBatteryVoltage() {
+Battery Floower::readBatteryState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
 
@@ -310,8 +310,8 @@ float Floower::readBatteryVoltage() {
   Serial.print(level);
   Serial.println("%");
 
-  batteryVoltage = voltage;
-  return voltage;
+  batteryState = {voltage, level};
+  return batteryState;
 }
 
 bool Floower::isUSBPowered() {

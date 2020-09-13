@@ -1,9 +1,3 @@
-/**
- * TODO:
- * - refactor WiFi connectivity using events API
- * - move remote control and UDP commons to separate class
- */
-
 #define FIRMWARE_VERRSION "1.0"
 #define HARDWARE_REVISION "6.0" // TODO: save to persistent storage
 
@@ -108,7 +102,7 @@ void setup() {
   //esp_wifi_stop();
   //btStop();
   floower.init(configLedsModel);
-  floower.readBatteryVoltage(); // calibrate the ADC
+  floower.readBatteryState(); // calibrate the ADC
   floower.onLeafTouch(onLeafTouch);
   Floower::touchAttachInterruptProxy([](){ floower.touchISR(); });
   delay(50); // wait for init
@@ -116,11 +110,11 @@ void setup() {
   // check if there is enough power to run
   bool isBatteryDead = false;
   if (!floower.isUSBPowered()) {
-    float voltage = floower.readBatteryVoltage();
-    if (voltage < POWER_DEAD_THRESHOLD) {
+    Battery battery = floower.readBatteryState();
+    if (battery.voltage < POWER_DEAD_THRESHOLD) {
       delay(500);
-      voltage = floower.readBatteryVoltage(); // re-verify the voltage after .5s
-      isBatteryDead = voltage < POWER_DEAD_THRESHOLD;
+      battery = floower.readBatteryState(); // re-verify the voltage after .5s
+      isBatteryDead = battery.voltage < POWER_DEAD_THRESHOLD;
     }
   }
 
@@ -260,27 +254,29 @@ void powerWatchDog() {
     return;
   }
 
-  float voltage = floower.readBatteryVoltage();
+  Battery battery = floower.readBatteryState();
+  remote.sendBatteryLevel(battery.level);
+
   if (floower.isUSBPowered()) {
     floower.setLowPowerMode(false);
   }
-  else if (voltage < POWER_DEAD_THRESHOLD) {
+  else if (battery.voltage < POWER_DEAD_THRESHOLD) {
     Serial.print("Shutting down, battery is dead (");
-    Serial.print(voltage);
+    Serial.print(battery.voltage);
     Serial.println("V)");
     floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
     floower.setPetalsOpenLevel(0, 2500);
     changeState(STATE_SHUTDOWN);
   }
-  else if (!floower.isLowPowerMode() && voltage < POWER_LOW_ENTER_THRESHOLD) {
+  else if (!floower.isLowPowerMode() && battery.voltage < POWER_LOW_ENTER_THRESHOLD) {
     Serial.print("Entering low power mode (");
-    Serial.print(voltage);
+    Serial.print(battery.voltage);
     Serial.println("V)");
     floower.setLowPowerMode(true);
   }
-  else if (floower.isLowPowerMode() && voltage >= POWER_LOW_LEAVE_THRESHOLD) {
+  else if (floower.isLowPowerMode() && battery.voltage >= POWER_LOW_LEAVE_THRESHOLD) {
     Serial.print("Leaving low power mode (");
-    Serial.print(voltage);
+    Serial.print(battery.voltage);
     Serial.println("V)");
     floower.setLowPowerMode(false);
   }

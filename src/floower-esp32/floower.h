@@ -27,6 +27,11 @@ enum FloowerTouchType {
   RELEASE
 };
 
+struct Battery {
+  float voltage;
+  byte level;
+};
+
 class Floower {
   public:
     Floower();
@@ -46,7 +51,7 @@ class Floower {
     bool isIdle();
 
     void acty();
-    float readBatteryVoltage();
+    Battery readBatteryState();
     bool isUSBPowered();
     void setLowPowerMode(boolean lowPowerMode);
     bool isLowPowerMode();
@@ -99,7 +104,7 @@ class Floower {
     bool holdTouchRegistered = false;
 
     // battery
-    float batteryVoltage;
+    Battery batteryState;
     bool lowPowerMode;
 
     // acty
