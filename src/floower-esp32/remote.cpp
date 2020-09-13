@@ -68,7 +68,9 @@ void Remote::init() {
   // Battery level profile service
   batteryService = server->createService(BATTERY_UUID);
   BLECharacteristic* batteryLevelCharacteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  batteryLevelCharacteristic->addDescriptor(new BLE2902());
   BLECharacteristic* batteryStateCharacteristic = batteryService->createCharacteristic(BATTERY_POWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  batteryStateCharacteristic->addDescriptor(new BLE2902());
   batteryService->start();
 
   // Floower customer service
