@@ -1,5 +1,13 @@
 #include "remote.h"
 
+#if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
+#include "esp32-hal-log.h"
+#define LOG_TAG ""
+#else
+#include "esp_log.h"
+static const char* LOG_TAG = "Remote";
+#endif
+
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
@@ -27,6 +35,9 @@
 #define BATTERY_UUID "180F"
 #define BATTERY_LEVEL_UUID "2A19" // uint8
 #define BATTERY_POWER_STATE_UUID "2A1A" // uint8 of states
+
+#define BATTERY_POWER_STATE_CHARGING B00111011
+#define BATTERY_POWER_STATE_DISCHARGING B00101111
 
 Remote::Remote(Floower *floower)
     : floower(floower) {
@@ -56,13 +67,12 @@ void Remote::init() {
 
   // Battery level profile service
   batteryService = server->createService(BATTERY_UUID);
-  BLECharacteristic* batteryLevelCharacteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_NOTIFY);
-  batteryLevelCharacteristic->addDescriptor(new BLE2902());
+  BLECharacteristic* batteryLevelCharacteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  BLECharacteristic* batteryStateCharacteristic = batteryService->createCharacteristic(BATTERY_POWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
   batteryService->start();
 
   // Floower customer service
-  BLEService *floowerService = server->createService(FLOOWER_SERVICE_UUID);  
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
+  BLEService *floowerService = server->createService(FLOOWER_SERVICE_UUID);
 
   String name = "Floower";
   BLECharacteristic* nameCharacteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
@@ -96,14 +106,18 @@ void Remote::update() {
   }
 }
 
-void Remote::sendBatteryLevel(int level) {
+void Remote::sendBatteryLevel(uint8_t level, bool charging) {
   if (floower->isIdle() && initialized && deviceConnected) {
-    BLECharacteristic* batteryLevelCharacteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
-    Serial.println("sending battery level");
-    Serial.println(level);
-    batteryLevelCharacteristic->setValue(level);
-    Serial.println("notify");
-    batteryLevelCharacteristic->notify();
+    ESP_LOGI(LOG_TAG, "level: %d, charging: %d", level, charging);
+
+    BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
+    characteristic->setValue(&level, 1);
+    characteristic->notify();
+
+    uint8_t batteryState = charging ? BATTERY_POWER_STATE_CHARGING : BATTERY_POWER_STATE_DISCHARGING;
+    characteristic = batteryService->getCharacteristic(BATTERY_POWER_STATE_UUID);
+    characteristic->setValue(&batteryState, 1);
+    characteristic->notify();
   }
 }
 

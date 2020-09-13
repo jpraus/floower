@@ -254,10 +254,12 @@ void powerWatchDog() {
     return;
   }
 
+  bool charging = floower.isUSBPowered();
   Battery battery = floower.readBatteryState();
-  remote.sendBatteryLevel(battery.level);
 
-  if (floower.isUSBPowered()) {
+  remote.sendBatteryLevel(battery.level, charging);
+
+  if (charging) {
     floower.setLowPowerMode(false);
   }
   else if (battery.voltage < POWER_DEAD_THRESHOLD) {

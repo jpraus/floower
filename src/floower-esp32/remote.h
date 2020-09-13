@@ -5,7 +5,6 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
-#include <BLE2902.h>
 #include "floower.h"
 
 #define STATE_PACKET_SIZE 4
@@ -48,7 +47,7 @@ class Remote {
     Remote(Floower *floower);
     void init();
     void update();
-    void sendBatteryLevel(int level);
+    void sendBatteryLevel(uint8_t level, bool charging);
 
   private:
     Floower *floower;
