@@ -1,38 +1,27 @@
 #define FIRMWARE_VERRSION "1.0"
 #define HARDWARE_REVISION "6.0" // TODO: save to persistent storage
 
-#include <EEPROM.h>
 //#include <esp_wifi.h>
 //#include <WiFi.h>
-#include <esp_task_wdt.h>
+//#include <esp_task_wdt.h>
 #include "floower.h"
+#include "config.h"
 #include "remote.h"
 
-bool remoteEnabled = true;
-bool deepSleepEnabled = true;
+///////////// SOFTWARE CONFIGURATION
 
-///////////// PERSISTENT CONFIGURATION
+const bool remoteEnabled = true;
+const bool deepSleepEnabled = true;
 
-// never ever turn the write configuration flag you will overwrite the hardware settings and probably break the flower
-boolean writeConfiguration = false;
+///////////// HARDWARE CALIBRATION CONFIGURATION
+// following constant are used only when Floower is calibrated in factory
+// never ever uncomment the CALIBRATE_HARDWARE flag, you will overwrite your hardware calibration settings and probably break the Floower
 
-const byte CONFIG_VERSION = 1;
-unsigned int configServoClosed = 800; // 650
-unsigned int configServoOpen = configServoClosed + 500; // 700
-byte configLedsModel = LEDS_MODEL_WS2812B;
-//byte configLedsModel = LEDS_MODEL_SK6812;
-
-#define EEPROM_SIZE 10 // 10 bytes
-
-// do not change!
-#define MEMORY_VERSION 0
-#define MEMORY_LEDS_MODEL 1 // 0 - WS2812b, 1 - SK6812 (1 byte)
-#define MEMORY_SERVO_CLOSED 2 // integer (2 bytes)
-#define MEMORY_SERVO_OPEN 4 // integer (2 bytes)
-#define MEMORY_LEAF_SENSITIVTY 6 // 0-255 (1 byte)
-// hardware revision
-// serial number
-// name (max 50)?
+//#define CALIBRATE_HARDWARE 1
+#define SERVO_CLOSED 800 // 650
+#define SERVO_OPEN SERVO_CLOSED + 500 // 700
+#define SERIAL_NUMBER 32
+#define REVISION 6
 
 ///////////// POWER MODE
 
@@ -66,9 +55,10 @@ RgbColor colors[] = {
   colorRed,
   colorPink,
   colorPurple,
-  colorBlue
+  colorBlue,
+  colorGreen
 };
-const byte colorsCount = 7; // must match the size of colors array!
+const byte colorsCount = 8; // must match the size of colors array!
 long colorsUsed = 0;
 
 ///////////// CODE
@@ -80,6 +70,7 @@ long colorsUsed = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
 
+Config config;
 Floower floower;
 Remote remote(&floower);
 
@@ -101,7 +92,7 @@ void setup() {
   // init hardware
   //esp_wifi_stop();
   //btStop();
-  floower.init(configLedsModel);
+  floower.init();
   floower.readBatteryState(); // calibrate the ADC
   floower.onLeafTouch(onLeafTouch);
   Floower::touchAttachInterruptProxy([](){ floower.touchISR(); });
@@ -128,7 +119,7 @@ void setup() {
   }
   else {
     // normal operation
-    floower.initServo(configServoClosed, configServoOpen);
+    floower.initServo(config.servoClosed, config.servoOpen);
     if (!wasSleeping) {
       floower.setPetalsOpenLevel(0, 100);
     }
@@ -320,57 +311,10 @@ RgbColor nextRandomColor() {
 // configuration
 
 void configure() {
-  EEPROM.begin(EEPROM_SIZE);
-
-  if (writeConfiguration) {
-    Serial.println("New configuration to store to flash memory");
-
-    EEPROM.write(MEMORY_VERSION, CONFIG_VERSION);
-    EEPROM.write(MEMORY_LEDS_MODEL, configLedsModel);
-    EEPROMWriteInt(MEMORY_SERVO_CLOSED, configServoClosed);
-    EEPROMWriteInt(MEMORY_SERVO_OPEN, configServoOpen);
-    EEPROM.commit();
-
-    writeConfiguration = false;
-  }
-  else {
-    byte version = EEPROM.read(MEMORY_VERSION);
-    Serial.println(version);
-    if (version == 0) {
-      Serial.println("No configuration, using fallbacks");
-
-      // some safe defaults to prevent damage to flower
-      configLedsModel = 0;
-      configServoClosed = 1000;
-      configServoOpen = 1000;
-    }
-    else {
-      configLedsModel = EEPROM.read(MEMORY_LEDS_MODEL);
-      configServoClosed = EEPROMReadInt(MEMORY_SERVO_CLOSED);
-      configServoOpen = EEPROMReadInt(MEMORY_SERVO_OPEN);
-    }
-  }
-
-  Serial.println("Configuration ready:");
-  Serial.print("LEDs: ");
-  Serial.println(configLedsModel == 0 ? "WS2812b" : "SK6812");
-  Serial.print("Servo closed: ");
-  Serial.println(configServoClosed);
-  Serial.print("Servo open: ");
-  Serial.println(configServoOpen);
-}
-
-void EEPROMWriteInt(int address, int value) {
-  byte two = (value & 0xFF);
-  byte one = ((value >> 8) & 0xFF);
-  
-  EEPROM.write(address, two);
-  EEPROM.write(address + 1, one);
-}
-
-int EEPROMReadInt(int address) {
-  long two = EEPROM.read(address);
-  long one = EEPROM.read(address + 1);
- 
-  return ((two << 0) & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
+ config.begin();
+#ifdef CALIBRATE_HARDWARE
+  config.hardwareCalibration(SERVO_CLOSED, SERVO_OPEN, REVISION, SERIAL_NUMBER);
+  config.commit();
+#endif
+  config.load();
 }

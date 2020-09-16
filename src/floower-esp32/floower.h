@@ -2,9 +2,9 @@
 #define FLOOWER_H
 
 #include "Arduino.h"
+#include <NeoPixelBus.h>
 #include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
-#include "pixels.h"
 
 const RgbColor colorRed(127, 2, 0);
 const RgbColor colorGreen(0, 127, 0);
@@ -35,7 +35,7 @@ struct Battery {
 class Floower {
   public:
     Floower();
-    void init(byte ledsModel);
+    void init();
     void initServo(int closedAngle, int openAngle);
     void update();
 
@@ -59,9 +59,6 @@ class Floower {
     bool isLowPowerMode();
 
   private:
-    typedef void (*voidFnPtr)();
-    voidFnPtr CallBackFnPtr;
-  
     bool setServoPowerOn(boolean powerOn);
     bool setPixelsPowerOn(boolean powerOn);
 
@@ -88,7 +85,7 @@ class Floower {
     unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
 
     // leds
-    Pixels pixels;
+    NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> pixels;
 
     // leds state
     RgbColor pixelsColor; // current color

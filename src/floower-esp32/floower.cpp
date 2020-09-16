@@ -1,5 +1,13 @@
 #include "floower.h"
 
+#if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
+#include "esp32-hal-log.h"
+#define LOG_TAG ""
+#else
+#include "esp_log.h"
+static const char* LOG_TAG = "Floower";
+#endif
+
 #define NEOPIXEL_PIN 27
 #define NEOPIXEL_PWR_PIN 25
 
@@ -23,12 +31,11 @@
 Floower::Floower() : animations(2), pixels(7, NEOPIXEL_PIN) {
 }
 
-void Floower::init(byte ledsModel) {
+void Floower::init() {
   // LEDs
   pixelsPowerOn = true; // to make setPixelsPowerOn effective
   setPixelsPowerOn(false);
   pinMode(NEOPIXEL_PWR_PIN, OUTPUT);
-  pixels.init(ledsModel);
 
   pixelsColor = colorBlack;
   RgbColor pixelsOriginColor = colorBlack;
