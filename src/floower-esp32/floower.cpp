@@ -91,17 +91,17 @@ void Floower::update() {
     unsigned long sinceLastTouch = millis() - lastTouchTime;
 
     if (!touchRegistered) {
-      Serial.println("Touch");
+      ESP_LOGD(LOG_TAG, "Touch");
       touchRegistered = true;
       touchCallback(FloowerTouchType::TOUCH);
     }
     if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
-      Serial.println("Hold Touch");
+      ESP_LOGD(LOG_TAG, "Hold Touch %d", touchTime);
       holdTouchRegistered = true;
       touchCallback(FloowerTouchType::HOLD);
     }
     if (sinceLastTouch > TOUCH_FADE_TIME) {
-      Serial.println("Touch release");
+      ESP_LOGD(LOG_TAG, "Touch release");
       touchStartedTime = 0;
       touchEndedTime = now;
       touchRegistered = false;
@@ -110,7 +110,7 @@ void Floower::update() {
     }
   }
   else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOlDOWN_TIME) {
-    Serial.println("Touch enabled");
+    ESP_LOGD(LOG_TAG, "Touch enabled");
     touchEndedTime = 0;
   }
 }
@@ -149,11 +149,7 @@ void Floower::setPetalsOpenLevel(byte level, int transitionTime) {
   servoOriginAngle = servoAngle;
   servoTargetAngle = newAngle;
 
-  Serial.print("Petals level ");
-  Serial.print(petalsOpenLevel);
-  Serial.print("% (");
-  Serial.print(newAngle);
-  Serial.println(")");
+  ESP_LOGI(LOG_TAG, "Petals $d% (%d)", petalsOpenLevel, newAngle);
 
   // TODO: support transitionTime of 0
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
@@ -182,12 +178,7 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
   pixelsColorMode = colorMode;
   pixelsTargetColor = color;
 
-  Serial.print("Floower color ");
-  Serial.print(color.R);
-  Serial.print(",");
-  Serial.print(color.G);
-  Serial.print(",");
-  Serial.println(color.B);
+  ESP_LOGI(LOG_TAG, "Color %d,%d,%d", color.R, color.G, color.B);
 
   if (colorMode == TRANSITION) {
     pixelsOriginColor = pixelsColor;
@@ -278,14 +269,14 @@ void Floower::acty() {
 boolean Floower::setPixelsPowerOn(boolean powerOn) {
   if (powerOn && !pixelsPowerOn) {
     pixelsPowerOn = true;
-    Serial.println("LEDs power ON");
+    ESP_LOGD(LOG_TAG, "LEDs power ON");
     digitalWrite(NEOPIXEL_PWR_PIN, LOW);
     delay(5); // TODO
     return true;
   }
   if (!powerOn && pixelsPowerOn) {
     pixelsPowerOn = false;
-    Serial.println("LEDs power OFF");
+    ESP_LOGD(LOG_TAG, "LEDs power OFF");
     digitalWrite(NEOPIXEL_PWR_PIN, HIGH);
     return true;
   }
@@ -296,7 +287,7 @@ boolean Floower::setServoPowerOn(boolean powerOn) {
   if (powerOn && !servoPowerOn) {
     servoPowerOffTime = 0;
     servoPowerOn = true;
-    Serial.println("Servo power ON");
+    ESP_LOGD(LOG_TAG, "Servo power ON");
     digitalWrite(SERVO_PWR_PIN, LOW);
     delay(5); // TODO
     return true;
@@ -304,7 +295,7 @@ boolean Floower::setServoPowerOn(boolean powerOn) {
   if (!powerOn && servoPowerOn) {
     servoPowerOffTime = 0;
     servoPowerOn = false;
-    Serial.println("Servo power OFF");
+    ESP_LOGD(LOG_TAG, "Servo power OFF");
     digitalWrite(SERVO_PWR_PIN, HIGH);
     return true;
   }
@@ -317,13 +308,7 @@ Battery Floower::readBatteryState() {
 
   byte level = _min(_max(0, voltage - 3.3) * 125, 100); // 3.3 .. 0%, 4.1 .. 100%
 
-  Serial.print("Battery ");
-  Serial.print(reading);
-  Serial.print(" ");
-  Serial.print(voltage);
-  Serial.print("V ");
-  Serial.print(level);
-  Serial.println("%");
+  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%%", reading, voltage, level);
 
   batteryState = {voltage, level};
   return batteryState;

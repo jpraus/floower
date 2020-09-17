@@ -63,7 +63,7 @@ Remote remote(&floower, &config);
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Tulip INITIALIZING");
+  ESP_LOGI(LOG_TAG, "Initializing");
   configure();
   changeState(STATE_STANDBY);
 
@@ -71,7 +71,7 @@ void setup() {
   bool wasSleeping = false;
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
-    Serial.println("Waking up after Deep Sleep");
+	ESP_LOGI(LOG_TAG, "Waking up after Deep Sleep");
     floower.touchISR();
     wasSleeping = true;
   }
@@ -98,7 +98,7 @@ void setup() {
 
   if (isBatteryDead) {
     // battery is dead, do not wake up, shutdown after a status color
-    Serial.println("Battery is dead, shutting down");
+	ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
     changeState(STATE_BATTERYDEAD);
     planChangeState(STATE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
     floower.setLowPowerMode(true);
@@ -117,7 +117,7 @@ void setup() {
   }
 
   periodicOperationsTime = millis() + PERIODIC_OPERATIONS_INTERVAL; // TODO millis overflow
-  Serial.println("Tulip READY");
+  ESP_LOGI(LOG_TAG, "Ready");
 }
 
 void loop() {
@@ -162,18 +162,14 @@ void periodicOperation() {
 void planChangeState(byte newState, long timeout) {
   changeStateTo = newState;
   changeStateTime = millis() + timeout;
-  Serial.print("Planned change state: ");
-  Serial.print(newState);
-  Serial.print(" in ");
-  Serial.println(timeout);
+  ESP_LOGD(LOG_TAG, "Planned change state to %d in %d", newState, timeout);
 }
 
 void changeState(byte newState) {
   changeStateTime = 0;
   if (state != newState) {
     state = newState;
-    Serial.print("Change state: ");
-    Serial.println(newState);
+    ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
 
     if (newState == STATE_STANDBY && deepSleepEnabled && !remoteEnabled) {
       planChangeState(STATE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
@@ -241,23 +237,17 @@ void powerWatchDog() {
     floower.setLowPowerMode(false);
   }
   else if (battery.voltage < POWER_DEAD_THRESHOLD) {
-    Serial.print("Shutting down, battery is dead (");
-    Serial.print(battery.voltage);
-    Serial.println("V)");
+	ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
     floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
     floower.setPetalsOpenLevel(0, 2500);
     changeState(STATE_SHUTDOWN);
   }
   else if (!floower.isLowPowerMode() && battery.voltage < POWER_LOW_ENTER_THRESHOLD) {
-    Serial.print("Entering low power mode (");
-    Serial.print(battery.voltage);
-    Serial.println("V)");
+	ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", battery.voltage);
     floower.setLowPowerMode(true);
   }
   else if (floower.isLowPowerMode() && battery.voltage >= POWER_LOW_LEAVE_THRESHOLD) {
-    Serial.print("Leaving low power mode (");
-    Serial.print(battery.voltage);
-    Serial.println("V)");
+	ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", battery.voltage);
     floower.setLowPowerMode(false);
   }
 }
@@ -266,7 +256,7 @@ void enterDeepSleep() {
   // TODO: move to floower class
   touchAttachInterrupt(4, [](){}, 50); // register interrupt to enable wakeup
   esp_sleep_enable_touchpad_wakeup();
-  Serial.println("Going to sleep now");
+  ESP_LOGI(LOG_TAG, "Going to sleep now");
   //esp_wifi_stop();
   btStop();
   esp_deep_sleep_start();

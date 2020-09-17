@@ -75,8 +75,7 @@ void Remote::init() {
 
   // device name characteristics
   BLECharacteristic* nameCharacteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  //nameCharacteristic->setValue(config->name.c_str());
-  //Serial.println(config->name);
+  nameCharacteristic->setValue(config->name.c_str());
   nameCharacteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
 
   // state + state change characteristics
