@@ -1,4 +1,5 @@
 #include "config.h"
+#include "math.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -29,7 +30,7 @@ void Config::load() {
     commit();
   }
   else {
-    revision = EEPROM.read(EEPROM_ADDRESS_REVISION);
+    hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
     serialNumber = readInt(EEPROM_ADDRESS_SERIALNUMBER);
     touchTreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_TRESHOLD);
     behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
@@ -38,25 +39,25 @@ void Config::load() {
   }
 
   ESP_LOGI(LOG_TAG, "Config ready");
-  ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d", servoClosed, servoOpen, revision, serialNumber);
-  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, %s", touchTreshold, behavior, name);
+  ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
+  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, %s", touchTreshold, behavior, name.c_str());
   for (uint8_t i = 0; i < colorSchemeSize; i++) {
     ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
   }
 }
 
-void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t revision, unsigned int serialNumber) {
-  ESP_LOGW(LOG_TAG, "New HW config: %d -> %d, R%d, SN%d", servoClosed, servoOpen, revision, serialNumber);
+void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber) {
+  ESP_LOGW(LOG_TAG, "New HW config: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
   EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
   EEPROM.write(EEPROM_ADDRESS_LEDS_MODEL, 0); // 0 - WS2812b, 1 - SK6812 not used any longer
   writeInt(EEPROM_ADDRESS_SERVO_CLOSED, servoClosed);
   writeInt(EEPROM_ADDRESS_SERVO_OPEN, servoOpen);
-  EEPROM.write(EEPROM_ADDRESS_REVISION, revision);
+  EEPROM.write(EEPROM_ADDRESS_REVISION, hardwareRevision);
   writeInt(EEPROM_ADDRESS_SERIALNUMBER, serialNumber);
 
   this->servoClosed = servoClosed;
   this->servoOpen = servoOpen;
-  this->revision = revision;
+  this->hardwareRevision = hardwareRevision;
   this->serialNumber = serialNumber;
 }
 
@@ -98,7 +99,7 @@ void Config::setColorScheme(RgbColor* colors, uint8_t size) {
 
 void Config::writeColorScheme() {
   int8_t address;
-  for (uint8_t i = 0; i < colorSchemeSize; i++) {
+  for (uint8_t i = 0; i < colorSchemeSize && i < COLOR_SCHEME_MAX_LENGTH; i++) {
     address = EEPROM_ADDRESS_COLOR_SCHEME + i * 3;
     EEPROM.write(address + 0, colorScheme[i].R);
     EEPROM.write(address + 1, colorScheme[i].G);
@@ -109,8 +110,7 @@ void Config::writeColorScheme() {
 
 void Config::readColorScheme() {
   int8_t address;
-  colorSchemeSize = EEPROM.read(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH);
-
+  colorSchemeSize = min(EEPROM.read(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH), (uint8_t) COLOR_SCHEME_MAX_LENGTH);
   for(uint8_t i = 0; i < colorSchemeSize; i++) {
     address = EEPROM_ADDRESS_COLOR_SCHEME + i * 3;
     colorScheme[i] = RgbColor(EEPROM.read(address + 0), EEPROM.read(address + 1), EEPROM.read(address + 2));
@@ -119,18 +119,18 @@ void Config::readColorScheme() {
 
 void Config::setName(String name) {
   this->name = name;
-  uint8_t length = name.length();
-  for (uint8_t i = 0; i < length && i < NAME_MAX_LENGTH; i++) {
+  uint8_t length = min((uint8_t) name.length(), (uint8_t) NAME_MAX_LENGTH);
+  for (uint8_t i = 0; i < length; i++) {
     EEPROM.write(EEPROM_ADDRESS_NAME + i, name[i]);
   }
   EEPROM.write(EEPROM_ADDRESS_NAME_LENGTH, length);
 }
 
 void Config::readName() {
-  char data[NAME_MAX_LENGTH + 1];
-  uint8_t length = EEPROM.read(EEPROM_ADDRESS_NAME_LENGTH);
+  uint8_t length = min(EEPROM.read(EEPROM_ADDRESS_NAME_LENGTH), (uint8_t) NAME_MAX_LENGTH);
+  char data[length + 1];
 
-  for(uint8_t i = 0; i < length && i < NAME_MAX_LENGTH; i++) {
+  for(uint8_t i = 0; i < length; i++) {
     data[i] = EEPROM.read(EEPROM_ADDRESS_NAME + i);
   }
   data[length] = '\0';
@@ -155,48 +155,3 @@ unsigned int Config::readInt(unsigned int address) {
 void Config::commit() {
   EEPROM.commit();
 }
-
-/*
-void configure() {
-  EEPROM.begin(EEPROM_SIZE);
-
-  if (writeConfiguration) {
-    Serial.println("New configuration to store to flash memory");
-
-    EEPROM.write(MEMORY_VERSION, CONFIG_VERSION);
-    EEPROM.write(MEMORY_LEDS_MODEL, configLedsModel);
-    EEPROMWriteInt(MEMORY_SERVO_CLOSED, configServoClosed);
-    EEPROMWriteInt(MEMORY_SERVO_OPEN, configServoOpen);
-    EEPROM.commit();
-
-    writeConfiguration = false;
-  }
-  else {
-    byte version = EEPROM.read(MEMORY_VERSION);
-    Serial.println(version);
-    if (version == 0) {
-      Serial.println("No configuration, using fallbacks");
-
-      // some safe defaults to prevent damage to flower
-      configLedsModel = 0;
-      configServoClosed = 1000;
-      configServoOpen = 1000;
-    }
-    else {
-      configLedsModel = EEPROM.read(MEMORY_LEDS_MODEL);
-      configServoClosed = EEPROMReadInt(MEMORY_SERVO_CLOSED);
-      configServoOpen = EEPROMReadInt(MEMORY_SERVO_OPEN);
-    }
-  }
-
-  Serial.println("Configuration ready:");
-  Serial.print("LEDs: ");
-  Serial.println(configLedsModel == 0 ? "WS2812b" : "SK6812");
-  Serial.print("Servo closed: ");
-  Serial.println(configServoClosed);
-  Serial.print("Servo open: ");
-  Serial.println(configServoOpen);
-}
-
-
-*/

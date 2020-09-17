@@ -6,6 +6,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include "config.h"
 #include "floower.h"
 
 #define STATE_PACKET_SIZE 4
@@ -45,15 +46,15 @@ typedef union StateChangePacket {
 
 class Remote {
   public:
-    Remote(Floower *floower);
+    Remote(Floower *floower, Config *config);
     void init();
     void update();
     void setState(uint8_t petalsOpenLevel, RgbColor color);
     void setBatteryLevel(uint8_t level, bool charging);
-    void setColorScheme(RgbColor* colors, uint8_t length);
 
   private:
     Floower *floower;
+    Config *config;
     BLEServer *server = NULL;
     BLEService *floowerService = NULL;
     BLEService *batteryService = NULL;
@@ -73,9 +74,9 @@ class Remote {
     };
 
     // BLE state characteristics callback
-    class ColorRGBCharacteristicsCallbacks : public BLECharacteristicCallbacks {
+    class NameCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        ColorRGBCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        NameCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
       private:
         Remote* remote ;
         void onWrite(BLECharacteristic *characteristic);

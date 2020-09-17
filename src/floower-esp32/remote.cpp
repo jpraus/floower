@@ -39,29 +39,26 @@ static const char* LOG_TAG = "Remote";
 #define BATTERY_POWER_STATE_CHARGING B00111011
 #define BATTERY_POWER_STATE_DISCHARGING B00101111
 
-Remote::Remote(Floower *floower)
-    : floower(floower) {
+Remote::Remote(Floower *floower, Config *config)
+    : floower(floower), config(config) {
 }
 
 void Remote::init() {
-  Serial.println("Initializing BLE server");
+  ESP_LOGI(LOG_TAG, "Initializing BLE server");
 
   // Create the BLE Device
-  BLEDevice::init("Floower");
+  BLEDevice::init(config->name.c_str());
 
   // Create the BLE Server
   server = BLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks(this));
 
-  // Start the service
-  Serial.println("Starting BLE services");
-
   // Device Information profile service
   BLEService *deviceInformationService = server->createService(DEVICE_INFORMATION_UUID);
   createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, "0016");
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, "1.0");
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, "1.0");
+  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, String(config->serialNumber).c_str());
+  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, String(config->firmwareVersion).c_str());
+  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, String(config->hardwareRevision).c_str());
   createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MANUFACTURER_NAME_UUID, "Floower Lab s.r.o.");
   deviceInformationService->start();
 
@@ -76,18 +73,27 @@ void Remote::init() {
   // Floower customer service
   floowerService = server->createService(FLOOWER_SERVICE_UUID);
 
-  String name = "Floower";
+  // device name characteristics
   BLECharacteristic* nameCharacteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  //nameCharacteristic->setCallbacks(new ColorRgbCharacteristicsCallbacks());
-  nameCharacteristic->setValue("Floower");
+  //nameCharacteristic->setValue(config->name.c_str());
+  //Serial.println(config->name);
+  nameCharacteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
 
-  // state
+  // state + state change characteristics
   floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ); // read
   BLECharacteristic* stateChangeCharacteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
   stateChangeCharacteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
 
   // color scheme characteristics
   BLECharacteristic* colorsSchemeCharacteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  size_t size = config->colorSchemeSize * 3;
+  uint8_t bytes[size];
+  for (uint8_t b = 0, i = 0; b < size; b += 3, i++) {
+    bytes[b] = config->colorScheme[i].R;
+    bytes[b + 1] = config->colorScheme[i].G;
+    bytes[b + 2] = config->colorScheme[i].B;
+  }
+  colorsSchemeCharacteristic->setValue(bytes, size);
   //colorsSchemeCharacteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
 
   floowerService->start();
@@ -99,8 +105,8 @@ void Remote::init() {
   advertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
   advertising->setMinPreferred(0x12);
   advertising->start();
-  Serial.println("Waiting a client connection to notify...");
 
+  ESP_LOGI(LOG_TAG, "Waiting a client connection to notify...");
   initialized = true;
 }
 
@@ -122,7 +128,7 @@ void Remote::setState(uint8_t petalsOpenLevel, RgbColor color) {
 
 void Remote::setBatteryLevel(uint8_t level, bool charging) {
   if (deviceConnected && batteryService != NULL && floower->isIdle()) {
-    ESP_LOGI(LOG_TAG, "level: %d, charging: %d", level, charging);
+    ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
 
     BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
     characteristic->setValue(&level, 1);
@@ -132,24 +138,6 @@ void Remote::setBatteryLevel(uint8_t level, bool charging) {
     characteristic = batteryService->getCharacteristic(BATTERY_POWER_STATE_UUID);
     characteristic->setValue(&batteryState, 1);
     characteristic->notify();
-  }
-}
-
-// max 10 colors?
-void Remote::setColorScheme(RgbColor* colors, uint8_t length) {
-  if (floowerService != NULL) {
-    ESP_LOGI(LOG_TAG, "%d colors", length);
-
-    size_t size = length * 3;
-    uint8_t bytes[size];
-    for (uint8_t b = 0, i = 0; b < size; b += 3, i++) {
-      bytes[b] = colors[i].R;
-      bytes[b + 1] = colors[i].G;
-      bytes[b + 2] = colors[i].B;
-    }
-
-    BLECharacteristic* characteristic = floowerService->getCharacteristic(FLOOWER_COLORS_SCHEME_UUID);
-    characteristic->setValue(bytes, size);
   }
 }
 
@@ -174,28 +162,29 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
   }
 }
 
-void Remote::ColorRGBCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
-  Serial.println("New color");
+void Remote::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
-  if (bytes.length() == 3) {
-    RgbColor color = RgbColor(bytes[0], bytes[1], bytes[2]);
-    Serial.print("Received Color: ");
-    Serial.print(color.R);
-    Serial.print(",");
-    Serial.print(color.G);
-    Serial.print(",");
-    Serial.println(color.B);
-    remote->floower->setColor(color, FloowerColorMode::TRANSITION, 100);
+  if (bytes.length() > 0) {
+    size_t length = min(bytes.length(), (unsigned int) NAME_MAX_LENGTH) + 1;
+    char data[length];
+    for (int i = 0; i < length; i ++) {
+      data[i] = bytes[i]; 
+    }
+    data[length] = '\0';
+
+    ESP_LOGI(LOG_TAG, "New name: %s", data);
+    remote->config->setName(String(data));
+    remote->config->commit();
   }
 }
 
 void Remote::ServerCallbacks::onConnect(BLEServer* server) {
-  Serial.println("Connected to client");
+  ESP_LOGI(LOG_TAG, "Connected to client");
   remote->deviceConnected = true;
 };
 
 void Remote::ServerCallbacks::onDisconnect(BLEServer* server) {
-  Serial.println("Disconnected, start advertising");
+  ESP_LOGI(LOG_TAG, "Disconnected, start advertising");
   remote->deviceConnected = false;
   remote->floower->setColor(RgbColor(0), FloowerColorMode::TRANSITION, 100);
   server->startAdvertising(); // restart advertising

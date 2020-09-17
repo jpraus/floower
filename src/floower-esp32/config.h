@@ -25,19 +25,20 @@
 #define EEPROM_ADDRESS_COLOR_SCHEME_LENGTH 22 // 1 byte - number of colors set in EEPROM_ADDRESS_COLOR_SCHEME (since version 2)
 #define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - lenght of data stored in EEPROM_ADDRESS_NAME (since version 2)
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (10x RGB set) - list of up to 10 colors (since version 2)
-#define EEPROM_ADDRESS_NAME 60 // (60-109) max 50 chars (since version 2)
+#define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
 
 #define COLOR_SCHEME_MAX_LENGTH 10
-#define NAME_MAX_LENGTH 50
+#define NAME_MAX_LENGTH 25 // BLE name limit
 
 // default values
 #define DEFAULT_TOUCH_TRESHOLD 45 // lower means lower sensitivity (45 is normal)
 
 class Config {
   public:
+    Config(uint8_t firmwareVersion) : firmwareVersion(firmwareVersion) {}
     void begin();
     void load();
-    void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t revision, unsigned int serialNumber);
+    void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
     void factorySettings();
     void setTouchTreshold(uint8_t touchTreshold);
     void setBehavior(uint8_t behavior);
@@ -47,7 +48,8 @@ class Config {
 
     unsigned int servoClosed = 1000; // default safe values
     unsigned int servoOpen = 1000;
-    uint8_t revision = 0;
+    uint8_t hardwareRevision = 0;
+    uint8_t firmwareVersion = 0;
     unsigned int serialNumber = 0;
     
     uint8_t touchTreshold = DEFAULT_TOUCH_TRESHOLD;

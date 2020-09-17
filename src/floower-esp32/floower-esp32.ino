@@ -1,6 +1,3 @@
-#define FIRMWARE_VERRSION "1.0"
-#define HARDWARE_REVISION "6.0" // TODO: save to persistent storage
-
 //#include <esp_wifi.h>
 //#include <WiFi.h>
 //#include <esp_task_wdt.h>
@@ -10,6 +7,7 @@
 
 ///////////// SOFTWARE CONFIGURATION
 
+#define FIRMWARE_VERSION 2
 const bool remoteEnabled = true;
 const bool deepSleepEnabled = true;
 
@@ -48,17 +46,6 @@ bool colorPickerOn = false;
 long changeStateTime = 0;
 byte changeStateTo;
 
-RgbColor colors[] = {
-  colorWhite,
-  colorYellow,
-  colorOrange,
-  colorRed,
-  colorPink,
-  colorPurple,
-  colorBlue,
-  colorGreen
-};
-const byte colorsCount = 8; // must match the size of colors array!
 long colorsUsed = 0;
 
 ///////////// CODE
@@ -70,9 +57,9 @@ long colorsUsed = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
 
-Config config;
+Config config(FIRMWARE_VERSION);
 Floower floower;
-Remote remote(&floower);
+Remote remote(&floower, &config);
 
 void setup() {
   Serial.begin(115200);
@@ -150,7 +137,6 @@ void loop() {
   if (initRemoteTime > 0 && initRemoteTime < now) {
     initRemoteTime = 0;
     remote.init();
-    remote.setColorScheme(colors, colorsCount);
   }
 
   // update state machine
@@ -288,7 +274,7 @@ void enterDeepSleep() {
 
 RgbColor nextRandomColor() {
   if (colorsUsed > 0) {
-    long maxColors = pow(2, colorsCount) - 1;
+    long maxColors = pow(2, config.colorSchemeSize) - 1;
     if (maxColors == colorsUsed) {
       colorsUsed = 0; // all colors used, reset
     }
@@ -296,22 +282,22 @@ RgbColor nextRandomColor() {
 
   byte colorIndex;
   long colorCode;
-  int maxIterations = colorsCount * 3;
+  int maxIterations = config.colorSchemeSize * 3;
 
   do {
-    colorIndex = random(0, colorsCount);
+    colorIndex = random(0, config.colorSchemeSize);
     colorCode = 1 << colorIndex;
     maxIterations--;
   } while ((colorsUsed & colorCode) > 0 && maxIterations > 0); // already used before all the rest colors
 
   colorsUsed += colorCode;
-  return colors[colorIndex];
+  return config.colorScheme[colorIndex];
 }
 
 // configuration
 
 void configure() {
- config.begin();
+  config.begin();
 #ifdef CALIBRATE_HARDWARE
   config.hardwareCalibration(SERVO_CLOSED, SERVO_OPEN, REVISION, SERIAL_NUMBER);
   config.commit();
