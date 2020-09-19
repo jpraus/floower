@@ -93,7 +93,7 @@ void Remote::init() {
     bytes[b + 2] = config->colorScheme[i].B;
   }
   colorsSchemeCharacteristic->setValue(bytes, size);
-  //colorsSchemeCharacteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
+  colorsSchemeCharacteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
 
   floowerService->start();
 
@@ -160,6 +160,24 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
     }
   }
 }
+
+void Remote::ColorsSchemeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+  std::string bytes = characteristic->getValue();
+  if (bytes.length() > 0) {
+    size_t size = floor(bytes.length() / 3);
+    size_t bytesSize = size * 3;
+    RgbColor colors[size];
+
+    for (uint8_t b = 0, i = 0; b < bytesSize; b += 3, i++) {
+      colors[i] = RgbColor(bytes[b], bytes[b + 1], bytes[b + 2]);
+    }
+
+    ESP_LOGI(LOG_TAG, "New color scheme: %d", size);
+    remote->config->setColorScheme(colors, size);
+    remote->config->commit();
+  }
+}
+
 
 void Remote::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();

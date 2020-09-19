@@ -6,14 +6,15 @@
 #include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
 
-const RgbColor colorRed(127, 2, 0);
-const RgbColor colorGreen(0, 127, 0);
-const RgbColor colorBlue(0, 20, 127);
-const RgbColor colorYellow(127, 70, 0);
-const RgbColor colorOrange(127, 30, 0);
-const RgbColor colorWhite(127);
-const RgbColor colorPurple(127, 0, 127);
-const RgbColor colorPink(127, 0, 50);
+// default intensity is 70% (178)
+const RgbColor colorRed(156, 0, 0);
+const RgbColor colorGreen(40, 178, 0);
+const RgbColor colorBlue(0, 65, 178);
+const RgbColor colorYellow(178, 170, 0);
+const RgbColor colorOrange(178, 64, 0);
+const RgbColor colorWhite(178);
+const RgbColor colorPurple(148, 0, 178);
+const RgbColor colorPink(178, 0, 73);
 const RgbColor colorBlack(0);
 
 enum FloowerColorMode {

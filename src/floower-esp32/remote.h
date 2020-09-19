@@ -73,10 +73,19 @@ class Remote {
         void onWrite(BLECharacteristic *characteristic);
     };
 
-    // BLE state characteristics callback
+    // BLE name characteristics callback
     class NameCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
         NameCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+      private:
+        Remote* remote ;
+        void onWrite(BLECharacteristic *characteristic);
+    };
+
+    // BLE color scheme characteristics callback
+    class ColorsSchemeCharacteristicsCallbacks : public BLECharacteristicCallbacks {
+      public:
+        ColorsSchemeCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
       private:
         Remote* remote ;
         void onWrite(BLECharacteristic *characteristic);

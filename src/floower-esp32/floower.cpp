@@ -149,7 +149,7 @@ void Floower::setPetalsOpenLevel(byte level, int transitionTime) {
   servoOriginAngle = servoAngle;
   servoTargetAngle = newAngle;
 
-  ESP_LOGI(LOG_TAG, "Petals $d% (%d)", petalsOpenLevel, newAngle);
+  ESP_LOGI(LOG_TAG, "Petals %d%% (%d)", petalsOpenLevel, newAngle);
 
   // TODO: support transitionTime of 0
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
