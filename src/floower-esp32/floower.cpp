@@ -16,7 +16,6 @@ static const char* LOG_TAG = "Floower";
 #define SERVO_POWER_OFF_DELAY 500
 
 #define TOUCH_SENSOR_PIN 4
-#define TOUCH_TRESHOLD 45 // lower means lower sensitivity (45 is normal)
 #define TOUCH_FADE_TIME 50 // 50
 #define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
 #define TOUCH_COOlDOWN_TIME 300 // prevent random touch within 300ms after last touch
@@ -28,8 +27,7 @@ static const char* LOG_TAG = "Floower";
 #define ACTY_LED_PIN 2
 #define ACTY_BLINK_TIME 50
 
-Floower::Floower() : animations(2), pixels(7, NEOPIXEL_PIN) {
-}
+Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
 
 void Floower::init() {
   // LEDs
@@ -53,13 +51,13 @@ void Floower::init() {
   digitalWrite(ACTY_LED_PIN, HIGH);
 }
 
-void Floower::initServo(int closedAngle, int openAngle) {
+void Floower::initServo() {
   // default servo configuration
-  servoOpenAngle = openAngle;
-  servoClosedAngle = closedAngle;
-  servoAngle = closedAngle;
-  servoOriginAngle = closedAngle;
-  servoTargetAngle = closedAngle;
+  servoOpenAngle = config->servoOpen;
+  servoClosedAngle = config->servoClosed;
+  servoAngle = config->servoClosed;
+  servoOriginAngle = config->servoClosed;
+  servoTargetAngle = config->servoClosed;
   petalsOpenLevel = -1; // 0-100% (-1 unknown)
 
   // servo
@@ -123,7 +121,7 @@ void Floower::touchISR() {
 }
 
 void Floower::touchAttachInterruptProxy(void (*callback)()) {
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, TOUCH_TRESHOLD); 
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, 45);
 }
 
 void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {

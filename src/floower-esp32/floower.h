@@ -2,20 +2,10 @@
 #define FLOOWER_H
 
 #include "Arduino.h"
+#include "config.h"
 #include <NeoPixelBus.h>
 #include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
-
-// default intensity is 70% (178)
-const RgbColor colorRed(156, 0, 0);
-const RgbColor colorGreen(40, 178, 0);
-const RgbColor colorBlue(0, 65, 178);
-const RgbColor colorYellow(178, 170, 0);
-const RgbColor colorOrange(178, 64, 0);
-const RgbColor colorWhite(178);
-const RgbColor colorPurple(148, 0, 178);
-const RgbColor colorPink(178, 0, 73);
-const RgbColor colorBlack(0);
 
 enum FloowerColorMode {
   TRANSITION,
@@ -35,9 +25,9 @@ struct Battery {
 
 class Floower {
   public:
-    Floower();
+    Floower(Config *config);
     void init();
-    void initServo(int closedAngle, int openAngle);
+    void initServo();
     void update();
 
     void touchISR();
@@ -71,6 +61,8 @@ class Floower {
     void showColor(RgbColor color);
 
     void handleTimers();
+
+    Config *config;
 
     // servo config
     Servo servo;

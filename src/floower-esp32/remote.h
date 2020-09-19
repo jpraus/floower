@@ -91,6 +91,15 @@ class Remote {
         void onWrite(BLECharacteristic *characteristic);
     };
 
+    // BLE touch treshold characteristics callback
+    class TouchTresholdCharacteristicsCallbacks : public BLECharacteristicCallbacks {
+      public:
+        TouchTresholdCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+      private:
+        Remote* remote ;
+        void onWrite(BLECharacteristic *characteristic);
+    };
+
     // BLE server callbacks impl
     class ServerCallbacks : public BLEServerCallbacks {
       public:

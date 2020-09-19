@@ -58,7 +58,7 @@ long periodicOperationsTime = 0;
 long initRemoteTime = 0;
 
 Config config(FIRMWARE_VERSION);
-Floower floower;
+Floower floower(&config);
 Remote remote(&floower, &config);
 
 void setup() {
@@ -106,7 +106,7 @@ void setup() {
   }
   else {
     // normal operation
-    floower.initServo(config.servoClosed, config.servoOpen);
+    floower.initServo();
     if (!wasSleeping) {
       floower.setPetalsOpenLevel(0, 100);
     }

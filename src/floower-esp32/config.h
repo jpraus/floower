@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 #include <EEPROM.h>
-#include "floower.h"
+#include <NeoPixelBus.h>
 
 // max 512B of EEPROM
 
@@ -32,6 +32,17 @@
 
 // default values
 #define DEFAULT_TOUCH_TRESHOLD 45 // lower means lower sensitivity (45 is normal)
+
+// default intensity is 70% (178)
+const RgbColor colorRed(156, 0, 0);
+const RgbColor colorGreen(40, 178, 0);
+const RgbColor colorBlue(0, 65, 178);
+const RgbColor colorYellow(178, 170, 0);
+const RgbColor colorOrange(178, 64, 0);
+const RgbColor colorWhite(178);
+const RgbColor colorPurple(148, 0, 178);
+const RgbColor colorPink(178, 0, 73);
+const RgbColor colorBlack(0);
 
 class Config {
   public:
