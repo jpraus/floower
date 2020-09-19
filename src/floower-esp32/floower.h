@@ -30,8 +30,8 @@ class Floower {
     void initServo();
     void update();
 
-    void touchISR();
-    void static touchAttachInterruptProxy(void (*callback)()); // Raw touch interrupt. Need to be relayed to touchISR() due to limittation of touchAttachInterrupt function
+    void registerOutsideTouch();
+    void enableTouch();
     void onLeafTouch(void (*callback)(FloowerTouchType type));
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
@@ -61,6 +61,7 @@ class Floower {
     void showColor(RgbColor color);
 
     void handleTimers();
+    static void touchISR();
 
     Config *config;
 
@@ -89,9 +90,9 @@ class Floower {
 
     // touch
     void (*touchCallback)(FloowerTouchType type);
-    unsigned long touchStartedTime = 0;
-    unsigned long touchEndedTime = 0;
-    unsigned long lastTouchTime = 0;
+    static unsigned long touchStartedTime;
+    static unsigned long touchEndedTime;
+    static unsigned long lastTouchTime;
     bool touchRegistered = false;
     bool holdTouchRegistered = false;
 

@@ -27,6 +27,10 @@ static const char* LOG_TAG = "Floower";
 #define ACTY_LED_PIN 2
 #define ACTY_BLINK_TIME 50
 
+unsigned long Floower::touchStartedTime = 0;
+unsigned long Floower::touchEndedTime = 0;
+unsigned long Floower::lastTouchTime = 0;
+
 Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
 
 void Floower::init() {
@@ -49,6 +53,9 @@ void Floower::init() {
   // acty LED
   pinMode(ACTY_LED_PIN, OUTPUT);
   digitalWrite(ACTY_LED_PIN, HIGH);
+
+  // this need to be done in init in order to enable deep sleep wake up
+  enableTouch();
 }
 
 void Floower::initServo() {
@@ -113,15 +120,20 @@ void Floower::update() {
   }
 }
 
+void Floower::registerOutsideTouch() {
+  touchISR();
+}
+
+void Floower::enableTouch() {
+  detachInterrupt(TOUCH_SENSOR_PIN);
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchTreshold);
+}
+
 void Floower::touchISR() {
   lastTouchTime = millis();
   if (touchStartedTime == 0 && touchEndedTime == 0) {
     touchStartedTime = lastTouchTime;
   }
-}
-
-void Floower::touchAttachInterruptProxy(void (*callback)()) {
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, callback, 45);
 }
 
 void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {

@@ -71,8 +71,8 @@ void setup() {
   bool wasSleeping = false;
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
   if (deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
-	ESP_LOGI(LOG_TAG, "Waking up after Deep Sleep");
-    floower.touchISR();
+	  ESP_LOGI(LOG_TAG, "Waking up after Deep Sleep");
+    floower.registerOutsideTouch();
     wasSleeping = true;
   }
 
@@ -81,8 +81,6 @@ void setup() {
   //btStop();
   floower.init();
   floower.readBatteryState(); // calibrate the ADC
-  floower.onLeafTouch(onLeafTouch);
-  Floower::touchAttachInterruptProxy([](){ floower.touchISR(); });
   delay(50); // wait for init
 
   // check if there is enough power to run
@@ -98,7 +96,7 @@ void setup() {
 
   if (isBatteryDead) {
     // battery is dead, do not wake up, shutdown after a status color
-	ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
+	  ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
     changeState(STATE_BATTERYDEAD);
     planChangeState(STATE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
     floower.setLowPowerMode(true);
@@ -106,6 +104,7 @@ void setup() {
   }
   else {
     // normal operation
+    floower.onLeafTouch(onLeafTouch);
     floower.initServo();
     if (!wasSleeping) {
       floower.setPetalsOpenLevel(0, 100);
@@ -237,17 +236,17 @@ void powerWatchDog() {
     floower.setLowPowerMode(false);
   }
   else if (battery.voltage < POWER_DEAD_THRESHOLD) {
-	ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
+    ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
     floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
     floower.setPetalsOpenLevel(0, 2500);
     changeState(STATE_SHUTDOWN);
   }
   else if (!floower.isLowPowerMode() && battery.voltage < POWER_LOW_ENTER_THRESHOLD) {
-	ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", battery.voltage);
+    ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", battery.voltage);
     floower.setLowPowerMode(true);
   }
   else if (floower.isLowPowerMode() && battery.voltage >= POWER_LOW_LEAVE_THRESHOLD) {
-	ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", battery.voltage);
+    ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", battery.voltage);
     floower.setLowPowerMode(false);
   }
 }

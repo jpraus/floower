@@ -207,6 +207,7 @@ void Remote::TouchTresholdCharacteristicsCallbacks::onWrite(BLECharacteristic *c
     ESP_LOGI(LOG_TAG, "New touch treshold: %d", bytes[0]);
     remote->config->setTouchTreshold(bytes[0]);
     remote->config->commit();
+    remote->floower->enableTouch();
   }
 }
 
