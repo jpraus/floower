@@ -29,10 +29,10 @@ Earlybird Prototypes currently available on [floower.io](https://floower.io). Jo
 
 ### Logic Boards History
 
-* **rev5**
+* **Revision 5**
   * Serial numbers 0001 - 0018, 0021, 0022
   * The history starts here
-* **rev6**
+* **Revision 6**
   * Serial numbers 0019, 0020, 0023 - 0032
   * Added USB power detection circuitry
 
