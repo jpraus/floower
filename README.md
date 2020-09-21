@@ -35,7 +35,6 @@ Earlybird Prototypes currently available on [floower.io](https://floower.io). Jo
 * **rev6**
   * Serial numbers 0019, 0020, 0023 - 0032
   * Added USB power detection circuitry
-  * Serial numbers 00 - 0011
 
 ## Connecting flower to the computer
 
