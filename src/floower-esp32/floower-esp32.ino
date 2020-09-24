@@ -3,12 +3,13 @@
 //#include <esp_task_wdt.h>
 #include "floower.h"
 #include "config.h"
+#include "automaton.h"
 #include "remote.h"
 
 ///////////// SOFTWARE CONFIGURATION
 
 #define FIRMWARE_VERSION 2
-const bool remoteEnabled = true;
+const bool remoteEnabled = false;
 const bool deepSleepEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -28,44 +29,27 @@ const bool deepSleepEnabled = true;
 #define POWER_LOW_LEAVE_THRESHOLD 0 // leave state when voltage rise above this threshold (3.6)
 #define POWER_DEAD_THRESHOLD 3.4
 
-///////////// STATE OF FLOWER
-
-#define STATE_INIT 0
-#define STATE_WAKEUP 1
-#define STATE_STANDBY 2
-#define STATE_LIT 3
-#define STATE_BLOOMED 4
-#define STATE_CLOSED 5
-
-#define STATE_BATTERYDEAD 10
-#define STATE_SHUTDOWN 11
-
-byte state = STATE_INIT;
-bool colorPickerOn = false;
-
-long changeStateTime = 0;
-byte changeStateTo;
-
-long colorsUsed = 0;
-
 ///////////// CODE
 
+#define REMOTE_INIT_TIMEOUT 2000 // delay init of BLE to lower the power surge on startup
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 20000 // fall in deep sleep after timeout
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
 #define PERIODIC_OPERATIONS_INTERVAL 5000
 
+bool batteryDead = false;
+long deepSleepTime = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
 
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
+Automaton automaton(&floower, &config);
 Remote remote(&floower, &config);
 
 void setup() {
   Serial.begin(115200);
   ESP_LOGI(LOG_TAG, "Initializing");
   configure();
-  changeState(STATE_STANDBY);
 
   // after wake up setup
   bool wasSleeping = false;
@@ -81,70 +65,71 @@ void setup() {
   //btStop();
   floower.init();
   floower.readBatteryState(); // calibrate the ADC
-  delay(50); // wait for init
+  delay(50); // wait to warm-uo
 
   // check if there is enough power to run
-  bool isBatteryDead = false;
   if (!floower.isUSBPowered()) {
     Battery battery = floower.readBatteryState();
     if (battery.voltage < POWER_DEAD_THRESHOLD) {
       delay(500);
       battery = floower.readBatteryState(); // re-verify the voltage after .5s
-      isBatteryDead = battery.voltage < POWER_DEAD_THRESHOLD;
+      batteryDead = battery.voltage < POWER_DEAD_THRESHOLD;
     }
   }
 
-  if (isBatteryDead) {
+  if (batteryDead) {
     // battery is dead, do not wake up, shutdown after a status color
 	  ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
-    changeState(STATE_BATTERYDEAD);
-    planChangeState(STATE_SHUTDOWN, BATTERY_DEAD_WARNING_DURATION);
+    planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     floower.setLowPowerMode(true);
     floower.setColor(colorRed, FloowerColorMode::PULSE, 1000);
   }
   else {
     // normal operation
-    floower.onLeafTouch(onLeafTouch);
     floower.initServo();
     if (!wasSleeping) {
-      floower.setPetalsOpenLevel(0, 100);
+      floower.setPetalsOpenLevel(0, 100); // reset petals position to known one
     }
-  }
+    if (remoteEnabled) {
+      initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
+    }
 
-  if (remoteEnabled) {
-    initRemoteTime = millis() + 5000; // defer init of BLE by 5 seconds
+    automaton.init();
+    periodicOperationsTime = millis() + PERIODIC_OPERATIONS_INTERVAL; // TODO millis overflow
+    ESP_LOGI(LOG_TAG, "Ready");
   }
-
-  periodicOperationsTime = millis() + PERIODIC_OPERATIONS_INTERVAL; // TODO millis overflow
-  ESP_LOGI(LOG_TAG, "Ready");
 }
 
 void loop() {
   floower.update();
+  automaton.update();
   remote.update();
 
   // timers
   long now = millis();
-  if (periodicOperationsTime > 0 && periodicOperationsTime < now) {
+  if (periodicOperationsTime != 0 && periodicOperationsTime < now) {
     periodicOperationsTime = now + PERIODIC_OPERATIONS_INTERVAL;
     periodicOperation();
   }
-  if (changeStateTime > 0 && changeStateTime < now) {
-    changeStateTime = 0;
-    changeState(changeStateTo);
-  }
-  if (initRemoteTime > 0 && initRemoteTime < now) {
+  if (initRemoteTime != 0 && initRemoteTime < now) {
     initRemoteTime = 0;
     remote.init();
   }
-
-  // update state machine
-  if (state == STATE_WAKEUP) {
-    floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-    changeState(STATE_LIT);
-  }
-  else if (state == STATE_SHUTDOWN && !floower.arePetalsMoving()) {
+  if (deepSleepTime != 0 && deepSleepTime < now && !floower.arePetalsMoving()) {
+    deepSleepTime = 0;
     enterDeepSleep();
+  }
+
+  // plan to enter deep sleep in inactivity
+  if (deepSleepEnabled && !batteryDead) {
+    if (automaton.canEnterDeepSleep() && remote.canEnterDeepSleep()) {
+      if (deepSleepTime == 0) {
+        planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
+      }
+    }
+    else if (deepSleepTime != 0) {
+      deepSleepTime = 0;
+    }
   }
 
   // save some power when flower is idle
@@ -158,78 +143,13 @@ void periodicOperation() {
   powerWatchDog();
 }
 
-void planChangeState(byte newState, long timeout) {
-  changeStateTo = newState;
-  changeStateTime = millis() + timeout;
-  ESP_LOGD(LOG_TAG, "Planned change state to %d in %d", newState, timeout);
-}
-
-void changeState(byte newState) {
-  changeStateTime = 0;
-  if (state != newState) {
-    state = newState;
-    ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
-
-    if (newState == STATE_STANDBY && deepSleepEnabled && !remoteEnabled) {
-      planChangeState(STATE_SHUTDOWN, DEEP_SLEEP_INACTIVITY_TIMEOUT);
-    }
-  }
-}
-
-void onLeafTouch(FloowerTouchType touchType) {
-  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN) {
-    return;
-  }
-
-  switch (touchType) {
-    case RELEASE:
-      if (colorPickerOn) {
-        floower.stopColorPicker();
-        colorPickerOn = false;
-      }
-      else if (floower.isIdle()) {
-        if (state == STATE_STANDBY) {
-          // open + set color
-          floower.setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
-          floower.setPetalsOpenLevel(100, 5000);
-          changeState(STATE_BLOOMED);
-        }
-        else if (state == STATE_LIT) {
-          // open
-          floower.setPetalsOpenLevel(100, 5000);
-          changeState(STATE_BLOOMED);
-        }
-        else if (state == STATE_BLOOMED) {
-          // close
-          floower.setPetalsOpenLevel(0, 5000);
-          changeState(STATE_CLOSED);
-        }
-        else if (state == STATE_CLOSED) {
-          // shutdown
-          floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
-          changeState(STATE_STANDBY);
-        }
-      }
-      break;
-
-    case HOLD:
-      floower.startColorPicker();
-      colorPickerOn = true;
-      if (state == STATE_STANDBY) {
-        changeState(STATE_LIT);
-      }
-      break;
-  }
-}
-
 void powerWatchDog() {
-  if (state == STATE_BATTERYDEAD || state == STATE_SHUTDOWN) {
+  if (batteryDead) {
     return;
   }
 
   bool charging = floower.isUSBPowered();
   Battery battery = floower.readBatteryState();
-
   remote.setBatteryLevel(battery.level, charging);
 
   if (charging) {
@@ -239,7 +159,8 @@ void powerWatchDog() {
     ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
     floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
     floower.setPetalsOpenLevel(0, 2500);
-    changeState(STATE_SHUTDOWN);
+    planDeepSleep(0);
+    batteryDead = true;
   }
   else if (!floower.isLowPowerMode() && battery.voltage < POWER_LOW_ENTER_THRESHOLD) {
     ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", battery.voltage);
@@ -251,39 +172,18 @@ void powerWatchDog() {
   }
 }
 
+void planDeepSleep(long timeoutMs) {
+  deepSleepTime = millis() + timeoutMs;
+  ESP_LOGI(LOG_TAG, "Sleep in %d", timeoutMs);
+}
+
 void enterDeepSleep() {
-  // TODO: move to floower class
-  touchAttachInterrupt(4, [](){}, 50); // register interrupt to enable wakeup
-  esp_sleep_enable_touchpad_wakeup();
   ESP_LOGI(LOG_TAG, "Going to sleep now");
+  esp_sleep_enable_touchpad_wakeup();
   //esp_wifi_stop();
   btStop();
   esp_deep_sleep_start();
 }
-
-RgbColor nextRandomColor() {
-  if (colorsUsed > 0) {
-    long maxColors = pow(2, config.colorSchemeSize) - 1;
-    if (maxColors == colorsUsed) {
-      colorsUsed = 0; // all colors used, reset
-    }
-  }
-
-  byte colorIndex;
-  long colorCode;
-  int maxIterations = config.colorSchemeSize * 3;
-
-  do {
-    colorIndex = random(0, config.colorSchemeSize);
-    colorCode = 1 << colorIndex;
-    maxIterations--;
-  } while ((colorsUsed & colorCode) > 0 && maxIterations > 0); // already used before all the rest colors
-
-  colorsUsed += colorCode;
-  return config.colorScheme[colorIndex];
-}
-
-// configuration
 
 void configure() {
   config.begin();

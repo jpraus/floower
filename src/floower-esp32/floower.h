@@ -3,6 +3,7 @@
 
 #include "Arduino.h"
 #include "config.h"
+#include <functional>
 #include <NeoPixelBus.h>
 #include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
@@ -23,6 +24,8 @@ struct Battery {
   byte level;
 };
 
+typedef std::function<void(const FloowerTouchType& type)> FloowerOnLeafTouchCallback;
+
 class Floower {
   public:
     Floower(Config *config);
@@ -32,7 +35,7 @@ class Floower {
 
     void registerOutsideTouch();
     void enableTouch();
-    void onLeafTouch(void (*callback)(FloowerTouchType type));
+    void onLeafTouch(FloowerOnLeafTouchCallback callback);
 
     void setPetalsOpenLevel(byte level, int transitionTime = 0);
     byte getPetalOpenLevel();
@@ -89,7 +92,7 @@ class Floower {
     bool pixelsPowerOn;
 
     // touch
-    void (*touchCallback)(FloowerTouchType type);
+    FloowerOnLeafTouchCallback touchCallback;
     static unsigned long touchStartedTime;
     static unsigned long touchEndedTime;
     static unsigned long lastTouchTime;

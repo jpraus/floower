@@ -49,6 +49,7 @@ class Remote {
     Remote(Floower *floower, Config *config);
     void init();
     void update();
+    bool canEnterDeepSleep();
     void setState(uint8_t petalsOpenLevel, RgbColor color);
     void setBatteryLevel(uint8_t level, bool charging);
 

@@ -124,6 +124,10 @@ void Remote::update() {
   }
 }
 
+bool Remote::canEnterDeepSleep() {
+  return !initialized;
+}
+
 void Remote::setState(uint8_t petalsOpenLevel, RgbColor color) {
   if (floowerService != NULL) {
     StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};

@@ -136,7 +136,7 @@ void Floower::touchISR() {
   }
 }
 
-void Floower::onLeafTouch(void (*callback)(FloowerTouchType type)) {
+void Floower::onLeafTouch(FloowerOnLeafTouchCallback callback) {
   touchCallback = callback;
 }
 
