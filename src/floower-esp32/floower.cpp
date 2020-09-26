@@ -99,17 +99,23 @@ void Floower::update() {
     if (!touchRegistered) {
       ESP_LOGD(LOG_TAG, "Touch Down");
       touchRegistered = true;
-      touchCallback(FloowerTouchEvent::TOUCH_DOWN);
+      if (touchCallback != NULL) {
+        touchCallback(FloowerTouchEvent::TOUCH_DOWN);
+      }
     }
     if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_TRESHOLD) {
       ESP_LOGD(LOG_TAG, "Long Touch %d", touchTime);
       longTouchRegistered = true;
-      touchCallback(FloowerTouchEvent::TOUCH_LONG);
+      if (touchCallback != NULL) {
+        touchCallback(FloowerTouchEvent::TOUCH_LONG);
+      }
     }
     if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
       ESP_LOGD(LOG_TAG, "Hold Touch %d", touchTime);
       holdTouchRegistered = true;
-      touchCallback(FloowerTouchEvent::TOUCH_HOLD);
+      if (touchCallback != NULL) {
+        touchCallback(FloowerTouchEvent::TOUCH_HOLD);
+      }
     }
     if (sinceLastTouch > TOUCH_FADE_TIME) {
       ESP_LOGD(LOG_TAG, "Touch Up %d", sinceLastTouch);
@@ -118,7 +124,9 @@ void Floower::update() {
       touchRegistered = false;
       longTouchRegistered = false;
       holdTouchRegistered = false;
-      touchCallback(FloowerTouchEvent::TOUCH_UP);
+      if (touchCallback != NULL) {
+        touchCallback(FloowerTouchEvent::TOUCH_UP);
+      }
     }
   }
   else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOLDOWN_TIME) {
@@ -147,7 +155,11 @@ void Floower::onLeafTouch(FloowerOnLeafTouchCallback callback) {
   touchCallback = callback;
 }
 
-void Floower::setPetalsOpenLevel(byte level, int transitionTime) {
+void Floower::onChange(FloowerChangeCallback callback) {
+  changeCallback = callback;
+}
+
+void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   if (level == petalsOpenLevel) {
     return; // no change, keep doing the old movement until done
   }
@@ -170,6 +182,10 @@ void Floower::setPetalsOpenLevel(byte level, int transitionTime) {
 
   // TODO: support transitionTime of 0
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
+
+  if (changeCallback != NULL) {
+    changeCallback(petalsOpenLevel, pixelsTargetColor);
+  }
 }
 
 void Floower::servoAnimationUpdate(const AnimationParam& param) {
@@ -183,7 +199,7 @@ void Floower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-byte Floower::getPetalOpenLevel() {
+uint8_t Floower::getPetalOpenLevel() {
   return servoAngle;
 }
 
@@ -204,6 +220,10 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
   if (colorMode == FLASH) {
     pixelsOriginColor = colorBlack; //RgbColor::LinearBlend(color, colorBlack, 0.95);
     animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
+  }
+
+  if (changeCallback != NULL) {
+    changeCallback(petalsOpenLevel, pixelsTargetColor);
   }
 }
 
@@ -323,7 +343,7 @@ Battery Floower::readBatteryState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
 
-  byte level = _min(_max(0, voltage - 3.3) * 125, 100); // 3.3 .. 0%, 4.1 .. 100%
+  uint8_t level = _min(_max(0, voltage - 3.3) * 125, 100); // 3.3 .. 0%, 4.1 .. 100%
 
   ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%%", reading, voltage, level);
 

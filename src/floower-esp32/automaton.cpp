@@ -89,7 +89,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       break;
 
     case TOUCH_HOLD:
-      if (state == STATE_STANDBY || state == STATE_CLOSED_RAINBOW) { // init remote when Floower closed (or rainbow started)
+      if (!remote->isConnected() && (state == STATE_STANDBY || state == STATE_CLOSED_RAINBOW)) { // init remote when Floower closed (or rainbow started)
         floower->setColor(colorBlue, FloowerColorMode::FLASH, 1000);
         remote->init();
         changeState(STATE_REMOTE_INIT);
@@ -107,7 +107,7 @@ RgbColor Automaton::nextRandomColor() {
     }
   }
 
-  byte colorIndex;
+  uint8_t colorIndex;
   long colorCode;
   int maxIterations = config->colorSchemeSize * 3;
 

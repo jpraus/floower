@@ -22,10 +22,11 @@ enum FloowerTouchEvent {
 
 struct Battery {
   float voltage;
-  byte level;
+  uint8_t level;
 };
 
 typedef std::function<void(const FloowerTouchEvent& event)> FloowerOnLeafTouchCallback;
+typedef std::function<void(const uint8_t petalsOpenLevel, const RgbColor color)> FloowerChangeCallback;
 
 class Floower {
   public:
@@ -37,9 +38,10 @@ class Floower {
     void registerOutsideTouch();
     void enableTouch();
     void onLeafTouch(FloowerOnLeafTouchCallback callback);
+    void onChange(FloowerChangeCallback callback);
 
-    void setPetalsOpenLevel(byte level, int transitionTime = 0);
-    byte getPetalOpenLevel();
+    void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
+    uint8_t getPetalOpenLevel();
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
     RgbColor getColor();
     void startRainbow();
@@ -68,6 +70,7 @@ class Floower {
     static void touchISR();
 
     Config *config;
+    FloowerChangeCallback changeCallback;
 
     // servo config
     Servo servo;
@@ -75,7 +78,7 @@ class Floower {
     unsigned int servoClosedAngle;
 
     // servo state
-    signed int petalsOpenLevel; // 0-100% (target angle in percentage)
+    int8_t petalsOpenLevel; // 0-100% (target angle in percentage)
     signed int servoAngle; // current angle
     signed int servoOriginAngle; // angle before animation
     signed int servoTargetAngle; // angle after animation

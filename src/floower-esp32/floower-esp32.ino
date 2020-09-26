@@ -102,7 +102,6 @@ void setup() {
 void loop() {
   floower.update();
   automaton.update();
-  remote.update();
 
   // timers
   long now = millis();

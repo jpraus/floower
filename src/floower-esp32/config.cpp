@@ -168,15 +168,15 @@ void Config::setRemoteOnStartup(boolean initRemoteOnStartup) {
 }
 
 void Config::writeInt(unsigned int address, unsigned int value) {
-  byte two = (value & 0xFF);
-  byte one = ((value >> 8) & 0xFF);
+  uint8_t two = (value & 0xFF);
+  uint8_t one = ((value >> 8) & 0xFF);
   
   EEPROM.write(address, two);
   EEPROM.write(address + 1, one);
 }
 
 unsigned int Config::readInt(unsigned int address) {
-  byte two = EEPROM.read(address);
+  uint8_t two = EEPROM.read(address);
   unsigned int one = EEPROM.read(address + 1);
  
   return (two & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);

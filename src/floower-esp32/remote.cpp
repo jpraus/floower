@@ -45,7 +45,7 @@ Remote::Remote(Floower *floower, Config *config)
 
 void Remote::init() {
   if (initialized) {
-    if (!this->advertising && !this->deviceConnected) {
+    if (!advertising && !deviceConnected) {
       ESP_LOGI(LOG_TAG, "Start advertising");
       server->startAdvertising();
     }
@@ -121,16 +121,16 @@ void Remote::init() {
   advertising->start();
   this->advertising = true;
 
+  // listen to floower state change
+  floower->onChange([=](uint8_t petalsOpenLevel, RgbColor color) {
+    ESP_LOGI(LOG_TAG, "Set state %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
+    StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
+    BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
+    stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+  });
+
   ESP_LOGI(LOG_TAG, "Waiting a client connection to notify...");
   initialized = true;
-}
-
-void Remote::update() {
-  if (floower->isIdle() && initialized) {
-    // do something
-    // TODO: do this only on change, probably do this from the outside?
-    //setState(floower->getPetalOpenLevel(), floower->getColor());
-  }
 }
 
 void Remote::stopAdvertising() {
@@ -141,16 +141,12 @@ void Remote::stopAdvertising() {
   }
 }
 
-bool Remote::canEnterDeepSleep() {
-  return !initialized;
+bool Remote::isConnected() {
+  return deviceConnected;
 }
 
-void Remote::setState(uint8_t petalsOpenLevel, RgbColor color) {
-  if (floowerService != NULL) {
-    StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
-    BLECharacteristic* stateCharacteristic = floowerService->getCharacteristic(FLOOWER_STATE_UUID);
-    stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
-  }
+bool Remote::canEnterDeepSleep() {
+  return !advertising && !deviceConnected;
 }
 
 void Remote::setBatteryLevel(uint8_t level, bool charging) {

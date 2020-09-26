@@ -47,11 +47,10 @@ class Remote {
   public:
     Remote(Floower *floower, Config *config);
     void init();
-    void update();
     void stopAdvertising();
     bool canEnterDeepSleep();
-    void setState(uint8_t petalsOpenLevel, RgbColor color);
     void setBatteryLevel(uint8_t level, bool charging);
+    bool isConnected();
 
   private:
     Floower *floower;
