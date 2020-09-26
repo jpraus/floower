@@ -143,7 +143,8 @@ bool Remote::isConnected() {
 }
 
 bool Remote::canEnterDeepSleep() {
-  return !advertising && !deviceConnected;
+  return !deviceConnected;
+  //return !advertising && !deviceConnected;
 }
 
 void Remote::setBatteryLevel(uint8_t level, bool charging) {

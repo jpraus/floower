@@ -31,7 +31,7 @@ const bool deepSleepEnabled = true;
 ///////////// CODE
 
 #define REMOTE_INIT_TIMEOUT 2000 // delay init of BLE to lower the power surge on startup
-#define DEEP_SLEEP_INACTIVITY_TIMEOUT 20000 // fall in deep sleep after timeout
+#define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
 #define PERIODIC_OPERATIONS_INTERVAL 5000
 
