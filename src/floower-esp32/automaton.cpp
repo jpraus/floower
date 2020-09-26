@@ -89,9 +89,10 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       break;
 
     case TOUCH_HOLD:
-      if (!remote->isConnected() && (state == STATE_STANDBY || state == STATE_CLOSED_RAINBOW)) { // init remote when Floower closed (or rainbow started)
+      if (state == STATE_STANDBY || state == STATE_CLOSED_RAINBOW) { // init remote when Floower closed (or rainbow started)
         floower->setColor(colorBlue, FloowerColorMode::FLASH, 1000);
         remote->init();
+        remote->startAdvertising();
         changeState(STATE_REMOTE_INIT);
         disabledTouchUp = true;
       }

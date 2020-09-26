@@ -112,6 +112,7 @@ void loop() {
   if (initRemoteTime != 0 && initRemoteTime < now) {
     initRemoteTime = 0;
     remote.init();
+    remote.startAdvertising();
   }
   if (deepSleepTime != 0 && deepSleepTime < now && !floower.arePetalsMoving()) {
     deepSleepTime = 0;

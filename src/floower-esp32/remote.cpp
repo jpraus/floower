@@ -44,93 +44,90 @@ Remote::Remote(Floower *floower, Config *config)
 }
 
 void Remote::init() {
-  if (initialized) {
-    if (!advertising && !deviceConnected) {
-      ESP_LOGI(LOG_TAG, "Start advertising");
-      server->startAdvertising();
+  if (!initialized) {
+    ESP_LOGI(LOG_TAG, "Initializing BLE server");
+    BLECharacteristic* characteristic;
+  
+    // Create the BLE Device
+    BLEDevice::init(config->name.c_str());
+  
+    // Create the BLE Server
+    server = BLEDevice::createServer();
+    server->setCallbacks(new ServerCallbacks(this));
+  
+    // Device Information profile service
+    BLEService *deviceInformationService = server->createService(DEVICE_INFORMATION_UUID);
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, String(config->serialNumber).c_str());
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, String(config->firmwareVersion).c_str());
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, String(config->hardwareRevision).c_str());
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MANUFACTURER_NAME_UUID, "Floower Lab s.r.o.");
+    deviceInformationService->start();
+  
+    // Battery level profile service
+    batteryService = server->createService(BATTERY_UUID);
+    characteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    characteristic->addDescriptor(new BLE2902());
+    characteristic = batteryService->createCharacteristic(BATTERY_POWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    characteristic->addDescriptor(new BLE2902());
+    batteryService->start();
+  
+    // Floower customer service
+    floowerService = server->createService(FLOOWER_SERVICE_UUID);
+  
+    // device name characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    characteristic->setValue(config->name.c_str());
+    characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
+  
+    // touch treshold characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_TOUCH_TRESHOLD_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    uint8_t touchTreshold = config->touchTreshold;
+    characteristic->setValue(&touchTreshold, 1);
+    characteristic->setCallbacks(new TouchTresholdCharacteristicsCallbacks(this));
+  
+    // state + state change characteristics
+    floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ); // read
+    characteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
+    characteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
+  
+    // color scheme characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    size_t size = config->colorSchemeSize * 3;
+    uint8_t bytes[size];
+    for (uint8_t b = 0, i = 0; b < size; b += 3, i++) {
+      bytes[b] = config->colorScheme[i].R;
+      bytes[b + 1] = config->colorScheme[i].G;
+      bytes[b + 2] = config->colorScheme[i].B;
     }
-    return;
+    characteristic->setValue(bytes, size);
+    characteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
+  
+    floowerService->start();
+  
+    // listen to floower state change
+    floower->onChange([=](uint8_t petalsOpenLevel, RgbColor color) {
+      ESP_LOGD(LOG_TAG, "Set state %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
+      StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
+      BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
+      stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+    });
+
+    initialized = true;
   }
+}
 
-  ESP_LOGI(LOG_TAG, "Initializing BLE server");
-  BLECharacteristic* characteristic;
-
-  // Create the BLE Device
-  BLEDevice::init(config->name.c_str());
-
-  // Create the BLE Server
-  server = BLEDevice::createServer();
-  server->setCallbacks(new ServerCallbacks(this));
-
-  // Device Information profile service
-  BLEService *deviceInformationService = server->createService(DEVICE_INFORMATION_UUID);
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, String(config->serialNumber).c_str());
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, String(config->firmwareVersion).c_str());
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, String(config->hardwareRevision).c_str());
-  createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MANUFACTURER_NAME_UUID, "Floower Lab s.r.o.");
-  deviceInformationService->start();
-
-  // Battery level profile service
-  batteryService = server->createService(BATTERY_UUID);
-  characteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-  characteristic->addDescriptor(new BLE2902());
-  characteristic = batteryService->createCharacteristic(BATTERY_POWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-  characteristic->addDescriptor(new BLE2902());
-  batteryService->start();
-
-  // Floower customer service
-  floowerService = server->createService(FLOOWER_SERVICE_UUID);
-
-  // device name characteristics
-  characteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  characteristic->setValue(config->name.c_str());
-  characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
-
-  // touch treshold characteristics
-  characteristic = floowerService->createCharacteristic(FLOOWER_TOUCH_TRESHOLD_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  uint8_t touchTreshold = config->touchTreshold;
-  characteristic->setValue(&touchTreshold, 1);
-  characteristic->setCallbacks(new TouchTresholdCharacteristicsCallbacks(this));
-
-  // state + state change characteristics
-  floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ); // read
-  characteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
-  characteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
-
-  // color scheme characteristics
-  characteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  size_t size = config->colorSchemeSize * 3;
-  uint8_t bytes[size];
-  for (uint8_t b = 0, i = 0; b < size; b += 3, i++) {
-    bytes[b] = config->colorScheme[i].R;
-    bytes[b + 1] = config->colorScheme[i].G;
-    bytes[b + 2] = config->colorScheme[i].B;
+void Remote::startAdvertising() {
+  if (initialized) {
+    ESP_LOGI(LOG_TAG, "Start advertising ...");
+    BLEAdvertising *bleAdvertising = BLEDevice::getAdvertising();
+    bleAdvertising->addServiceUUID(FLOOWER_SERVICE_UUID);
+    bleAdvertising->setScanResponse(true);
+    bleAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    bleAdvertising->setMinPreferred(0x12);
+    bleAdvertising->start();
+    advertising = true;
   }
-  characteristic->setValue(bytes, size);
-  characteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
-
-  floowerService->start();
-
-  // Start advertising
-  BLEAdvertising *advertising = BLEDevice::getAdvertising();
-  advertising->addServiceUUID(FLOOWER_SERVICE_UUID);
-  advertising->setScanResponse(true);
-  advertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
-  advertising->setMinPreferred(0x12);
-  advertising->start();
-  this->advertising = true;
-
-  // listen to floower state change
-  floower->onChange([=](uint8_t petalsOpenLevel, RgbColor color) {
-    ESP_LOGI(LOG_TAG, "Set state %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
-    StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
-    BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
-    stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
-  });
-
-  ESP_LOGI(LOG_TAG, "Waiting a client connection to notify...");
-  initialized = true;
 }
 
 void Remote::stopAdvertising() {
@@ -242,7 +239,7 @@ void Remote::ServerCallbacks::onConnect(BLEServer* server) {
 void Remote::ServerCallbacks::onDisconnect(BLEServer* server) {
   ESP_LOGI(LOG_TAG, "Disconnected, start advertising");
   remote->deviceConnected = false;
-  remote->floower->setColor(RgbColor(0), FloowerColorMode::TRANSITION, 100);
+  //remote->floower->setColor(RgbColor(0), FloowerColorMode::TRANSITION, 100);
   server->startAdvertising();
   remote->advertising = true;
 };

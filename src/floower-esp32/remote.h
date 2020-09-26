@@ -47,6 +47,7 @@ class Remote {
   public:
     Remote(Floower *floower, Config *config);
     void init();
+    void startAdvertising();
     void stopAdvertising();
     bool canEnterDeepSleep();
     void setBatteryLevel(uint8_t level, bool charging);
