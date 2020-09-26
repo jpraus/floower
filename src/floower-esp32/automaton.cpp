@@ -11,14 +11,17 @@ static const char* LOG_TAG = "Automaton";
 #define STATE_STANDBY 0
 #define STATE_OPEN_LIT 1
 #define STATE_CLOSED_LIT 2
+#define STATE_OPEN_RAINBOW 3
+#define STATE_CLOSED_RAINBOW 4
+#define STATE_REMOTE_INIT 5
 
-Automaton::Automaton(Floower *floower, Config *config)
-    : floower(floower), config(config) {
+Automaton::Automaton(Remote *remote, Floower *floower, Config *config)
+    : remote(remote), floower(floower), config(config) {
 }
 
 void Automaton::init() {
   changeState(STATE_STANDBY);
-  floower->onLeafTouch([=](FloowerTouchType touchType){ onLeafTouch(touchType); });
+  floower->onLeafTouch([=](FloowerTouchEvent event){ onLeafTouch(event); });
 }
 
 void Automaton::update() {
@@ -35,12 +38,29 @@ void Automaton::changeState(uint8_t newState) {
   }
 }
 
-void Automaton::onLeafTouch(FloowerTouchType touchType) {
-  switch (touchType) {
-    case RELEASE:
-      if (colorPickerOn) {
-        floower->stopColorPicker();
-        colorPickerOn = false;
+void Automaton::onLeafTouch(FloowerTouchEvent event) {
+  switch (event) {
+    case TOUCH_DOWN:
+      if (state == STATE_OPEN_RAINBOW) {
+        floower->stopRainbowRetainColor();
+        changeState(STATE_OPEN_LIT);
+        disabledTouchUp = true;
+      }
+      else if (state == STATE_CLOSED_RAINBOW) {
+        floower->stopRainbowRetainColor();
+        changeState(STATE_CLOSED_LIT);
+        disabledTouchUp = true;
+      }
+      else if (state == STATE_REMOTE_INIT) {
+        remote->stopAdvertising();
+        floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 500);
+        changeState(STATE_STANDBY);
+      }
+      break;
+
+    case TOUCH_UP:
+      if (disabledTouchUp) {
+        disabledTouchUp = false;
       }
       else if (floower->isIdle()) {
         if (state == STATE_STANDBY) {
@@ -62,11 +82,18 @@ void Automaton::onLeafTouch(FloowerTouchType touchType) {
       }
       break;
 
-    case HOLD:
-      floower->startColorPicker();
-      colorPickerOn = true;
-      if (state == STATE_STANDBY) {
-        changeState(STATE_CLOSED_LIT);
+    case TOUCH_LONG:
+      floower->startRainbow();
+      changeState(state == STATE_OPEN_LIT ? STATE_OPEN_RAINBOW : STATE_CLOSED_RAINBOW);
+      disabledTouchUp = true;
+      break;
+
+    case TOUCH_HOLD:
+      if (state == STATE_STANDBY || state == STATE_CLOSED_RAINBOW) { // init remote when Floower closed (or rainbow started)
+        floower->setColor(colorBlue, FloowerColorMode::FLASH, 1000);
+        remote->init();
+        changeState(STATE_REMOTE_INIT);
+        disabledTouchUp = true;
       }
       break;
   }

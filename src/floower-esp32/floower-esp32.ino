@@ -9,7 +9,6 @@
 ///////////// SOFTWARE CONFIGURATION
 
 #define FIRMWARE_VERSION 2
-const bool remoteEnabled = false;
 const bool deepSleepEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -43,8 +42,8 @@ long initRemoteTime = 0;
 
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
-Automaton automaton(&floower, &config);
 Remote remote(&floower, &config);
+Automaton automaton(&remote, &floower, &config);
 
 void setup() {
   Serial.begin(115200);
@@ -82,7 +81,7 @@ void setup() {
 	  ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
     planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     floower.setLowPowerMode(true);
-    floower.setColor(colorRed, FloowerColorMode::PULSE, 1000);
+    floower.setColor(colorRed, FloowerColorMode::FLASH, 1000);
   }
   else {
     // normal operation
@@ -90,7 +89,7 @@ void setup() {
     if (!wasSleeping) {
       floower.setPetalsOpenLevel(0, 100); // reset petals position to known one
     }
-    if (remoteEnabled) {
+    if (config.initRemoteOnStartup) {
       initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
     }
 

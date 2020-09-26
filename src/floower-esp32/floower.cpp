@@ -16,9 +16,10 @@ static const char* LOG_TAG = "Floower";
 #define SERVO_POWER_OFF_DELAY 500
 
 #define TOUCH_SENSOR_PIN 4
-#define TOUCH_FADE_TIME 50 // 50
-#define TOUCH_HOLD_TIME_TRESHOLD 2000 // 2s to recognize hold touch
-#define TOUCH_COOlDOWN_TIME 300 // prevent random touch within 300ms after last touch
+#define TOUCH_FADE_TIME 75 // 50
+#define TOUCH_LONG_TIME_TRESHOLD 2000 // 2s to recognize long touch
+#define TOUCH_HOLD_TIME_TRESHOLD 5000 // 5s to recognize hold touch
+#define TOUCH_COOLDOWN_TIME 300 // prevent random touch within 300ms after last touch
 
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
@@ -96,25 +97,31 @@ void Floower::update() {
     unsigned long sinceLastTouch = millis() - lastTouchTime;
 
     if (!touchRegistered) {
-      ESP_LOGD(LOG_TAG, "Touch");
+      ESP_LOGD(LOG_TAG, "Touch Down");
       touchRegistered = true;
-      touchCallback(FloowerTouchType::TOUCH);
+      touchCallback(FloowerTouchEvent::TOUCH_DOWN);
+    }
+    if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_TRESHOLD) {
+      ESP_LOGD(LOG_TAG, "Long Touch %d", touchTime);
+      longTouchRegistered = true;
+      touchCallback(FloowerTouchEvent::TOUCH_LONG);
     }
     if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
       ESP_LOGD(LOG_TAG, "Hold Touch %d", touchTime);
       holdTouchRegistered = true;
-      touchCallback(FloowerTouchType::HOLD);
+      touchCallback(FloowerTouchEvent::TOUCH_HOLD);
     }
     if (sinceLastTouch > TOUCH_FADE_TIME) {
-      ESP_LOGD(LOG_TAG, "Touch release");
+      ESP_LOGD(LOG_TAG, "Touch Up %d", sinceLastTouch);
       touchStartedTime = 0;
       touchEndedTime = now;
       touchRegistered = false;
+      longTouchRegistered = false;
       holdTouchRegistered = false;
-      touchCallback(FloowerTouchType::RELEASE);
+      touchCallback(FloowerTouchEvent::TOUCH_UP);
     }
   }
-  else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOlDOWN_TIME) {
+  else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOLDOWN_TIME) {
     ESP_LOGD(LOG_TAG, "Touch enabled");
     touchEndedTime = 0;
   }
@@ -194,9 +201,9 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
     pixelsOriginColor = pixelsColor;
     animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
   }
-  if (colorMode == PULSE) {
+  if (colorMode == FLASH) {
     pixelsOriginColor = colorBlack; //RgbColor::LinearBlend(color, colorBlack, 0.95);
-    animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsPulseAnimationUpdate(param); });
+    animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
   }
 }
 
@@ -205,7 +212,7 @@ void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
   showColor(pixelsColor);
 }
 
-void Floower::pixelsPulseAnimationUpdate(const AnimationParam& param) {
+void Floower::pixelsFlashAnimationUpdate(const AnimationParam& param) {
   if (param.progress < 0.5) {
     float progress = NeoEase::CubicInOut(param.progress * 2);
     pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
@@ -228,16 +235,16 @@ RgbColor Floower::getColor() {
   return pixelsColor;
 }
 
-void Floower::startColorPicker() {
+void Floower::startRainbow() {
   pixelsOriginColor = pixelsColor;
-  animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ colorPickerAnimationUpdate(param); });
+  animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
 }
 
-void Floower::stopColorPicker() {
+void Floower::stopRainbowRetainColor() {
   animations.StopAnimation(1);
 }
 
-void Floower::colorPickerAnimationUpdate(const AnimationParam& param) {
+void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
   HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
   float hue = hsbOriginal.H + param.progress;
   if (hue > 1.0) {

@@ -4,7 +4,6 @@
 #include "Arduino.h"
 #include <BLEDevice.h>
 #include <BLEServer.h>
-#include <BLEUtils.h>
 #include <BLE2902.h>
 #include "config.h"
 #include "floower.h"
@@ -49,6 +48,7 @@ class Remote {
     Remote(Floower *floower, Config *config);
     void init();
     void update();
+    void stopAdvertising();
     bool canEnterDeepSleep();
     void setState(uint8_t petalsOpenLevel, RgbColor color);
     void setBatteryLevel(uint8_t level, bool charging);
@@ -61,6 +61,7 @@ class Remote {
     BLEService *batteryService = NULL;
 
     bool deviceConnected = false;
+    bool advertising = false;
     bool initialized = false;
 
     BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, const char *value);

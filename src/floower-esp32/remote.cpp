@@ -44,6 +44,14 @@ Remote::Remote(Floower *floower, Config *config)
 }
 
 void Remote::init() {
+  if (initialized) {
+    if (!this->advertising && !this->deviceConnected) {
+      ESP_LOGI(LOG_TAG, "Start advertising");
+      server->startAdvertising();
+    }
+    return;
+  }
+
   ESP_LOGI(LOG_TAG, "Initializing BLE server");
   BLECharacteristic* characteristic;
 
@@ -111,6 +119,7 @@ void Remote::init() {
   advertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
   advertising->setMinPreferred(0x12);
   advertising->start();
+  this->advertising = true;
 
   ESP_LOGI(LOG_TAG, "Waiting a client connection to notify...");
   initialized = true;
@@ -120,7 +129,15 @@ void Remote::update() {
   if (floower->isIdle() && initialized) {
     // do something
     // TODO: do this only on change, probably do this from the outside?
-    setState(floower->getPetalOpenLevel(), floower->getColor());
+    //setState(floower->getPetalOpenLevel(), floower->getColor());
+  }
+}
+
+void Remote::stopAdvertising() {
+  if (initialized && !deviceConnected && advertising) {
+    ESP_LOGI(LOG_TAG, "Stop advertising");
+    BLEDevice::getAdvertising()->stop();
+    advertising = false;
   }
 }
 
@@ -218,11 +235,18 @@ void Remote::TouchTresholdCharacteristicsCallbacks::onWrite(BLECharacteristic *c
 void Remote::ServerCallbacks::onConnect(BLEServer* server) {
   ESP_LOGI(LOG_TAG, "Connected to client");
   remote->deviceConnected = true;
+  remote->advertising = false;
+
+  if (!remote->config->initRemoteOnStartup) {
+    remote->config->setRemoteOnStartup(true);
+    remote->config->commit();
+  }
 };
 
 void Remote::ServerCallbacks::onDisconnect(BLEServer* server) {
   ESP_LOGI(LOG_TAG, "Disconnected, start advertising");
   remote->deviceConnected = false;
   remote->floower->setColor(RgbColor(0), FloowerColorMode::TRANSITION, 100);
-  server->startAdvertising(); // restart advertising
+  server->startAdvertising();
+  remote->advertising = true;
 };

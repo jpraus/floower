@@ -10,13 +10,14 @@
 
 enum FloowerColorMode {
   TRANSITION,
-  PULSE
+  FLASH
 };
 
-enum FloowerTouchType {
-  TOUCH,
-  HOLD,
-  RELEASE
+enum FloowerTouchEvent {
+  TOUCH_DOWN,
+  TOUCH_LONG, // >2s
+  TOUCH_HOLD, // >5s
+  TOUCH_UP
 };
 
 struct Battery {
@@ -24,7 +25,7 @@ struct Battery {
   byte level;
 };
 
-typedef std::function<void(const FloowerTouchType& type)> FloowerOnLeafTouchCallback;
+typedef std::function<void(const FloowerTouchEvent& event)> FloowerOnLeafTouchCallback;
 
 class Floower {
   public:
@@ -41,8 +42,8 @@ class Floower {
     byte getPetalOpenLevel();
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
     RgbColor getColor();
-    void startColorPicker();
-    void stopColorPicker();
+    void startRainbow();
+    void stopRainbowRetainColor();
     bool arePetalsMoving();
     bool isIdle();
 
@@ -59,8 +60,8 @@ class Floower {
     NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
     void servoAnimationUpdate(const AnimationParam& param);
     void pixelsTransitionAnimationUpdate(const AnimationParam& param);
-    void pixelsPulseAnimationUpdate(const AnimationParam& param);
-    void colorPickerAnimationUpdate(const AnimationParam& param);
+    void pixelsFlashAnimationUpdate(const AnimationParam& param);
+    void pixelsRainbowAnimationUpdate(const AnimationParam& param);
     void showColor(RgbColor color);
 
     void handleTimers();
@@ -98,6 +99,7 @@ class Floower {
     static unsigned long lastTouchTime;
     bool touchRegistered = false;
     bool holdTouchRegistered = false;
+    bool longTouchRegistered = false;
 
     // battery
     Battery batteryState;

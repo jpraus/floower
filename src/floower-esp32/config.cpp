@@ -9,6 +9,29 @@
 static const char* LOG_TAG = "Config";
 #endif
 
+// max 512B of EEPROM
+
+#define EEPROM_SIZE 128
+#define CONFIG_VERSION 2
+
+// DO NOT CHANGE MEMORY ADDRESSES!
+// Hardware constants (reserved 0-19)
+#define EEPROM_ADDRESS_CONFIG_VERSION 0 // byte - version of configuration
+#define EEPROM_ADDRESS_LEDS_MODEL 1 // 0 - WS2812b, 1 - SK6812 (1 byte) NOT USED ANYMORE (since version 1)
+#define EEPROM_ADDRESS_SERVO_CLOSED 2 // integer (2 bytes) calibrated position of servo blossom closed (since version 1)
+#define EEPROM_ADDRESS_SERVO_OPEN 4 // integer (2 bytes) calibrated position of servo blossom open (since version 1)
+#define EEPROM_ADDRESS_REVISION 6 // byte - revision number of the logic board to enable features (since version 2)
+#define EEPROM_ADDRESS_SERIALNUMBER 7 // integer (2 bytes) (since version 2)
+
+// Customizable values (20+)
+#define EEPROM_ADDRESS_TOUCH_TRESHOLD 20 // byte (since version 2)
+#define EEPROM_ADDRESS_BEHAVIOR 21 // byte - enumeration of predefined behaviors (since version 2)
+#define EEPROM_ADDRESS_COLOR_SCHEME_LENGTH 22 // 1 byte - number of colors set in EEPROM_ADDRESS_COLOR_SCHEME (since version 2)
+#define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - lenght of data stored in EEPROM_ADDRESS_NAME (since version 2)
+#define EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP 24 // 1 byte - 0 = do not init remote on startups, 1 = init remote on startup
+#define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (10x RGB set) - list of up to 10 colors (since version 2)
+#define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
+
 void Config::begin() {
   EEPROM.begin(EEPROM_SIZE);
 }
@@ -36,11 +59,12 @@ void Config::load() {
     behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
     readColorScheme();
     readName();
+    initRemoteOnStartup = (EEPROM.read(EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP) == 1);
   }
 
   ESP_LOGI(LOG_TAG, "Config ready");
   ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
-  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, %s", touchTreshold, behavior, name.c_str());
+  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, r%d, %s", touchTreshold, behavior, initRemoteOnStartup, name.c_str());
   for (uint8_t i = 0; i < colorSchemeSize; i++) {
     ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
   }
@@ -66,6 +90,7 @@ void Config::factorySettings() {
   setTouchTreshold(DEFAULT_TOUCH_TRESHOLD);
   setBehavior(0); // default behavior
   setName("Floower");
+  setRemoteOnStartup(false);
 
   colorScheme[0] = colorWhite;
   colorScheme[1] = colorYellow;
@@ -135,6 +160,11 @@ void Config::readName() {
   }
   data[length] = '\0';
   name = String(data);
+}
+
+void Config::setRemoteOnStartup(boolean initRemoteOnStartup) {
+  this->initRemoteOnStartup = initRemoteOnStartup;
+  EEPROM.write(EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP, initRemoteOnStartup ? 1 : 0);
 }
 
 void Config::writeInt(unsigned int address, unsigned int value) {
