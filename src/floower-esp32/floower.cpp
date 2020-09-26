@@ -99,21 +99,21 @@ void Floower::update() {
     if (!touchRegistered) {
       ESP_LOGD(LOG_TAG, "Touch Down");
       touchRegistered = true;
-      if (touchCallback != NULL) {
+      if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_DOWN);
       }
     }
     if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_TRESHOLD) {
       ESP_LOGD(LOG_TAG, "Long Touch %d", touchTime);
       longTouchRegistered = true;
-      if (touchCallback != NULL) {
+      if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_LONG);
       }
     }
     if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
       ESP_LOGD(LOG_TAG, "Hold Touch %d", touchTime);
       holdTouchRegistered = true;
-      if (touchCallback != NULL) {
+      if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_HOLD);
       }
     }
@@ -124,7 +124,7 @@ void Floower::update() {
       touchRegistered = false;
       longTouchRegistered = false;
       holdTouchRegistered = false;
-      if (touchCallback != NULL) {
+      if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_UP);
       }
     }
@@ -183,7 +183,7 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   // TODO: support transitionTime of 0
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
 
-  if (changeCallback != NULL) {
+  if (changeCallback != nullptr) {
     changeCallback(petalsOpenLevel, pixelsTargetColor);
   }
 }
@@ -200,7 +200,7 @@ void Floower::servoAnimationUpdate(const AnimationParam& param) {
 }
 
 uint8_t Floower::getPetalOpenLevel() {
-  return servoAngle;
+  return petalsOpenLevel;
 }
 
 void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime) {
@@ -222,7 +222,7 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
     animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
   }
 
-  if (changeCallback != NULL) {
+  if (changeCallback != nullptr) {
     changeCallback(petalsOpenLevel, pixelsTargetColor);
   }
 }
@@ -252,7 +252,7 @@ void Floower::pixelsFlashAnimationUpdate(const AnimationParam& param) {
 }
 
 RgbColor Floower::getColor() {
-  return pixelsColor;
+  return pixelsTargetColor;
 }
 
 void Floower::startRainbow() {
@@ -290,11 +290,15 @@ void Floower::showColor(RgbColor color) {
   }
 }
 
-boolean Floower::arePetalsMoving() {
+bool Floower::isLit() {
+  return pixelsPowerOn;
+}
+
+bool Floower::arePetalsMoving() {
   return animations.IsAnimationActive(0);
 }
 
-boolean Floower::isIdle() {
+bool Floower::isIdle() {
   return !animations.IsAnimating();
 }
 
@@ -303,7 +307,7 @@ void Floower::acty() {
   actyOffTime = millis() + ACTY_BLINK_TIME;
 }
 
-boolean Floower::setPixelsPowerOn(boolean powerOn) {
+bool Floower::setPixelsPowerOn(bool powerOn) {
   if (powerOn && !pixelsPowerOn) {
     pixelsPowerOn = true;
     ESP_LOGD(LOG_TAG, "LEDs power ON");
@@ -320,7 +324,7 @@ boolean Floower::setPixelsPowerOn(boolean powerOn) {
   return false; // no change
 }
 
-boolean Floower::setServoPowerOn(boolean powerOn) {
+bool Floower::setServoPowerOn(bool powerOn) {
   if (powerOn && !servoPowerOn) {
     servoPowerOffTime = 0;
     servoPowerOn = true;
@@ -356,7 +360,7 @@ bool Floower::isUSBPowered() {
   return reading > 2000; // ~2900 is 5V
 }
 
-void Floower::setLowPowerMode(boolean lowPowerMode) {
+void Floower::setLowPowerMode(bool lowPowerMode) {
   if (this->lowPowerMode != lowPowerMode) {
     this->lowPowerMode = lowPowerMode;
     showColor(pixelsColor);

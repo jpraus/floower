@@ -8,7 +8,7 @@
 
 ///////////// SOFTWARE CONFIGURATION
 
-#define FIRMWARE_VERSION 2
+#define FIRMWARE_VERSION 3
 const bool deepSleepEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -61,7 +61,7 @@ void setup() {
 
   // init hardware
   //esp_wifi_stop();
-  //btStop();
+  btStop();
   floower.init();
   floower.readBatteryState(); // calibrate the ADC
   delay(50); // wait to warm-uo
@@ -101,7 +101,6 @@ void setup() {
 
 void loop() {
   floower.update();
-  automaton.update();
 
   // timers
   long now = millis();
@@ -121,12 +120,13 @@ void loop() {
 
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
-    if (automaton.canEnterDeepSleep() && remote.canEnterDeepSleep()) {
+    if (!floower.isLit() && floower.isIdle() && floower.getPetalOpenLevel() == 0 && !remote.isConnected()) {
       if (deepSleepTime == 0) {
         planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
       }
     }
     else if (deepSleepTime != 0) {
+      ESP_LOGI(LOG_TAG, "Sleep disabled");
       deepSleepTime = 0;
     }
   }

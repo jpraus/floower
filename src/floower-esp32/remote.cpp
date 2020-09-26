@@ -8,6 +8,8 @@
 static const char* LOG_TAG = "Remote";
 #endif
 
+#define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
+
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
@@ -107,7 +109,7 @@ void Remote::init() {
   
     // listen to floower state change
     floower->onChange([=](uint8_t petalsOpenLevel, RgbColor color) {
-      ESP_LOGD(LOG_TAG, "Set state %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
+      ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
       StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
       BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
       stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
@@ -142,13 +144,12 @@ bool Remote::isConnected() {
   return deviceConnected;
 }
 
-bool Remote::canEnterDeepSleep() {
-  return !deviceConnected;
-  //return !advertising && !deviceConnected;
+void Remote::onTakeOver(RemoteTakeOverCallback callback) {
+  takeOverCallback = callback;
 }
 
 void Remote::setBatteryLevel(uint8_t level, bool charging) {
-  if (deviceConnected && batteryService != NULL && floower->isIdle()) {
+  if (deviceConnected && batteryService != nullptr && floower->isIdle()) {
     ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
 
     BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
@@ -174,11 +175,18 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
     for (int i = 0; i < STATE_CHANGE_PACKET_SIZE; i ++) {
       statePacket.bytes[i] = bytes[i]; 
     }
-    if (statePacket.data.mode & B1) {
+
+    if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
+      // blossom color
       remote->floower->setColor(statePacket.data.getColor(), FloowerColorMode::TRANSITION, statePacket.data.duration * 100);
     }
-    if (statePacket.data.mode & B10) {
+    if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
+      // petals open/close
       remote->floower->setPetalsOpenLevel(statePacket.data.petalsOpenLevel, statePacket.data.duration * 100);
+    }
+
+    if (remote->takeOverCallback != nullptr) {
+      remote->takeOverCallback();
     }
   }
 }

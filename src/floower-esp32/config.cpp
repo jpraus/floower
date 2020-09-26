@@ -162,7 +162,7 @@ void Config::readName() {
   name = String(data);
 }
 
-void Config::setRemoteOnStartup(boolean initRemoteOnStartup) {
+void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
   this->initRemoteOnStartup = initRemoteOnStartup;
   EEPROM.write(EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP, initRemoteOnStartup ? 1 : 0);
 }

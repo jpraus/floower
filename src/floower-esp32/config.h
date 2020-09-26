@@ -33,7 +33,7 @@ class Config {
     void setBehavior(uint8_t behavior);
     void setColorScheme(RgbColor* colors, uint8_t size);
     void setName(String name);
-    void setRemoteOnStartup(boolean initRemoteOnStartup);
+    void setRemoteOnStartup(bool initRemoteOnStartup);
     void commit();
 
     unsigned int servoClosed = 1000; // default safe values
@@ -47,7 +47,7 @@ class Config {
     uint8_t colorSchemeSize = 0;
     RgbColor colorScheme[10]; // max 10 colors
     String name;
-    boolean initRemoteOnStartup = false;
+    bool initRemoteOnStartup = false;
 
   private:
     void writeColorScheme();

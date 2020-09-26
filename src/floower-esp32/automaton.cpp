@@ -22,22 +22,17 @@ Automaton::Automaton(Remote *remote, Floower *floower, Config *config)
 void Automaton::init() {
   changeState(STATE_STANDBY);
   floower->onLeafTouch([=](FloowerTouchEvent event){ onLeafTouch(event); });
+  remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
 }
 
-void Automaton::update() {
-}
-
-bool Automaton::canEnterDeepSleep() {
-  return state == STATE_STANDBY && floower->isIdle();
-}
-
-void Automaton::changeState(uint8_t newState) {
-  if (state != newState) {
-    state = newState;
-    ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
-  }
-}
-
+/**
+ * Implemented behavior:
+ * 
+ * (Standby) - Touch -> (Open + Lit) - Touch -> (Closed + Lit) - Touch -> (Standby)
+ * (Standby) - Long Touch -> (Closed + Rainbow) - Touch -> (Closed + Lit)
+ * (Open + Lit) - Long Touch -> (Open + Rainbow) - Touch -> (Open + Lit)
+ * (Standby) - Hold Touch -> (Connect to Remote) - Touch -> (Standby)
+ */
 void Automaton::onLeafTouch(FloowerTouchEvent event) {
   switch (event) {
     case TOUCH_DOWN:
@@ -65,7 +60,9 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       else if (floower->isIdle()) {
         if (state == STATE_STANDBY) {
           // open + set color
-          floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          if (!floower->isLit()) {
+            floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+          }
           floower->setPetalsOpenLevel(100, 5000);
           changeState(STATE_OPEN_LIT);
         }
@@ -97,6 +94,23 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         disabledTouchUp = true;
       }
       break;
+  }
+}
+
+void Automaton::onRemoteTookOver() {
+  // emulate state of automaton in case remote took over the control
+  if (floower->getPetalOpenLevel() > 0) {
+    changeState(STATE_OPEN_LIT);
+  }
+  else {
+    changeState(STATE_STANDBY);
+  }
+}
+
+void Automaton::changeState(uint8_t newState) {
+  if (state != newState) {
+    state = newState;
+    ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
   }
 }
 

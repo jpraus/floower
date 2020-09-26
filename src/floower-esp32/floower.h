@@ -47,17 +47,18 @@ class Floower {
     void startRainbow();
     void stopRainbowRetainColor();
     bool arePetalsMoving();
+    bool isLit();
     bool isIdle();
 
     void acty();
     Battery readBatteryState();
     bool isUSBPowered();
-    void setLowPowerMode(boolean lowPowerMode);
+    void setLowPowerMode(bool lowPowerMode);
     bool isLowPowerMode();
 
   private:
-    bool setServoPowerOn(boolean powerOn);
-    bool setPixelsPowerOn(boolean powerOn);
+    bool setServoPowerOn(bool powerOn);
+    bool setPixelsPowerOn(bool powerOn);
 
     NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
     void servoAnimationUpdate(const AnimationParam& param);

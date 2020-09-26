@@ -10,11 +10,10 @@ class Automaton {
   public:
     Automaton(Remote *remote, Floower *floower, Config *config);
     void init();
-    void update();
-    bool canEnterDeepSleep();
-    
+
   private:
     void onLeafTouch(FloowerTouchEvent event);
+    void onRemoteTookOver();
     void changeState(uint8_t newState);
     RgbColor nextRandomColor();
 
