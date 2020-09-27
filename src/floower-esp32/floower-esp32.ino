@@ -1,6 +1,5 @@
 //#include <esp_wifi.h>
-//#include <WiFi.h>
-//#include <esp_task_wdt.h>
+#include <esp_task_wdt.h>
 #include "floower.h"
 #include "config.h"
 #include "automaton.h"
@@ -33,7 +32,8 @@ const bool deepSleepEnabled = true;
 #define REMOTE_INIT_TIMEOUT 2000 // delay init of BLE to lower the power surge on startup
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
-#define PERIODIC_OPERATIONS_INTERVAL 5000
+#define PERIODIC_OPERATIONS_INTERVAL 3000
+#define WDT_TIMEOUT 10 // 10s for watch dog, reset with ever periodic operation
 
 bool batteryDead = false;
 bool batteryCharging = false;
@@ -49,6 +49,12 @@ Automaton automaton(&remote, &floower, &config);
 void setup() {
   Serial.begin(115200);
   ESP_LOGI(LOG_TAG, "Initializing");
+
+  // start watchdog timer
+  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL);
+
+  // read configuration
   configure();
 
   // after wake up setup
@@ -141,6 +147,7 @@ void loop() {
 }
 
 void periodicOperation() {
+  esp_task_wdt_reset();
   floower.acty();
   powerWatchDog();
 }
