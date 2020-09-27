@@ -68,8 +68,8 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 * Open src/flower-esp32/[flower-esp32.ino](src/flower-esp32/flower-esp32.ino) project file with Arduino IDE (it will automatically load all the project files)
 * Install following Arduino libraries to full-fill dependencies:
   * Open **Tools > Manage Libraries**, search and install following dependencies:
-  * **ESP32Servo** (version 0.8.0 tested)
-  * **NeoPixelBus By Makuna** (version 2.5.7 tested)
+  * **ESP32Servo** (version 0.9.0 tested)
+  * **NeoPixelBus By Makuna** (version 2.6.0 tested)
 * Connect your Floower to your computer via USB-C data cable. Make sure you are using smart/data USB cable, some of the cables are power only and thus cannot transfer data at all. Select the port of your Floower **Tools > Port**. It should be the one that just appeared.
 
 ![Arduino IDE Port](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-port.png?raw=true)
