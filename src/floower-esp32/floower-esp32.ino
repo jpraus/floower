@@ -36,6 +36,7 @@ const bool deepSleepEnabled = true;
 #define PERIODIC_OPERATIONS_INTERVAL 5000
 
 bool batteryDead = false;
+bool batteryCharging = false;
 long deepSleepTime = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
@@ -67,7 +68,8 @@ void setup() {
   delay(50); // wait to warm-uo
 
   // check if there is enough power to run
-  if (!floower.isUSBPowered()) {
+  batteryCharging = floower.isUSBPowered();
+  if (!batteryCharging) {
     Battery battery = floower.readBatteryState();
     if (battery.voltage < POWER_DEAD_THRESHOLD) {
       delay(500);
@@ -120,7 +122,8 @@ void loop() {
 
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
-    if (!floower.isLit() && floower.isIdle() && floower.getPetalOpenLevel() == 0 && !remote.isConnected()) {
+    // plan to enter deep sleep to save power if floower is in open/dark position & remote is not connected
+    if (!batteryCharging && !floower.isLit() && floower.isIdle() && floower.getPetalOpenLevel() == 0 && !remote.isConnected()) {
       if (deepSleepTime == 0) {
         planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
       }
@@ -147,11 +150,11 @@ void powerWatchDog() {
     return;
   }
 
-  bool charging = floower.isUSBPowered();
+  batteryCharging = floower.isUSBPowered();
   Battery battery = floower.readBatteryState();
-  remote.setBatteryLevel(battery.level, charging);
+  remote.setBatteryLevel(battery.level, batteryCharging);
 
-  if (charging) {
+  if (batteryCharging) {
     floower.setLowPowerMode(false);
   }
   else if (battery.voltage < POWER_DEAD_THRESHOLD) {
@@ -188,6 +191,7 @@ void configure() {
   config.begin();
 #ifdef CALIBRATE_HARDWARE
   config.hardwareCalibration(SERVO_CLOSED, SERVO_OPEN, REVISION, SERIAL_NUMBER);
+  config.factorySettings();
   config.commit();
 #endif
   config.load();
