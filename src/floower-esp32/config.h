@@ -9,7 +9,7 @@
 #define NAME_MAX_LENGTH 25 // BLE name limit
 
 // default values
-#define DEFAULT_TOUCH_TRESHOLD 45 // lower means lower sensitivity (45 is normal)
+#define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
 
 // default intensity is 70% (178)
 const RgbColor colorRed(156, 0, 0);
@@ -29,7 +29,7 @@ class Config {
     void load();
     void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
     void factorySettings();
-    void setTouchTreshold(uint8_t touchTreshold);
+    void setTouchThreshold(uint8_t touchThreshold);
     void setBehavior(uint8_t behavior);
     void setColorScheme(RgbColor* colors, uint8_t size);
     void setName(String name);
@@ -42,7 +42,7 @@ class Config {
     uint8_t firmwareVersion = 0;
     unsigned int serialNumber = 0;
     
-    uint8_t touchTreshold = DEFAULT_TOUCH_TRESHOLD;
+    uint8_t touchThreshold = DEFAULT_TOUCH_THRESHOLD;
     uint8_t behavior = 0;
     uint8_t colorSchemeSize = 0;
     RgbColor colorScheme[10]; // max 10 colors

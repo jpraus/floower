@@ -17,8 +17,8 @@ static const char* LOG_TAG = "Floower";
 
 #define TOUCH_SENSOR_PIN 4
 #define TOUCH_FADE_TIME 75 // 50
-#define TOUCH_LONG_TIME_TRESHOLD 2000 // 2s to recognize long touch
-#define TOUCH_HOLD_TIME_TRESHOLD 5000 // 5s to recognize hold touch
+#define TOUCH_LONG_TIME_THRESHOLD 2000 // 2s to recognize long touch
+#define TOUCH_HOLD_TIME_THRESHOLD 5000 // 5s to recognize hold touch
 #define TOUCH_COOLDOWN_TIME 300 // prevent random touch within 300ms after last touch
 
 #define BATTERY_ANALOG_PIN 36 // VP
@@ -103,14 +103,14 @@ void Floower::update() {
         touchCallback(FloowerTouchEvent::TOUCH_DOWN);
       }
     }
-    if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_TRESHOLD) {
+    if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_THRESHOLD) {
       ESP_LOGD(LOG_TAG, "Long Touch %d", touchTime);
       longTouchRegistered = true;
       if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_LONG);
       }
     }
-    if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_TRESHOLD) {
+    if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_THRESHOLD) {
       ESP_LOGD(LOG_TAG, "Hold Touch %d", touchTime);
       holdTouchRegistered = true;
       if (touchCallback != nullptr) {
@@ -141,7 +141,7 @@ void Floower::registerOutsideTouch() {
 
 void Floower::enableTouch() {
   detachInterrupt(TOUCH_SENSOR_PIN);
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchTreshold);
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchThreshold);
 }
 
 void Floower::touchISR() {
