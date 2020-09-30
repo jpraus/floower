@@ -27,7 +27,7 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_TOUCH_THRESHOLD 20 // byte (since version 2)
 #define EEPROM_ADDRESS_BEHAVIOR 21 // byte - enumeration of predefined behaviors (since version 2)
 #define EEPROM_ADDRESS_COLOR_SCHEME_LENGTH 22 // 1 byte - number of colors set in EEPROM_ADDRESS_COLOR_SCHEME (since version 2)
-#define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - lenght of data stored in EEPROM_ADDRESS_NAME (since version 2)
+#define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - length of data stored in EEPROM_ADDRESS_NAME (since version 2)
 #define EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP 24 // 1 byte - 0 = do not init remote on startups, 1 = init remote on startup
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (10x RGB set) - list of up to 10 colors (since version 2)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
