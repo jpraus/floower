@@ -19,7 +19,7 @@ static const char* LOG_TAG = "Remote";
 #define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // see StatePacketData
 #define FLOOWER_STATE_CHANGE_UUID "11226015-0424-44d3-b854-9fc332756cbf" // see StateChangePacketData
 #define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R +G + B), ..]
-#define FLOOWER_TOUCH_TRESHOLD_UUID "c380596f-10d2-47a7-95af-95835e0361c7"
+#define FLOOWER_TOUCH_THRESHOLD_UUID "c380596f-10d2-47a7-95af-95835e0361c7"
 //#define FLOOWER__UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b"
 //#define FLOOWER__UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528"
 
@@ -82,11 +82,11 @@ void Remote::init() {
     characteristic->setValue(config->name.c_str());
     characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
   
-    // touch treshold characteristics
-    characteristic = floowerService->createCharacteristic(FLOOWER_TOUCH_TRESHOLD_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-    uint8_t touchTreshold = config->touchTreshold;
-    characteristic->setValue(&touchTreshold, 1);
-    characteristic->setCallbacks(new TouchTresholdCharacteristicsCallbacks(this));
+    // touch threshold characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_TOUCH_THRESHOLD_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    uint8_t touchThreshold = config->touchThreshold;
+    characteristic->setValue(&touchThreshold, 1);
+    characteristic->setCallbacks(new TouchThresholdCharacteristicsCallbacks(this));
   
     // state + state change characteristics
     floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ); // read
@@ -224,11 +224,11 @@ void Remote::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteri
   }
 }
 
-void Remote::TouchTresholdCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void Remote::TouchThresholdCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
   if (bytes.length() == 1) {
-    ESP_LOGI(LOG_TAG, "New touch treshold: %d", bytes[0]);
-    remote->config->setTouchTreshold(bytes[0]);
+    ESP_LOGI(LOG_TAG, "New touch threshold: %d", bytes[0]);
+    remote->config->setTouchThreshold(bytes[0]);
     remote->config->commit();
     remote->floower->enableTouch();
   }

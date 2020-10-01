@@ -24,10 +24,10 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_SERIALNUMBER 7 // integer (2 bytes) (since version 2)
 
 // Customizable values (20+)
-#define EEPROM_ADDRESS_TOUCH_TRESHOLD 20 // byte (since version 2)
+#define EEPROM_ADDRESS_TOUCH_THRESHOLD 20 // byte (since version 2)
 #define EEPROM_ADDRESS_BEHAVIOR 21 // byte - enumeration of predefined behaviors (since version 2)
 #define EEPROM_ADDRESS_COLOR_SCHEME_LENGTH 22 // 1 byte - number of colors set in EEPROM_ADDRESS_COLOR_SCHEME (since version 2)
-#define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - lenght of data stored in EEPROM_ADDRESS_NAME (since version 2)
+#define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - length of data stored in EEPROM_ADDRESS_NAME (since version 2)
 #define EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP 24 // 1 byte - 0 = do not init remote on startups, 1 = init remote on startup
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (10x RGB set) - list of up to 10 colors (since version 2)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
@@ -55,7 +55,7 @@ void Config::load() {
   else {
     hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
     serialNumber = readInt(EEPROM_ADDRESS_SERIALNUMBER);
-    touchTreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_TRESHOLD);
+    touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
     behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
     readColorScheme();
     readName();
@@ -64,7 +64,7 @@ void Config::load() {
 
   ESP_LOGI(LOG_TAG, "Config ready");
   ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
-  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, r%d, %s", touchTreshold, behavior, initRemoteOnStartup, name.c_str());
+  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, r%d, %s", touchThreshold, behavior, initRemoteOnStartup, name.c_str());
   for (uint8_t i = 0; i < colorSchemeSize; i++) {
     ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
   }
@@ -87,7 +87,7 @@ void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpe
 
 void Config::factorySettings() {
   ESP_LOGI(LOG_TAG, "Factory reset");
-  setTouchTreshold(DEFAULT_TOUCH_TRESHOLD);
+  setTouchThreshold(DEFAULT_TOUCH_THRESHOLD);
   setBehavior(0); // default behavior
   setName("Floower");
   setRemoteOnStartup(false);
@@ -104,9 +104,9 @@ void Config::factorySettings() {
   writeColorScheme();
 }
 
-void Config::setTouchTreshold(uint8_t touchTreshold) {
-  this->touchTreshold = touchTreshold;
-  EEPROM.write(EEPROM_ADDRESS_TOUCH_TRESHOLD, touchTreshold);
+void Config::setTouchThreshold(uint8_t touchThreshold) {
+  this->touchThreshold = touchThreshold;
+  EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, touchThreshold);
 }
 
 void Config::setBehavior(uint8_t behavior) {
