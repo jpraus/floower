@@ -44,6 +44,7 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 
 * Prerequisites: [Arduino IDE](https://www.arduino.cc/en/main/software) Installed
 * Install [CP2102 Universal Driver](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
+  * If you already have a CP2102 driver please make sure you update to the latest version available
 * Install ESP32 Add-on in Arduino IDE:
   * Open **File > Preferences**
   * Enter **https://dl.espressif.com/dl/package_esp32_index.json** into the **Additional Board Manager URLs** field and click **OK** button. (If you already have other boards URL, separate the URLs with a comma)
