@@ -8,40 +8,6 @@
 #include "config.h"
 #include "floower.h"
 
-#define STATE_PACKET_SIZE 4
-
-typedef struct StatePacketData {
-  byte petalsOpenLevel; // 0-100%, read-write
-  byte R; // 0-255, read-write
-  byte G; // 0-255, read-write
-  byte B; // 0-255, read-write
-
-  RgbColor getColor() {
-    return RgbColor(R, G, B);
-  }
-};
-
-typedef union StatePacket {
-  StatePacketData data;
-  uint8_t bytes[STATE_PACKET_SIZE];
-};
-
-#define STATE_CHANGE_PACKET_SIZE 6
-
-// TODO: define
-#define STATE_TRANSITION_MODE_BIT_COLOR 0
-#define STATE_TRANSITION_MODE_BIT_PETALS 1
-
-typedef struct StateChangePacketData : StatePacketData {
-  byte duration; // 100 of milliseconds
-  byte mode; // transition mode
-};
-
-typedef union StateChangePacket {
-  StateChangePacketData data;
-  uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
-};
-
 typedef std::function<void()> RemoteTakeOverCallback;
 
 class Remote {

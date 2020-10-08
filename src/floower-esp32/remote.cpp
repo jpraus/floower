@@ -15,11 +15,11 @@ static const char* LOG_TAG = "Remote";
 
 // Floower custom service
 #define FLOOWER_SERVICE_UUID "28e17913-66c1-475f-a76e-86b5242f4cec"
-#define FLOOWER_NAME_UUID "ab130585-2b27-498e-a5a5-019391317350" // string
+#define FLOOWER_NAME_UUID "ab130585-2b27-498e-a5a5-019391317350" // string, NAME_MAX_LENGTH see config.h
 #define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // see StatePacketData
 #define FLOOWER_STATE_CHANGE_UUID "11226015-0424-44d3-b854-9fc332756cbf" // see StateChangePacketData
-#define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R +G + B), ..]
-#define FLOOWER_TOUCH_THRESHOLD_UUID "c380596f-10d2-47a7-95af-95835e0361c7"
+#define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R +G + B), ..], COLOR_SCHEME_MAX_LENGTH see config.h
+#define FLOOWER_TOUCH_THRESHOLD_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // uint8
 //#define FLOOWER__UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b"
 //#define FLOOWER__UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528"
 
@@ -40,6 +40,41 @@ static const char* LOG_TAG = "Remote";
 
 #define BATTERY_POWER_STATE_CHARGING B00111011
 #define BATTERY_POWER_STATE_DISCHARGING B00101111
+
+// BLE data packets
+#define STATE_PACKET_SIZE 4
+
+typedef struct StatePacketData {
+  byte petalsOpenLevel; // 0-100%, read-write
+  byte R; // 0-255, read-write
+  byte G; // 0-255, read-write
+  byte B; // 0-255, read-write
+
+  RgbColor getColor() {
+    return RgbColor(R, G, B);
+  }
+};
+
+typedef union StatePacket {
+  StatePacketData data;
+  uint8_t bytes[STATE_PACKET_SIZE];
+};
+
+#define STATE_CHANGE_PACKET_SIZE 6
+
+// TODO: define
+#define STATE_TRANSITION_MODE_BIT_COLOR 0
+#define STATE_TRANSITION_MODE_BIT_PETALS 1
+
+typedef struct StateChangePacketData : StatePacketData {
+  byte duration; // 100 of milliseconds
+  byte mode; // transition mode
+};
+
+typedef union StateChangePacket {
+  StateChangePacketData data;
+  uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
+};
 
 Remote::Remote(Floower *floower, Config *config)
     : floower(floower), config(config) {
