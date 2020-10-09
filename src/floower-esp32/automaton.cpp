@@ -98,8 +98,8 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
 }
 
 void Automaton::onRemoteTookOver() {
-  // emulate state of automaton in case remote took over the control
-  if (floower->getPetalOpenLevel() > 0) {
+  // emulate state of automation in case remote took over the control
+  if (floower->getPetalsOpenLevel() > 0) {
     changeState(STATE_OPEN_LIT);
   }
   else {

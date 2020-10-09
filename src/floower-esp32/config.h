@@ -5,6 +5,10 @@
 #include <EEPROM.h>
 #include <NeoPixelBus.h>
 
+#define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
+#define SET_BIT(var, pos) ((var) | (1<<(pos)))
+#define CLEAR_BIT(var, pos) ((var) & ~(1<<(pos)))
+
 #define COLOR_SCHEME_MAX_LENGTH 10
 #define NAME_MAX_LENGTH 25 // BLE name limit
 
@@ -34,6 +38,7 @@ class Config {
     void setColorScheme(RgbColor* colors, uint8_t size);
     void setName(String name);
     void setRemoteOnStartup(bool initRemoteOnStartup);
+    void setCalibrated();
     void commit();
 
     unsigned int servoClosed = 1000; // default safe values
@@ -41,20 +46,26 @@ class Config {
     uint8_t hardwareRevision = 0;
     uint8_t firmwareVersion = 0;
     unsigned int serialNumber = 0;
-    
+
+    // extracted flags
+    bool initRemoteOnStartup = false;
+    bool calibrated = false;
+
     uint8_t touchThreshold = DEFAULT_TOUCH_THRESHOLD;
     uint8_t behavior = 0;
     uint8_t colorSchemeSize = 0;
     RgbColor colorScheme[10]; // max 10 colors
     String name;
-    bool initRemoteOnStartup = false;
 
   private:
+    void readFlags();
     void writeColorScheme();
     void readColorScheme();
     void readName();
     void writeInt(unsigned int address, unsigned int value);
     unsigned int readInt(unsigned int address);
+
+    uint8_t flags = 0;
 
 };
 

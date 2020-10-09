@@ -7,18 +7,19 @@
 
 ///////////// SOFTWARE CONFIGURATION
 
-#define FIRMWARE_VERSION 3
+#define FIRMWARE_VERSION 4
 const bool deepSleepEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
 // never ever uncomment the CALIBRATE_HARDWARE flag, you will overwrite your hardware calibration settings and probably break the Floower
 
+#define CALIBRATE_HARDWARE_SERIAL 1
 //#define CALIBRATE_HARDWARE 1
-#define SERVO_CLOSED 800 // 650
-#define SERVO_OPEN SERVO_CLOSED + 500 // 700
-#define SERIAL_NUMBER 32
-#define REVISION 6
+//#define SERVO_CLOSED 800 // 650
+//#define SERVO_OPEN SERVO_CLOSED + 500 // 700
+//#define SERIAL_NUMBER 32
+//#define REVISION 6
 
 ///////////// POWER MODE
 
@@ -91,6 +92,14 @@ void setup() {
     floower.setLowPowerMode(true);
     floower.setColor(colorRed, FloowerColorMode::FLASH, 1000);
   }
+  else if (!config.calibrated) {
+    // hardware is not calibrated
+    ESP_LOGW(LOG_TAG, "Floower not calibrated");
+    floower.setColor(colorPurple, FloowerColorMode::FLASH, 2000);
+    floower.initServo();
+    floower.setPetalsOpenLevel(0, 1000); // reset petals position to known one
+    ESP_LOGI(LOG_TAG, "Ready for calibration");
+  }
   else {
     // normal operation
     floower.initServo();
@@ -102,9 +111,10 @@ void setup() {
     }
 
     automaton.init();
-    periodicOperationsTime = millis() + PERIODIC_OPERATIONS_INTERVAL; // TODO millis overflow
     ESP_LOGI(LOG_TAG, "Ready");
   }
+
+  periodicOperationsTime = millis() + PERIODIC_OPERATIONS_INTERVAL; // TODO millis overflow
 }
 
 void loop() {
@@ -116,7 +126,7 @@ void loop() {
     periodicOperationsTime = now + PERIODIC_OPERATIONS_INTERVAL;
     periodicOperation();
   }
-  if (initRemoteTime != 0 && initRemoteTime < now) {
+  if (initRemoteTime != 0 && initRemoteTime < now && floower.isIdle()) {
     initRemoteTime = 0;
     remote.init();
     remote.startAdvertising();
@@ -129,7 +139,7 @@ void loop() {
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
     // plan to enter deep sleep to save power if floower is in open/dark position & remote is not connected
-    if (!batteryCharging && !floower.isLit() && floower.isIdle() && floower.getPetalOpenLevel() == 0 && !remote.isConnected()) {
+    if (!batteryCharging && !floower.isLit() && floower.isIdle() && floower.getPetalsOpenLevel() == 0 && !remote.isConnected()) {
       if (deepSleepTime == 0) {
         planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
       }
@@ -139,6 +149,12 @@ void loop() {
       deepSleepTime = 0;
     }
   }
+
+#ifdef CALIBRATE_HARDWARE_SERIAL
+  if (!config.calibrated) {
+    calibrateOverSerial();
+  }
+#endif
 
   // save some power when flower is idle
   if (floower.isIdle()) {
@@ -199,7 +215,62 @@ void configure() {
 #ifdef CALIBRATE_HARDWARE
   config.hardwareCalibration(SERVO_CLOSED, SERVO_OPEN, REVISION, SERIAL_NUMBER);
   config.factorySettings();
+  config.setCalibrated();
   config.commit();
 #endif
   config.load();
 }
+
+#ifdef CALIBRATE_HARDWARE_SERIAL
+
+uint8_t calibationCommand = 0;
+String calibrationValue;
+
+void calibrateOverSerial() {
+  if (Serial.available() > 0) {
+    char data = Serial.read();
+    if (calibationCommand == 0) { // start of command
+      calibationCommand = data;
+      calibrationValue = "";
+    }
+    else if (data == '\n'){ // end of command
+      long value = calibrationValue.toInt();
+      if (calibationCommand == 'C') { // servo closed angle limit
+        if (value > 0) {
+          ESP_LOGI(LOG_TAG, "New closed angle %d", value);
+          floower.setPetalsAngle(value, abs(value - floower.getPetalsAngle()) * 4);
+          config.servoClosed = value;
+        }
+      }
+      else if (calibationCommand == 'O') { // servo open angle limit
+        if (value > 0) {
+          ESP_LOGI(LOG_TAG, "New open angle %d", value);
+          floower.setPetalsAngle(value, abs(value - floower.getPetalsAngle()) * 4);
+          config.servoOpen = value;
+        }
+      }
+      else if (calibationCommand == 'N') { // serial number
+        ESP_LOGI(LOG_TAG, "New S/N %d", value);
+        config.serialNumber = value;
+      }
+      else if (calibationCommand == 'H') { // hardware revision
+        ESP_LOGI(LOG_TAG, "New HW revision %d", value);
+        config.hardwareRevision = value;
+      }
+      else if (calibationCommand == 'E') { // end of calibration
+        config.hardwareCalibration(config.servoClosed, config.servoOpen, config.hardwareRevision, config.serialNumber);
+        config.factorySettings();
+        config.setCalibrated();
+        config.commit();
+        ESP_LOGI(LOG_TAG, "Calibration done");
+        ESP.restart(); // restart now
+      }
+      calibationCommand = 0;
+    }
+    else { // command value
+      calibrationValue += data;
+    }
+  }
+}
+
+#endif

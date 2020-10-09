@@ -41,7 +41,9 @@ class Floower {
     void onChange(FloowerChangeCallback callback);
 
     void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
-    uint8_t getPetalOpenLevel();
+    void setPetalsAngle(unsigned int angle, int transitionTime = 0);
+    uint8_t getPetalsOpenLevel();
+    int getPetalsAngle();
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
     RgbColor getColor();
     void startRainbow();

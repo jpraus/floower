@@ -12,7 +12,10 @@ static const char* LOG_TAG = "Config";
 // max 512B of EEPROM
 
 #define EEPROM_SIZE 128
-#define CONFIG_VERSION 2
+#define CONFIG_VERSION 3
+
+#define FLAG_BIT_CALIBRATED 0
+#define FLAG_BIT_INIT_REMOTE_ON_STARTUP 1
 
 // DO NOT CHANGE MEMORY ADDRESSES!
 // Hardware constants (reserved 0-19)
@@ -22,13 +25,13 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_SERVO_OPEN 4 // integer (2 bytes) calibrated position of servo blossom open (since version 1)
 #define EEPROM_ADDRESS_REVISION 6 // byte - revision number of the logic board to enable features (since version 2)
 #define EEPROM_ADDRESS_SERIALNUMBER 7 // integer (2 bytes) (since version 2)
+#define EEPROM_ADDRESS_FLAGS 9 // byte (8 bites) - config flags [calibrated,initRemoteOnStartup,,,,,,] (since version 3)
 
 // Customizable values (20+)
 #define EEPROM_ADDRESS_TOUCH_THRESHOLD 20 // byte (since version 2)
 #define EEPROM_ADDRESS_BEHAVIOR 21 // byte - enumeration of predefined behaviors (since version 2)
 #define EEPROM_ADDRESS_COLOR_SCHEME_LENGTH 22 // 1 byte - number of colors set in EEPROM_ADDRESS_COLOR_SCHEME (since version 2)
 #define EEPROM_ADDRESS_NAME_LENGTH 23 // 1 byte - length of data stored in EEPROM_ADDRESS_NAME (since version 2)
-#define EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP 24 // 1 byte - 0 = do not init remote on startups, 1 = init remote on startup
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (10x RGB set) - list of up to 10 colors (since version 2)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
 
@@ -39,34 +42,44 @@ void Config::begin() {
 void Config::load() {
   uint8_t configVersion = EEPROM.read(EEPROM_ADDRESS_CONFIG_VERSION);
 
-  if (configVersion > 0) {
+  if (configVersion > 0 && configVersion < 255) {
     servoClosed = readInt(EEPROM_ADDRESS_SERVO_CLOSED);
     servoOpen = readInt(EEPROM_ADDRESS_SERVO_OPEN);
-  }
 
-  // new version of config
-  if (configVersion < CONFIG_VERSION) {
-    // for backward compatibility, reset to factory settings
-    ESP_LOGW(LOG_TAG, "Config outdated %d", configVersion);
-    hardwareCalibration(servoClosed, servoOpen, 0, 0);
-    factorySettings();
-    commit();
-  }
-  else {
+    // backward compatibility => reset to factory settings
+    if (configVersion < 2) {
+      hardwareCalibration(servoClosed, servoOpen, 0, 0);
+      factorySettings();
+    }
+
+    // backward compatibility => set calibrated ON
+    if (configVersion < 3) {
+      setCalibrated();
+    }
+
+    if (configVersion < CONFIG_VERSION) {
+      ESP_LOGW(LOG_TAG, "Config outdated %d -> %d", configVersion, CONFIG_VERSION);
+      EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
+      commit(); // this will commit also changes above
+    }
+
     hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
     serialNumber = readInt(EEPROM_ADDRESS_SERIALNUMBER);
+    readFlags();
     touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
     behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
     readColorScheme();
     readName();
-    initRemoteOnStartup = (EEPROM.read(EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP) == 1);
+  
+    ESP_LOGI(LOG_TAG, "Config ready");
+    ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags);
+    ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, r%d, %s", touchThreshold, behavior, initRemoteOnStartup, name.c_str());
+    for (uint8_t i = 0; i < colorSchemeSize; i++) {
+      ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
+    }
   }
-
-  ESP_LOGI(LOG_TAG, "Config ready");
-  ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
-  ESP_LOGI(LOG_TAG, "SW: tt%d, bhvr%d, r%d, %s", touchThreshold, behavior, initRemoteOnStartup, name.c_str());
-  for (uint8_t i = 0; i < colorSchemeSize; i++) {
-    ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
+  else {
+    ESP_LOGE(LOG_TAG, "Not configured");
   }
 }
 
@@ -78,6 +91,7 @@ void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpe
   writeInt(EEPROM_ADDRESS_SERVO_OPEN, servoOpen);
   EEPROM.write(EEPROM_ADDRESS_REVISION, hardwareRevision);
   writeInt(EEPROM_ADDRESS_SERIALNUMBER, serialNumber);
+  EEPROM.write(EEPROM_ADDRESS_FLAGS, 0);
 
   this->servoClosed = servoClosed;
   this->servoOpen = servoOpen;
@@ -102,6 +116,24 @@ void Config::factorySettings() {
   colorScheme[7] = colorGreen;
   colorSchemeSize = 8;
   writeColorScheme();
+}
+
+void Config::readFlags() {
+  flags = EEPROM.read(EEPROM_ADDRESS_FLAGS);
+  calibrated = CHECK_BIT(flags, FLAG_BIT_CALIBRATED);
+  initRemoteOnStartup = CHECK_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+}
+
+void Config::setCalibrated() {
+  flags = SET_BIT(flags, FLAG_BIT_CALIBRATED);
+  EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
+  this->calibrated = true;
+}
+
+void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
+  flags = initRemoteOnStartup ? SET_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP) : CLEAR_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+  EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
+  this->initRemoteOnStartup = initRemoteOnStartup;
 }
 
 void Config::setTouchThreshold(uint8_t touchThreshold) {
@@ -160,11 +192,6 @@ void Config::readName() {
   }
   data[length] = '\0';
   name = String(data);
-}
-
-void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
-  this->initRemoteOnStartup = initRemoteOnStartup;
-  EEPROM.write(EEPROM_ADDRESS_INIT_REMOTE_ON_STARTUP, initRemoteOnStartup ? 1 : 0);
 }
 
 void Config::writeInt(unsigned int address, unsigned int value) {

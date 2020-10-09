@@ -8,8 +8,6 @@
 static const char* LOG_TAG = "Remote";
 #endif
 
-#define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
-
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
 
@@ -84,10 +82,10 @@ void Remote::init() {
   if (!initialized) {
     ESP_LOGI(LOG_TAG, "Initializing BLE server");
     BLECharacteristic* characteristic;
-  
+
     // Create the BLE Device
     BLEDevice::init(config->name.c_str());
-  
+
     // Create the BLE Server
     server = BLEDevice::createServer();
     server->setCallbacks(new ServerCallbacks(this));

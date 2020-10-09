@@ -74,7 +74,12 @@ void Floower::initServo() {
   pinMode(SERVO_PWR_PIN, OUTPUT);
 
   servo.setPeriodHertz(50); // standard 50 Hz servo
-  servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
+  if (config->calibrated) {
+    servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
+  }
+  else {
+    servo.attach(SERVO_PIN); // DANGER! no boundaries to allow calibration
+  }
   servo.write(servoAngle);
 }
 
@@ -165,20 +170,21 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   }
   petalsOpenLevel = level;
 
-  int newAngle;
   if (level >= 100) {
-    newAngle = servoOpenAngle;
+    setPetalsAngle(servoOpenAngle, transitionTime);
   }
   else {
     float position = (servoOpenAngle - servoClosedAngle);
     position = position * level / 100.0;
-    newAngle = servoClosedAngle + position;
+    setPetalsAngle(servoClosedAngle + position, transitionTime);
   }
+}
 
+void Floower::setPetalsAngle(unsigned int angle, int transitionTime) {
   servoOriginAngle = servoAngle;
-  servoTargetAngle = newAngle;
+  servoTargetAngle = angle;
 
-  ESP_LOGI(LOG_TAG, "Petals %d%% (%d)", petalsOpenLevel, newAngle);
+  ESP_LOGI(LOG_TAG, "Petals %d%% (%d) in %d", petalsOpenLevel, angle, transitionTime);
 
   // TODO: support transitionTime of 0
   animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
@@ -199,8 +205,12 @@ void Floower::servoAnimationUpdate(const AnimationParam& param) {
   }
 }
 
-uint8_t Floower::getPetalOpenLevel() {
+uint8_t Floower::getPetalsOpenLevel() {
   return petalsOpenLevel;
+}
+
+int Floower::getPetalsAngle() {
+  return servoTargetAngle;
 }
 
 void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime) {
@@ -347,7 +357,7 @@ Battery Floower::readBatteryState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
 
-  uint8_t level = _min(_max(0, voltage - 3.3) * 125, 100); // 3.3 .. 0%, 4.1 .. 100%
+  uint8_t level = _min(_max(0, voltage - 3.3) * 111, 100); // 3.3 .. 0%, 4.2 .. 100%
 
   ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%%", reading, voltage, level);
 
