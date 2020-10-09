@@ -75,7 +75,7 @@ Floower can be programmed using the Arduino IDE. However, the ESP32 microcontrol
 
 ![Arduino IDE Port](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-port.png?raw=true)
 
-* Run **Sketch > Upload**. You should get a sweet *'avrdude done. Thank you.'* message at the end of the console.
+* Run **Sketch > Upload**. You should get a sweet *'Hard resetting via RTS pin...'* message at the end of the console.
 * Now you can make your own personalized Floower.
 
 ![Arduino IDE Upload](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-upload.png?raw=true)
