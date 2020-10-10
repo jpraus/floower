@@ -15,6 +15,7 @@ const bool deepSleepEnabled = true;
 // never ever uncomment the CALIBRATE_HARDWARE flag, you will overwrite your hardware calibration settings and probably break the Floower
 
 #define CALIBRATE_HARDWARE_SERIAL 1
+//#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
 //#define SERVO_CLOSED 800 // 650
 //#define SERVO_OPEN SERVO_CLOSED + 500 // 700
@@ -218,6 +219,10 @@ void configure() {
   config.setCalibrated();
   config.commit();
 #endif
+#ifdef FACTORY_RESET
+  config.factorySettings();
+  config.commit();
+#endif
   config.load();
 }
 
@@ -238,14 +243,14 @@ void calibrateOverSerial() {
       if (calibationCommand == 'C') { // servo closed angle limit
         if (value > 0) {
           ESP_LOGI(LOG_TAG, "New closed angle %d", value);
-          floower.setPetalsAngle(value, abs(value - floower.getPetalsAngle()) * 4);
+          floower.setPetalsAngle(value, abs(value - floower.getCurrentPetalsAngle()) * 4);
           config.servoClosed = value;
         }
       }
       else if (calibationCommand == 'O') { // servo open angle limit
         if (value > 0) {
           ESP_LOGI(LOG_TAG, "New open angle %d", value);
-          floower.setPetalsAngle(value, abs(value - floower.getPetalsAngle()) * 4);
+          floower.setPetalsAngle(value, abs(value - floower.getCurrentPetalsAngle()) * 4);
           config.servoOpen = value;
         }
       }

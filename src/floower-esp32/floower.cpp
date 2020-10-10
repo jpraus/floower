@@ -213,6 +213,10 @@ int Floower::getPetalsAngle() {
   return servoTargetAngle;
 }
 
+int Floower::getCurrentPetalsAngle() {
+  return servoAngle;
+}
+
 void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime) {
   if (color.R == pixelsTargetColor.R && color.G == pixelsTargetColor.G && color.B == pixelsTargetColor.B && pixelsColorMode == colorMode) {
     return; // no change
