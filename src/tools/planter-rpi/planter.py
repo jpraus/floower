@@ -58,7 +58,7 @@ screen_option = 0
 def init():
     global serial_connection
 
-    print("Rotary Encoder Test Program")
+    print("Floower Planter Tool")
     GPIO.setwarnings(True)
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(enc_a, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
