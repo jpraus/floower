@@ -361,14 +361,18 @@ def send_command(command, value):
 
 def flash_firmware():
     lcd.clear()
-    lcd.message("Nahravam ...\n0%")
+    lcd.message("Nahravam ...\n5%")
+
     esptool_write_factory_reset()
+
     lcd.clear()
     lcd.message("Nahravam ...\n45%")
     sleep(1)
     lcd.clear()
     lcd.message("Nahravam ...\n50%")
+
     esptool_write_flash_firmware()
+
     lcd.clear()
     lcd.message("Hotovo")
     sleep(1)
