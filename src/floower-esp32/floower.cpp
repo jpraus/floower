@@ -23,7 +23,6 @@ static const char* LOG_TAG = "Floower";
 
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
-//#define CHARGE_PIN 15
 
 #define ACTY_LED_PIN 2
 #define ACTY_BLINK_TIME 50
