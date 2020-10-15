@@ -362,8 +362,6 @@ def send_command(command, value):
 def flash_firmware():
     global serial_connection, connected_device
 
-    serial_connection.close()
-
     lcd.clear()
     lcd.message("Nahravam ...\n5%")
 
@@ -379,10 +377,10 @@ def flash_firmware():
 
     lcd.clear()
     lcd.message("Hotovo")
-    sleep(.5)
+    sleep(1)
 
+    serial_connection.close()
     serial_connection = serial.Serial(connected_device, 115200, timeout=1)
-    sleep(.5)
 
 
 def esptool_write_flash_firmware():
