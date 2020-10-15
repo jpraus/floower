@@ -4,6 +4,7 @@ import RPi.GPIO as GPIO
 import Adafruit_CharLCD as LCD
 import serial
 import serial.tools.list_ports as prtlst
+import os
 from time import sleep
 
 # Raspberry Pi pin configuration:
@@ -40,13 +41,15 @@ connected_device = None
 # 5 - hw revision
 # 6 - confirm
 SCREEN_CONNECT = 0
-SCREEN_CAL_CLOSE = 1
-SCREEN_CAL_OPEN = 2
-SCREEN_VERIFY = 3
-SCREEN_SN = 4
-SCREEN_HW_REVISION = 5
-SCREEN_CONFIRM = 6
-SCREEN_DISCONNECT = 7
+SCREEN_MENU = 1
+SCREEN_CAL_CLOSE = 2
+SCREEN_CAL_OPEN = 3
+SCREEN_VERIFY = 4
+SCREEN_SN = 5
+SCREEN_HW_REVISION = 6
+SCREEN_CONFIRM = 7
+SCREEN_DISCONNECT = 8
+SCREEN_FLASH = 9
 
 serial_number = 60
 hw_revision = 6
@@ -116,7 +119,10 @@ def encoder_decode(channel):
 def encoder_rorated_up():
     global screen, close_value, open_value, screen_option, serial_number, hw_revision
 
-    if screen == SCREEN_CAL_CLOSE:
+    if screen == SCREEN_MENU:
+        screen_option += 1
+
+    elif screen == SCREEN_CAL_CLOSE:
         close_value += 10
         if close_value > 2000:
             close_value = 2000
@@ -147,6 +153,9 @@ def encoder_rorated_up():
 
 def encoder_rorated_down():
     global screen, close_value, open_value, screen_option, serial_number, hw_revision
+
+    if screen == SCREEN_MENU:
+        screen_option -= 1
 
     if screen == SCREEN_CAL_CLOSE:
         close_value -= 10
@@ -181,7 +190,18 @@ def encoder_rorated_down():
 def button_pushed(channel):
     global screen, close_value, open_value, serial_number, hw_revision, screen_option
 
-    if screen == SCREEN_CAL_CLOSE:
+    if screen == SCREEN_MENU:
+        option = screen_option % 2
+        if option == 0:  # calibration
+            screen = SCREEN_CAL_CLOSE
+            close_value = 1000
+
+        elif option == 1:  # flash firmware
+            flash_firmware()
+            screen = SCREEN_MENU
+            screen_option = 0
+
+    elif screen == SCREEN_CAL_CLOSE:
         screen = SCREEN_CAL_OPEN
         open_value = close_value + 500
 
@@ -213,7 +233,7 @@ def button_pushed(channel):
         screen_option = 0
 
     elif screen == SCREEN_CONFIRM:
-        option = screen_option % 4
+        option = screen_option % 2
         if option == 0:  # finish calibration
             send_command("E", 0)
             serial_number += 1  # advance serial number for next Floower
@@ -232,6 +252,19 @@ def draw_screen():
     if screen == SCREEN_CONNECT:
         lcd.clear()
         lcd.message("Pripoj Floower")
+
+    elif screen == SCREEN_MENU:
+        lcd.clear()
+        lcd.message(" Kalibrace")
+        lcd.set_cursor(0, 1)
+        lcd.message(" Nahrat Firmware")
+        option = screen_option % 2
+        if option == 0:
+            lcd.set_cursor(0, 0)
+            lcd.message(chr(126))
+        elif option == 1:
+            lcd.set_cursor(0, 1)
+            lcd.message(chr(126))
 
     elif screen == SCREEN_CAL_CLOSE:
         lcd.clear()
@@ -326,6 +359,45 @@ def send_command(command, value):
         reset()
 
 
+def flash_firmware():
+    lcd.clear()
+    lcd.message("Nahravam ...\n0%")
+    esptool_write_factory_reset()
+    lcd.clear()
+    lcd.message("Nahravam ...\n45%")
+    sleep(1)
+    lcd.clear()
+    lcd.message("Nahravam ...\n50%")
+    esptool_write_flash_firmware()
+    lcd.clear()
+    lcd.message("Hotovo")
+    sleep(1)
+
+
+def esptool_write_flash_firmware():
+    global connected_device
+
+    command = get_esptool_base_comman(connected_device) + " 0x10000 bin/floower-esp32.ino.bin 0x8000 bin/floower-esp32.ino.partitions.bin"
+
+    print("Flashing Floower Firmware");
+    print(command);
+    os.system(command)
+
+
+def esptool_write_factory_reset():
+    global connected_device
+
+    command = get_esptool_base_comman(connected_device) + " 0x10000 bin/floower-esp32-factoryreset.ino.bin 0x8000 bin/floower-esp32-factoryreset.ino.partitions.bin"
+
+    print("Performing Floower Factory Reset");
+    print(command);
+    os.system(command)
+
+
+def get_esptool_base_comman(port):
+    return "esptool.py --port " + port + " --chip esp32 -b 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0xe000 bin/boot_app0.bin 0x1000 bin/bootloader_dio_80m.bin"
+
+
 def discover_and_connect_serial():
     global serial_connection, connected_device
 
@@ -378,7 +450,7 @@ def reset():
 
 
 def main():
-    global screen, close_value
+    global screen, screen_option
 
     reset()
 
@@ -394,8 +466,8 @@ def main():
                 lcd.clear()
                 lcd.message("Pripojeno")
                 sleep(1)
-                screen = SCREEN_CAL_CLOSE
-                close_value = 1000
+                screen = SCREEN_MENU
+                screen_option = 0
                 draw_screen()
 
         else:
