@@ -470,7 +470,7 @@ def main():
         GPIO.cleanup()
 
     lcd.clear()
-    lcd.message("Floower Planter\nv" + VERSION)
+    lcd.message("Floower Planter\nv%s" % (VERSION))
     sleep(5)
 
     while True:
