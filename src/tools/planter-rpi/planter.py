@@ -7,6 +7,8 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
+VERSION = 2
+
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
 lcd_en        = 8
@@ -58,9 +60,8 @@ open_value = 0
 screen = 0
 screen_option = 0
 
-def init():
-    global serial_connection
 
+def init():
     print("Floower Planter Tool")
     GPIO.setwarnings(True)
     GPIO.setmode(GPIO.BCM)
@@ -467,6 +468,10 @@ def main():
         init()
     except KeyboardInterrupt:
         GPIO.cleanup()
+
+    lcd.clear()
+    lcd.message("Floower Planter\nv" + VERSION)
+    sleep(5)
 
     while True:
         # try to discover and connect to device
