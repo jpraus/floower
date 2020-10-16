@@ -22,10 +22,10 @@ echo "python3 planter.py" >> planter-starter.sh
 if ! grep -q planter-starter /etc/rc.local
 then
 	echo "Adding to rc.local"
-	sudo sed -i -e '$i \nohup bash /home/pi/floower/src/tools/planter-rpi/planter-starter.sh &\n' /etc/rc.local
+	sudo sed -i -e '$i \bash /home/pi/floower/src/tools/planter-rpi/planter-starter.sh &\n' /etc/rc.local
 else
 	echo "Replacing to rc.local"
-	sudo sed -i '/planter-starter/c\nohup bash /home/pi/floower/src/tools/planter-rpi/planter-starter.sh &' /etc/rc.local
+	sudo sed -i '/planter-starter/c\bash /home/pi/floower/src/tools/planter-rpi/planter-starter.sh &' /etc/rc.local
 fi
 
 echo "Done"
