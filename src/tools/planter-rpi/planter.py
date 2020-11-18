@@ -7,7 +7,7 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
-VERSION = 4
+VERSION = 5
 
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
@@ -195,6 +195,7 @@ def button_pushed(channel):
         if option == 0:  # calibration
             screen = SCREEN_CAL_CLOSE
             close_value = 1000
+			open_value = 0
 
         elif option == 1:  # flash firmware
             flash_firmware()
@@ -203,7 +204,8 @@ def button_pushed(channel):
 
     elif screen == SCREEN_CAL_CLOSE:
         screen = SCREEN_CAL_OPEN
-        open_value = close_value + 500
+		if open_value == 0:
+			open_value = close_value + 500
 
     elif screen == SCREEN_CAL_OPEN:
         screen = SCREEN_VERIFY
