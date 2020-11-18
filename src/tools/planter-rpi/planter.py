@@ -53,7 +53,7 @@ SCREEN_CONFIRM = 7
 SCREEN_DISCONNECT = 8
 SCREEN_FLASH = 9
 
-serial_number = 130
+serial_number = 0
 hw_revision = 7
 close_value = 0
 open_value = 0
@@ -195,7 +195,7 @@ def button_pushed(channel):
         if option == 0:  # calibration
             screen = SCREEN_CAL_CLOSE
             close_value = 1000
-			open_value = 0
+            open_value = 0
 
         elif option == 1:  # flash firmware
             flash_firmware()
@@ -204,8 +204,8 @@ def button_pushed(channel):
 
     elif screen == SCREEN_CAL_CLOSE:
         screen = SCREEN_CAL_OPEN
-		if open_value == 0:
-			open_value = close_value + 500
+        if open_value == 0:
+            open_value = close_value + 500
 
     elif screen == SCREEN_CAL_OPEN:
         screen = SCREEN_VERIFY
@@ -220,7 +220,7 @@ def button_pushed(channel):
             send_command("O", open_value)
 
         elif option == 2: # confirm
-			send_command("C", close_value)
+            send_command("C", close_value)
             screen = SCREEN_SN
 
         elif option == 3: # retry
@@ -240,6 +240,8 @@ def button_pushed(channel):
         if option == 0:  # finish calibration
             send_command("E", 0)
             serial_number += 1  # advance serial number for next Floower
+            with open("last_serial_number", "w") as file:
+                file.write(str(serial_number)) # pesist the last serial number for next run
             screen = SCREEN_DISCONNECT
 
         elif option == 1:  # retry
@@ -468,6 +470,12 @@ def main():
         initGPIO()
     except KeyboardInterrupt:
         GPIO.cleanup()
+
+    try:
+        with open("last_serial_number", "r") as file:
+            serial_number = int(file.read())
+    except OSError as e:
+        serial_number = 130 # fallback
 
     print("Floower Planter Tool v%s" % (VERSION))
     lcd.clear()
