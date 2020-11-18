@@ -69,7 +69,7 @@ def initGPIO():
     GPIO.setup(enc_sw, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     GPIO.add_event_detect(enc_a, GPIO.BOTH, callback=encoder_decode)
     GPIO.add_event_detect(enc_b, GPIO.BOTH, callback=encoder_decode)
-    GPIO.add_event_detect(enc_sw, GPIO.RISING, callback=button_pushed)
+    GPIO.add_event_detect(enc_sw, GPIO.RISING, callback=button_pushed, bouncetime=300)
     return
 
 
@@ -464,7 +464,7 @@ def reset():
 
 
 def main():
-    global screen, screen_option
+    global screen, screen_option, serial_number
 
     try:
         initGPIO()
