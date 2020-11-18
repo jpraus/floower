@@ -14,6 +14,7 @@ chmod +x planter-starter.sh
 
 echo "#!/bin/bash" > planter-starter.sh
 echo "" >> planter-starter.sh
+echo "sudo su pi" >> planter-starter.sh
 echo "export PATH=\"$PATH\"" >> planter-starter.sh
 echo "cd `pwd`" >> planter-starter.sh
 echo "bash update.sh" >> planter-starter.sh
