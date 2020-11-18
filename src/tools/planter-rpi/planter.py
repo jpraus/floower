@@ -474,7 +474,7 @@ def main():
     try:
         with open("last_serial_number", "r") as file:
             serial_number = int(file.read())
-    except OSError as e:
+    except (OSError, ValueError):
         serial_number = 130 # fallback
 
     print("Floower Planter Tool v%s" % (VERSION))
