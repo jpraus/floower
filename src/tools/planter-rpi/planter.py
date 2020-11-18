@@ -53,8 +53,8 @@ SCREEN_CONFIRM = 7
 SCREEN_DISCONNECT = 8
 SCREEN_FLASH = 9
 
-serial_number = 60
-hw_revision = 6
+serial_number = 130
+hw_revision = 7
 close_value = 0
 open_value = 0
 screen = 0
@@ -218,6 +218,7 @@ def button_pushed(channel):
             send_command("O", open_value)
 
         elif option == 2: # confirm
+			send_command("C", close_value)
             screen = SCREEN_SN
 
         elif option == 3: # retry
