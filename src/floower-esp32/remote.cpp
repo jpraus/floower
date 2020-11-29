@@ -121,8 +121,13 @@ void Remote::init() {
     characteristic->setValue(&touchThreshold, 1);
     characteristic->setCallbacks(new TouchThresholdCharacteristicsCallbacks(this));
   
-    // state + state change characteristics
-    floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ); // read
+    // state read characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
+    RgbColor color = floower->getColor();
+    StatePacket statePacket = {{floower->getPetalsOpenLevel(), color.R, color.G, color.B}};
+    characteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+
+    // state write/change characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
     characteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
   
@@ -146,6 +151,7 @@ void Remote::init() {
       StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
       BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
       stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+      stateCharacteristic->notify();
     });
 
     initialized = true;
