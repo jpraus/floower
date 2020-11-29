@@ -7,7 +7,7 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
-VERSION = 5
+VERSION = 6
 
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
@@ -368,14 +368,6 @@ def flash_firmware():
     global serial_connection, connected_device
 
     lcd.clear()
-    lcd.message("Nahravam ...\n5%")
-
-    esptool_write_factory_reset()
-
-    lcd.clear()
-    lcd.message("Nahravam ...\n45%")
-    sleep(1)
-    lcd.clear()
     lcd.message("Nahravam ...\n50%")
 
     esptool_write_flash_firmware()
@@ -391,7 +383,7 @@ def flash_firmware():
 def esptool_write_flash_firmware():
     global connected_device
 
-    command = get_esptool_base_comman(connected_device) + " 0x10000 bin/floower-esp32.ino.bin 0x8000 bin/floower-esp32.ino.partitions.bin"
+    command = get_esptool_base_command(connected_device) + " 0x10000 bin/floower-esp32.ino.bin 0x8000 bin/floower-esp32.ino.partitions.bin --erase-all"
 
     print("Flashing Floower Firmware");
     print(command);
@@ -401,14 +393,14 @@ def esptool_write_flash_firmware():
 def esptool_write_factory_reset():
     global connected_device
 
-    command = get_esptool_base_comman(connected_device) + " 0x10000 bin/floower-esp32-factoryreset.ino.bin 0x8000 bin/floower-esp32-factoryreset.ino.partitions.bin"
+    command = get_esptool_base_command(connected_device) + " 0x10000 bin/floower-esp32-factoryreset.ino.bin 0x8000 bin/floower-esp32-factoryreset.ino.partitions.bin"
 
     print("Performing Floower Factory Reset");
     print(command);
     os.system(command)
 
 
-def get_esptool_base_comman(port):
+def get_esptool_base_command(port):
     return "esptool.py --port " + port + " --chip esp32 -b 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0xe000 bin/boot_app0.bin 0x1000 bin/bootloader_dio_80m.bin"
 
 
