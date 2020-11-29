@@ -126,6 +126,7 @@ void Remote::init() {
     RgbColor color = floower->getColor();
     StatePacket statePacket = {{floower->getPetalsOpenLevel(), color.R, color.G, color.B}};
     characteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+    characteristic->addDescriptor(new BLE2902());
 
     // state write/change characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
