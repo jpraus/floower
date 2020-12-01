@@ -33,6 +33,7 @@ enc_direction = None
 lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows, lcd_backlight)
 lcd.create_char(0, [0, 0, 4, 14, 31, 0, 0, 0]) # up arrow
 lcd.create_char(1, [0, 0, 31, 14, 4, 0, 0, 0]) # down arrow
+lcd.create_char(2, [0, 8, 12, 14, 12, 8, 0, 0]) # right arrow
 serial_connection = None
 connected_device = None
 
@@ -60,8 +61,8 @@ hw_revision = 7
 close_value = 0
 open_value = 0
 screen = 0
-prev_screen_option = 0
 screen_option = 0
+screen_option_dir = 1  # 1 up, -1 down
 
 
 def initGPIO():
@@ -120,12 +121,12 @@ def encoder_decode(channel):
 
 
 def encoder_rorated_up():
-    global screen, close_value, open_value, screen_option, prev_screen_option, serial_number, hw_revision
+    global screen, close_value, open_value, screen_option, screen_option_dir, serial_number, hw_revision
 
-    prev_screen_option = screen_option
+    screen_option_dir = 1
 
     if screen == SCREEN_MENU:
-        screen_option += 1
+        screen_option = min(2, screen_option + 1)
 
     elif screen == SCREEN_CAL_CLOSE:
         close_value += 10
@@ -157,12 +158,12 @@ def encoder_rorated_up():
 
 
 def encoder_rorated_down():
-    global screen, close_value, open_value, screen_option, prev_screen_option, serial_number, hw_revision
+    global screen, close_value, open_value, screen_option, screen_option_dir, serial_number, hw_revision
 
-    prev_screen_option = screen_option
+    screen_option_dir = -1
 
     if screen == SCREEN_MENU:
-        screen_option -= 1
+        screen_option = max(0, screen_option - 1)
 
     if screen == SCREEN_CAL_CLOSE:
         close_value -= 10
@@ -195,10 +196,10 @@ def encoder_rorated_down():
 
 
 def button_pushed(channel):
-    global screen, close_value, open_value, serial_number, hw_revision, screen_option, prev_screen_option
+    global screen, close_value, open_value, serial_number, hw_revision, screen_option, screen_option_dir
 
     if screen == SCREEN_MENU:
-        option = screen_option % 2
+        option = screen_option % 3
         if option == 0:  # calibration
             screen = SCREEN_CAL_CLOSE
             close_value = 1000
@@ -206,11 +207,9 @@ def button_pushed(channel):
 
         elif option == 1:  # flash firmware
             flash_firmware(False)
-            prev_screen_option = screen_option = 0
 
         elif option == 2:  # reset & flash firmware
             flash_firmware(True)
-            prev_screen_option = screen_option = 0
 
     elif screen == SCREEN_CAL_CLOSE:
         screen = SCREEN_CAL_OPEN
@@ -219,7 +218,6 @@ def button_pushed(channel):
 
     elif screen == SCREEN_CAL_OPEN:
         screen = SCREEN_VERIFY
-        prev_screen_option = screen_option = 0
 
     elif screen == SCREEN_VERIFY:
         option = screen_option % 4
@@ -243,7 +241,6 @@ def button_pushed(channel):
     elif screen == SCREEN_HW_REVISION:
         send_command("H", hw_revision)
         screen = SCREEN_CONFIRM
-        prev_screen_option = screen_option = 0
 
     elif screen == SCREEN_CONFIRM:
         option = screen_option % 2
@@ -257,12 +254,15 @@ def button_pushed(channel):
         elif option == 1:  # retry
             screen = SCREEN_CAL_CLOSE
 
+    screen_option = 0
+    screen_option_dir = 1
+
     draw_screen()
     return
 
 
 def draw_screen():
-    global screen, close_value, open_value, serial_number, hw_revision, screen_option, prev_screen_option
+    global screen, close_value, open_value, serial_number, hw_revision, screen_option, screen_option_dir
 
     if screen == SCREEN_CONNECT:
         lcd.clear()
@@ -270,25 +270,25 @@ def draw_screen():
 
     elif screen == SCREEN_MENU:
         lcd.clear()
-        option = screen_option % 2
+        option = screen_option % 3
         cursor = option
 
-        if option == 0 or prev_screen_option == 0:
+        if option == 0 or (option == 1 and screen_option_dir == 1):
             lcd.message(" Kalibrace")
             lcd.set_cursor(0, 1)
-            lcd.message(" Nahrat")
+            lcd.message(" Aktualizace")
             lcd.set_cursor(15, 1)
-            lcd.message("\\x01")
+            lcd.message("\x01")
         else:
-            lcd.message(" Nahrat")
+            lcd.message(" Aktualizace")
             lcd.set_cursor(0, 1)
             lcd.message(" Resetovat")
             lcd.set_cursor(15, 0)
-            lcd.message("\\x00")
+            lcd.message("\x00")
             cursor = option - 1
 
         lcd.set_cursor(0, cursor)
-        lcd.message(chr(126))
+        lcd.message("\x02")
 
     elif screen == SCREEN_CAL_CLOSE:
         lcd.clear()
@@ -296,7 +296,7 @@ def draw_screen():
         lcd.set_cursor(0, 1)
         lcd.message(str(close_value))
         lcd.set_cursor(15, 1)
-        lcd.message(chr(126))
+        lcd.message("\x02")
 
     elif screen == SCREEN_CAL_OPEN:
         lcd.clear()
@@ -304,7 +304,7 @@ def draw_screen():
         lcd.set_cursor(0, 1)
         lcd.message(str(open_value))
         lcd.set_cursor(15, 1)
-        lcd.message(chr(126))
+        lcd.message("\x02")
 
     elif screen == SCREEN_VERIFY:
         lcd.clear()
@@ -314,16 +314,16 @@ def draw_screen():
         option = screen_option % 4
         if option == 0:
             lcd.set_cursor(0, 0)
-            lcd.message(chr(126))
+            lcd.message("\x02")
         elif option == 1:
             lcd.set_cursor(0, 1)
-            lcd.message(chr(126))
+            lcd.message("\x02")
         elif option == 2:
             lcd.set_cursor(13, 0)
-            lcd.message(chr(126))
+            lcd.message("\x02")
         elif option == 3:
             lcd.set_cursor(10, 1)
-            lcd.message(chr(126))
+            lcd.message("\x02")
 
     elif screen == SCREEN_SN:
         lcd.clear()
@@ -331,7 +331,7 @@ def draw_screen():
         lcd.set_cursor(0, 1)
         lcd.message(str(serial_number))
         lcd.set_cursor(15, 1)
-        lcd.message(chr(126))
+        lcd.message("\x02")
 
     elif screen == SCREEN_HW_REVISION:
         lcd.clear()
@@ -339,7 +339,7 @@ def draw_screen():
         lcd.set_cursor(0, 1)
         lcd.message(str(hw_revision))
         lcd.set_cursor(15, 1)
-        lcd.message(chr(126))
+        lcd.message("\x02")
 
     elif screen == SCREEN_CONFIRM:
         lcd.clear()
@@ -349,10 +349,10 @@ def draw_screen():
         option = screen_option % 2
         if option == 0:
             lcd.set_cursor(0, 0)
-            lcd.message(chr(126))
+            lcd.message("\x02")
         elif option == 1:
             lcd.set_cursor(0, 1)
-            lcd.message(chr(126))
+            lcd.message("\x02")
 
     elif screen == SCREEN_DISCONNECT:
         lcd.clear()
@@ -467,18 +467,18 @@ def check_serial_device():
 
 
 def reset():
-    global screen, close_value, open_value, screen_option, prev_screen_option
+    global screen, close_value, open_value, screen_option, screen_option_dir
     screen = SCREEN_CONNECT
     close_value = 1000
     open_value = 1000
-    prev_screen_option = 0
     screen_option = 0
+    screen_option_dir = 1
     draw_screen()
     return
 
 
 def main():
-    global screen, screen_option, prev_screen_option, serial_number
+    global screen, screen_option, screen_option_dir, serial_number
 
     try:
         initGPIO()
@@ -506,8 +506,8 @@ def main():
                 lcd.message("Pripojeno")
                 sleep(1)
                 screen = SCREEN_MENU
-                prev_screen_option = 0
                 screen_option = 0
+                screen_option_dir = 1
                 draw_screen()
 
         else:
