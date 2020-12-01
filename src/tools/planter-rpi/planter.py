@@ -7,7 +7,7 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
-VERSION = 6
+VERSION = 7
 
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
@@ -31,6 +31,8 @@ enc_direction = None
 
 # Initialize the LCD using the pins above.
 lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows, lcd_backlight)
+lcd.create_char(0, [0, 0, 4, 14, 31, 0, 0, 0]) # up arrow
+lcd.create_char(1, [0, 0, 31, 14, 4, 0, 0, 0]) # down arrow
 serial_connection = None
 connected_device = None
 
@@ -58,6 +60,7 @@ hw_revision = 7
 close_value = 0
 open_value = 0
 screen = 0
+prev_screen_option = 0
 screen_option = 0
 
 
@@ -117,7 +120,9 @@ def encoder_decode(channel):
 
 
 def encoder_rorated_up():
-    global screen, close_value, open_value, screen_option, serial_number, hw_revision
+    global screen, close_value, open_value, screen_option, prev_screen_option, serial_number, hw_revision
+
+    prev_screen_option = screen_option
 
     if screen == SCREEN_MENU:
         screen_option += 1
@@ -152,7 +157,9 @@ def encoder_rorated_up():
 
 
 def encoder_rorated_down():
-    global screen, close_value, open_value, screen_option, serial_number, hw_revision
+    global screen, close_value, open_value, screen_option, prev_screen_option, serial_number, hw_revision
+
+    prev_screen_option = screen_option
 
     if screen == SCREEN_MENU:
         screen_option -= 1
@@ -188,7 +195,7 @@ def encoder_rorated_down():
 
 
 def button_pushed(channel):
-    global screen, close_value, open_value, serial_number, hw_revision, screen_option
+    global screen, close_value, open_value, serial_number, hw_revision, screen_option, prev_screen_option
 
     if screen == SCREEN_MENU:
         option = screen_option % 2
@@ -198,9 +205,12 @@ def button_pushed(channel):
             open_value = 0
 
         elif option == 1:  # flash firmware
-            flash_firmware()
-            screen = SCREEN_MENU
-            screen_option = 0
+            flash_firmware(False)
+            prev_screen_option = screen_option = 0
+
+        elif option == 2:  # reset & flash firmware
+            flash_firmware(True)
+            prev_screen_option = screen_option = 0
 
     elif screen == SCREEN_CAL_CLOSE:
         screen = SCREEN_CAL_OPEN
@@ -209,7 +219,7 @@ def button_pushed(channel):
 
     elif screen == SCREEN_CAL_OPEN:
         screen = SCREEN_VERIFY
-        screen_option = 0
+        prev_screen_option = screen_option = 0
 
     elif screen == SCREEN_VERIFY:
         option = screen_option % 4
@@ -233,7 +243,7 @@ def button_pushed(channel):
     elif screen == SCREEN_HW_REVISION:
         send_command("H", hw_revision)
         screen = SCREEN_CONFIRM
-        screen_option = 0
+        prev_screen_option = screen_option = 0
 
     elif screen == SCREEN_CONFIRM:
         option = screen_option % 2
@@ -252,7 +262,7 @@ def button_pushed(channel):
 
 
 def draw_screen():
-    global screen, close_value, open_value, serial_number, hw_revision, screen_option
+    global screen, close_value, open_value, serial_number, hw_revision, screen_option, prev_screen_option
 
     if screen == SCREEN_CONNECT:
         lcd.clear()
@@ -260,16 +270,25 @@ def draw_screen():
 
     elif screen == SCREEN_MENU:
         lcd.clear()
-        lcd.message(" Kalibrace")
-        lcd.set_cursor(0, 1)
-        lcd.message(" Nahrat Firmware")
         option = screen_option % 2
-        if option == 0:
-            lcd.set_cursor(0, 0)
-            lcd.message(chr(126))
-        elif option == 1:
+        cursor = option
+
+        if option == 0 or prev_screen_option == 0:
+            lcd.message(" Kalibrace")
             lcd.set_cursor(0, 1)
-            lcd.message(chr(126))
+            lcd.message(" Nahrat")
+            lcd.set_cursor(15, 1)
+            lcd.message("\\x01")
+        else:
+            lcd.message(" Nahrat")
+            lcd.set_cursor(0, 1)
+            lcd.message(" Resetovat")
+            lcd.set_cursor(15, 0)
+            lcd.message("\\x00")
+            cursor = option - 1
+
+        lcd.set_cursor(0, cursor)
+        lcd.message(chr(126))
 
     elif screen == SCREEN_CAL_CLOSE:
         lcd.clear()
@@ -364,13 +383,13 @@ def send_command(command, value):
         reset()
 
 
-def flash_firmware():
+def flash_firmware(reset):
     global serial_connection, connected_device
 
     lcd.clear()
     lcd.message("Nahravam ...\n50%")
 
-    esptool_write_flash_firmware()
+    esptool_write_flash_firmware(reset)
 
     lcd.clear()
     lcd.message("Hotovo")
@@ -380,10 +399,12 @@ def flash_firmware():
     serial_connection = serial.Serial(connected_device, 115200, timeout=1)
 
 
-def esptool_write_flash_firmware():
+def esptool_write_flash_firmware(reset):
     global connected_device
 
-    command = get_esptool_base_command(connected_device) + " 0x10000 bin/floower-esp32.ino.bin 0x8000 bin/floower-esp32.ino.partitions.bin --erase-all"
+    command = get_esptool_base_command(connected_device) + " 0x10000 bin/floower-esp32.ino.bin 0x8000 bin/floower-esp32.ino.partitions.bin"
+    if reset:
+        command += " --erase-all"
 
     print("Flashing Floower Firmware");
     print(command);
@@ -446,17 +467,18 @@ def check_serial_device():
 
 
 def reset():
-    global screen, close_value, open_value, screen_option
+    global screen, close_value, open_value, screen_option, prev_screen_option
     screen = SCREEN_CONNECT
     close_value = 1000
     open_value = 1000
+    prev_screen_option = 0
     screen_option = 0
     draw_screen()
     return
 
 
 def main():
-    global screen, screen_option, serial_number
+    global screen, screen_option, prev_screen_option, serial_number
 
     try:
         initGPIO()
@@ -469,9 +491,9 @@ def main():
     except (OSError, ValueError):
         serial_number = 130 # fallback
 
-    print("Floower Planter Tool v%s" % (VERSION))
+    print("Floower Planter Tool v%s" % VERSION)
     lcd.clear()
-    lcd.message("Floower Planter\nv%s" % (VERSION))
+    lcd.message("Floower Planter\nv%s" % VERSION)
     sleep(5)
 
     reset()
@@ -479,11 +501,12 @@ def main():
     while True:
         # try to discover and connect to device
         if serial_connection is None or serial_connection.is_open == False:
-            if discover_and_connect_serial() == True:
+            if discover_and_connect_serial():
                 lcd.clear()
                 lcd.message("Pripojeno")
                 sleep(1)
                 screen = SCREEN_MENU
+                prev_screen_option = 0
                 screen_option = 0
                 draw_screen()
 
