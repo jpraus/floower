@@ -48,6 +48,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       }
       else if (state == STATE_REMOTE_INIT) {
         remote->stopAdvertising();
+        config->setRemoteOnStartup(false);
         floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 500);
         changeState(STATE_STANDBY);
       }
