@@ -1,6 +1,6 @@
 # [![Floower](https://floower.io/wp-content/uploads/2020/04/floower.png)](https://floower.io)
 
-The most advanced flower in the world. Electrical & Mechanical flower lamp that blooms with all the colors of rainbow thanks to the set of RGB LEDs.
+The most advanced flower in the world. Electrical & Mechanical flower lamp that blooms with all the colors of rainbow thanks to the set of RGB LEDs. Flooware is what we called Smart Art. We are aiming to create a technology with soul. That everybody will love.
 
 [floower.io](https://floower.io)
 
@@ -19,13 +19,11 @@ The most advanced flower in the world. Electrical & Mechanical flower lamp that 
 * deep sleep mode to extend battery life
 * red charging and blue activity LEDs in the flowerpot
 
-## How do I get one?
+## How do I Get One?
 
-Earlybird Prototypes currently available on [floower.io](https://floower.io). Join waitlist to get notified every time the new batch is ready.
+Visit [floower.io](https://floower.io).
 
-## Understanding Floower hardware
-
-...
+## Understanding Floower Hardware
 
 ### Logic Boards History
 
@@ -33,12 +31,21 @@ Earlybird Prototypes currently available on [floower.io](https://floower.io). Jo
   * Serial numbers 0001 - 0018, 0021, 0022
   * The history starts here
 * **Revision 6**
-  * Serial numbers 0019, 0020, 0023 - 0032
+  * Serial numbers 0019, 0020, 0023 - 0132
   * Added USB power detection circuitry
+* **Revision 7**
+  * Serial numbers 0133 +
+  * Ability to charge from quick/smart charges
 
-## Connecting flower to the computer
+## Upgrading the Flooware
 
-### Installing 
+The Floower firmware is called Flooware. We aim to provide all the Flooware with the latest updates to get the latest features and new seasonal updates. The new age of Smart Art has just begun! [Upgrade your Floower with latest Flooware](https://floower.io/upgrading-floower/).
+
+## Playing With the Code
+
+Flooware is written in Arduino code. It's super easy to understand and develop. If you wish to adjust your Flooware in a unique way. Feel free to clone the project and start writing the code! Any bug-fixes, improvements, or new features are welcomed! Follow up on the next steps to get your IDE setup for Flooware development.
+
+### Installing Prerequisites
 
 Floower can be programmed using the Arduino IDE. However, the ESP32 microcontroller is not supported by default, so you need to install & configure it:
 
