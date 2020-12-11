@@ -4,7 +4,7 @@ The most advanced flower in the world. Electrical & Mechanical flower lamp that 
 
 [floower.io](https://floower.io)
 
-![Everblooming Flowers](https://github.com/jpraus/floower/blob/master/doc/floower.jpg?raw=true)
+![Everblooming Flowers](https://github.com/jpraus/floower/blob/master/doc/floower.jpeg?raw=true)
 
 ## Features
 
