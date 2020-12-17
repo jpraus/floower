@@ -15,17 +15,17 @@ chmod +x planter-starter.sh
 echo "#!/bin/bash" > planter-starter.sh
 echo "" >> planter-starter.sh
 echo "export PATH=\"$PATH\"" >> planter-starter.sh
-echo "cd `pwd`" >> planter-starter.sh
+echo "cd $PWD" >> planter-starter.sh
 echo "bash update.sh" >> planter-starter.sh
-echo "python3 planter.py" >> planter-starter.sh
+echo "python3 -u planter.py" >> planter-starter.sh
 
 if ! grep -q planter-starter /etc/rc.local
 then
 	echo "Adding to rc.local"
-	sudo sed -i -e '$i \su pi -c "bash /home/pi/floower/src/tools/planter-rpi/planter-starter.sh > /home/pi/planter.log 2> /home/pi/planter.error &"\n' /etc/rc.local
+	sudo sed -i -e "\$i \su pi -c \"bash $PWD/planter-starter.sh > $HOME/planter.log 2> &1 &\"\n" /etc/rc.local
 else
 	echo "Replacing to rc.local"
-	sudo sed -i '/planter-starter/c\su pi -c "bash /home/pi/floower/src/tools/planter-rpi/planter-starter.sh > /home/pi/planter.log 2> /home/pi/planter.error &"' /etc/rc.local
+	sudo sed -i "/planter-starter/c\su pi -c \"bash $PWD/planter-starter.sh > $HOME/planter.log 2> &1 &\"" /etc/rc.local
 fi
 
 echo "Done"
