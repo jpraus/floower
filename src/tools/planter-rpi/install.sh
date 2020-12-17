@@ -7,6 +7,10 @@ echo "Installing dependencies"
 sudo apt-get -y install python3 python3-pip
 sudo pip3 install RPi.GPIO Adafruit-CharLCD pyserial esptool
 
+echo "Adding pi to dialout group"
+
+sudo usermod -a -G dialout pi
+
 echo "Creating launcher file"
 
 touch planter-starter.sh
