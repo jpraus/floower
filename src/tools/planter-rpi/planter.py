@@ -7,7 +7,7 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
-VERSION = 7
+VERSION = 8
 
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
@@ -426,7 +426,7 @@ def get_esptool_base_command(port):
 
 
 def discover_and_connect_serial():
-    global serial_connection, connected_device
+    global serial_connection, connected_device, lcd
 
     com = "";
     pts = prtlst.comports()
@@ -438,9 +438,15 @@ def discover_and_connect_serial():
 
     if com:
         print("Connecting to", com)
-        connected_device = com
-        serial_connection = serial.Serial(com, 115200, timeout=1)
-        return True
+        try:
+            serial_connection = serial.Serial(com, 115200, timeout=1)
+            connected_device = com
+            return True
+        except (PermissionError):
+            print("Permission error connecting to", com)
+            lcd.clear()
+            lcd.message("Chyba Pripojeni")
+            sleep(1)
 
     return False
 
