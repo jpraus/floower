@@ -25,6 +25,10 @@ void Automaton::init() {
   remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
 }
 
+void Automaton::update() {
+  // nop
+}
+
 /**
  * Implemented behavior:
  * 

@@ -43,6 +43,8 @@ void Floower::init() {
   RgbColor pixelsOriginColor = colorBlack;
   RgbColor pixelsTargetColor = colorBlack;
   pixels.Begin();
+  showColor(pixelsColor);
+  pixels.Show();
 
   // configure ADC for battery level reading
   analogReadResolution(12); // se0t 12bit resolution (0-4095)
@@ -84,7 +86,8 @@ void Floower::initServo() {
 
 void Floower::update() {
   animations.UpdateAnimations();
-  handleTimers();
+  unsigned long now = millis();
+  handleTimers(now);
 
   // show pixels
   if (pixelsColor.CalculateBrightness() > 0) {
@@ -92,11 +95,11 @@ void Floower::update() {
     pixels.Show();
   }
   else {
+    pixels.Show();
     setPixelsPowerOn(false);
   }
 
   if (touchStartedTime > 0) {
-    unsigned long now = millis();
     unsigned int touchTime = now - touchStartedTime;
     unsigned long sinceLastTouch = millis() - lastTouchTime;
 
@@ -208,6 +211,15 @@ uint8_t Floower::getPetalsOpenLevel() {
   return petalsOpenLevel;
 }
 
+uint8_t Floower::getCurrentPetalsOpenLevel() {
+  if (arePetalsMoving()) {
+    float range = servoOpenAngle - servoClosedAngle;
+    float current = servoAngle - servoClosedAngle;
+    return (current / range) * 100;
+  }
+  return petalsOpenLevel;
+}
+
 int Floower::getPetalsAngle() {
   return servoTargetAngle;
 }
@@ -226,11 +238,15 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
 
   ESP_LOGI(LOG_TAG, "Color %d,%d,%d", color.R, color.G, color.B);
 
-  if (colorMode == TRANSITION) {
+  if (transitionTime <= 0) {
+    pixelsColor = color;
+    showColor(pixelsColor);
+  }
+  else if (colorMode == TRANSITION) {
     pixelsOriginColor = pixelsColor;
     animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
   }
-  if (colorMode == FLASH) {
+  else if (colorMode == FLASH) {
     pixelsOriginColor = colorBlack; //RgbColor::LinearBlend(color, colorBlack, 0.95);
     animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
   }
@@ -384,9 +400,7 @@ bool Floower::isLowPowerMode() {
   return lowPowerMode;
 }
 
-void Floower::handleTimers() {
-  long now = millis();
-
+void Floower::handleTimers(unsigned long now) {
   if (servoPowerOffTime > 0 && servoPowerOffTime < now) {
     servoPowerOffTime = 0;
     setServoPowerOn(false);

@@ -43,8 +43,9 @@ class Floower {
     void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
     void setPetalsAngle(unsigned int angle, int transitionTime = 0);
     uint8_t getPetalsOpenLevel();
+    uint8_t getCurrentPetalsOpenLevel();
     int getPetalsAngle();
-    int getCurrentPetalsAngle();
+    int getCurrentPetalsAngle(); 
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
     RgbColor getColor();
     void startRainbow();
@@ -70,7 +71,7 @@ class Floower {
     void pixelsRainbowAnimationUpdate(const AnimationParam& param);
     void showColor(RgbColor color);
 
-    void handleTimers();
+    void handleTimers(unsigned long now);
     static void touchISR();
 
     Config *config;

@@ -10,6 +10,7 @@ class Automaton {
   public:
     Automaton(Remote *remote, Floower *floower, Config *config);
     void init();
+    void update();
 
   private:
     void onLeafTouch(FloowerTouchEvent event);
