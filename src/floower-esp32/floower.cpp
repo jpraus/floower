@@ -9,6 +9,7 @@ static const char* LOG_TAG = "Floower";
 #endif
 
 #define NEOPIXEL_PIN 27
+#define NEOPIXEL_AMBIENT_PIN 18
 #define NEOPIXEL_PWR_PIN 25
 
 #define SERVO_PIN 26
@@ -31,7 +32,7 @@ unsigned long Floower::touchStartedTime = 0;
 unsigned long Floower::touchEndedTime = 0;
 unsigned long Floower::lastTouchTime = 0;
 
-Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
+Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN), ambientPixels(4, NEOPIXEL_AMBIENT_PIN) {}
 
 void Floower::init() {
   // LEDs
@@ -45,6 +46,10 @@ void Floower::init() {
   pixels.Begin();
   showColor(pixelsColor);
   pixels.Show();
+
+  ambientPixels.Begin();
+  showColor(pixelsColor);
+  ambientPixels.Show();
 
   // configure ADC for battery level reading
   analogReadResolution(12); // se0t 12bit resolution (0-4095)
@@ -92,10 +97,14 @@ void Floower::update() {
   // show pixels
   if (pixelsColor.CalculateBrightness() > 0) {
     setPixelsPowerOn(true);
-    pixels.Show();
+    if (pixels.IsDirty() && pixels.CanShow()) {
+      pixels.Show();
+      ambientPixels.Show();
+    }
   }
   else {
     pixels.Show();
+    ambientPixels.Show();
     setPixelsPowerOn(false);
   }
 
@@ -312,10 +321,12 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 void Floower::showColor(RgbColor color) {
   if (!lowPowerMode) {
     pixels.ClearTo(color);
+    ambientPixels.ClearTo(color);
   }
   else {
     pixels.ClearTo(colorBlack);
     pixels.SetPixelColor(0, color);
+    ambientPixels.ClearTo(colorBlack);
   }
 }
 

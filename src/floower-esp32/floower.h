@@ -91,7 +91,8 @@ class Floower {
     unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
 
     // leds
-    NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> pixels;
+    NeoPixelBus<NeoGrbFeature, NeoEsp32I2s0800KbpsMethod> pixels;
+    NeoPixelBus<NeoGrbFeature, NeoEsp32I2s1800KbpsMethod> ambientPixels;
 
     // leds state
     RgbColor pixelsColor; // current color
