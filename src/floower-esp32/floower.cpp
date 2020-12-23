@@ -385,6 +385,9 @@ Battery Floower::readBatteryState() {
 }
 
 bool Floower::isUSBPowered() {
+  if (config->hardwareRevision <= 5) {
+    return true; // logic board with revision 5 lack the USB detection circuitry, pretend its always charging
+  }
   float reading = analogRead(USB_ANALOG_PIN); // 0-4095
   return reading > 2000; // ~2900 is 5V
 }
