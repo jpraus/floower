@@ -8,12 +8,11 @@
 static const char* LOG_TAG = "Automaton";
 #endif
 
-#define STATE_STANDBY 0
-#define STATE_OPEN_LIT 1
-#define STATE_CLOSED_LIT 2
-#define STATE_OPEN_RAINBOW 3
-#define STATE_CLOSED_RAINBOW 4
-#define STATE_REMOTE_INIT 5
+#define STATE_STANDBY 0 // 
+#define STATE_RUNNING 1
+#define STATE_RAINBOW 11
+#define STATE_CANDLE 12
+#define STATE_REMOTE_INIT 99
 
 Automaton::Automaton(Remote *remote, Floower *floower, Config *config)
     : remote(remote), floower(floower), config(config) {
@@ -40,14 +39,9 @@ void Automaton::update() {
 void Automaton::onLeafTouch(FloowerTouchEvent event) {
   switch (event) {
     case TOUCH_DOWN:
-      if (state == STATE_OPEN_RAINBOW) {
+      if (state == STATE_RAINBOW) {
         floower->stopAnimation(true);
-        changeState(STATE_OPEN_LIT);
-        disabledTouchUp = true;
-      }
-      else if (state == STATE_CLOSED_RAINBOW) {
-        floower->stopAnimation(true);
-        changeState(STATE_CLOSED_LIT);
+        changeState(STATE_RUNNING);
         disabledTouchUp = true;
       }
       else if (state == STATE_REMOTE_INIT) {
@@ -69,30 +63,28 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
             floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
           }
           floower->setPetalsOpenLevel(100, 5000);
-          changeState(STATE_OPEN_LIT);
+          changeState(STATE_RUNNING);
         }
-        else if (state == STATE_OPEN_LIT) {
+        else if (state == STATE_RUNNING && floower->getPetalsOpenLevel() > 0) {
           // close
           floower->setPetalsOpenLevel(0, 5000);
-          changeState(STATE_CLOSED_LIT);
         }
-        else if (state == STATE_CLOSED_LIT) {
+        else if (state == STATE_RUNNING) {
           // shutdown
-          Serial.println("shutting down");
           floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
-          changeState(STATE_STANDBY);
+          changeState(STATE_STANDBY);  
         }
       }
       break;
 
     case TOUCH_LONG:
       floower->startAnimation(FloowerColorAnimation::RAINBOW);
-      changeState(state == STATE_OPEN_LIT ? STATE_OPEN_RAINBOW : STATE_CLOSED_RAINBOW);
+      changeState(STATE_RAINBOW);
       disabledTouchUp = true;
       break;
 
     case TOUCH_HOLD:
-      if (state == STATE_STANDBY || state == STATE_CLOSED_RAINBOW) { // init remote when Floower closed (or rainbow started)
+      if (state == STATE_STANDBY || state == STATE_RAINBOW) { // init remote when Floower closed (or rainbow started)
         floower->setColor(colorBlue, FloowerColorMode::FLASH, 1000);
         remote->init();
         remote->startAdvertising();
@@ -104,13 +96,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
 }
 
 void Automaton::onRemoteTookOver() {
-  // emulate state of automation in case remote took over the control
-  if (floower->getPetalsOpenLevel() > 0) {
-    changeState(STATE_OPEN_LIT);
-  }
-  else {
-    changeState(STATE_STANDBY);
-  }
+  changeState(STATE_RUNNING);
 }
 
 void Automaton::changeState(uint8_t newState) {
