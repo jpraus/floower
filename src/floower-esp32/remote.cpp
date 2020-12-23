@@ -191,7 +191,7 @@ void Remote::onTakeOver(RemoteTakeOverCallback callback) {
 }
 
 void Remote::setBatteryLevel(uint8_t level, bool charging) {
-  if (deviceConnected && batteryService != nullptr && floower->isIdle()) {
+  if (deviceConnected && batteryService != nullptr && !floower->arePetalsMoving()) {
     ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
 
     BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);

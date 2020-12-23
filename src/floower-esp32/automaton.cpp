@@ -56,7 +56,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       if (disabledTouchUp) {
         disabledTouchUp = false;
       }
-      else if (floower->isIdle()) {
+      else if (!floower->arePetalsMoving() && !floower->isChangingColor()) {
         if (state == STATE_STANDBY) {
           // open + set color
           if (!floower->isLit()) {
