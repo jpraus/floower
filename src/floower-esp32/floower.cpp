@@ -284,16 +284,44 @@ RgbColor Floower::getColor() {
   return pixelsTargetColor;
 }
 
-void Floower::startRainbow() {
-  pixelsOriginColor = pixelsColor;
-  animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
+RgbColor Floower::getCurrentColor() {
+  return pixelsColor;
 }
 
-void Floower::stopRainbowRetainColor() {
+void Floower::startAnimation(FloowerColorAnimation animation) {
+  if (animation == RAINBOW) {
+    pixelsOriginColor = pixelsColor;
+    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
+  }
+  else if (animation == CANDLE) {
+    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
+  }
+}
+
+void Floower::stopAnimation(bool retainColor) {
   animations.StopAnimation(1);
+  if (retainColor) {
+    pixelsTargetColor = pixelsColor;
+  }
 }
 
 void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
+  HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
+  float hue = hsbOriginal.H + param.progress;
+  if (hue > 1.0) {
+    hue = hue - 1;
+  }
+  pixelsColor = RgbColor(HsbColor(hue, 1, 0.4)); // TODO: fine tune
+  showColor(pixelsColor);
+
+  if (param.state == AnimationState_Completed) {
+    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
+      animations.RestartAnimation(param.index);
+    }
+  }
+}
+
+void Floower::pixelsCandleAnimationUpdate(const AnimationParam& param) {
   HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
   float hue = hsbOriginal.H + param.progress;
   if (hue > 1.0) {

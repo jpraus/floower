@@ -13,6 +13,11 @@ enum FloowerColorMode {
   FLASH
 };
 
+enum FloowerColorAnimation {
+  RAINBOW,
+  CANDLE
+};
+
 enum FloowerTouchEvent {
   TOUCH_DOWN,
   TOUCH_LONG, // >2s
@@ -48,8 +53,9 @@ class Floower {
     int getCurrentPetalsAngle(); 
     void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
     RgbColor getColor();
-    void startRainbow();
-    void stopRainbowRetainColor();
+    RgbColor getCurrentColor();
+    void startAnimation(FloowerColorAnimation animation);
+    void stopAnimation(bool retainColor);
     bool arePetalsMoving();
     bool isLit();
     bool isIdle();
@@ -69,6 +75,7 @@ class Floower {
     void pixelsTransitionAnimationUpdate(const AnimationParam& param);
     void pixelsFlashAnimationUpdate(const AnimationParam& param);
     void pixelsRainbowAnimationUpdate(const AnimationParam& param);
+    void pixelsCandleAnimationUpdate(const AnimationParam& param);
     void showColor(RgbColor color);
 
     void handleTimers(unsigned long now);

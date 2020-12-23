@@ -41,12 +41,12 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
   switch (event) {
     case TOUCH_DOWN:
       if (state == STATE_OPEN_RAINBOW) {
-        floower->stopRainbowRetainColor();
+        floower->stopAnimation(true);
         changeState(STATE_OPEN_LIT);
         disabledTouchUp = true;
       }
       else if (state == STATE_CLOSED_RAINBOW) {
-        floower->stopRainbowRetainColor();
+        floower->stopAnimation(true);
         changeState(STATE_CLOSED_LIT);
         disabledTouchUp = true;
       }
@@ -78,6 +78,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         }
         else if (state == STATE_CLOSED_LIT) {
           // shutdown
+          Serial.println("shutting down");
           floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
           changeState(STATE_STANDBY);
         }
@@ -85,7 +86,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       break;
 
     case TOUCH_LONG:
-      floower->startRainbow();
+      floower->startAnimation(FloowerColorAnimation::RAINBOW);
       changeState(state == STATE_OPEN_LIT ? STATE_OPEN_RAINBOW : STATE_CLOSED_RAINBOW);
       disabledTouchUp = true;
       break;
