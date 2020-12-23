@@ -128,7 +128,7 @@ void loop() {
     periodicOperationsTime = now + PERIODIC_OPERATIONS_INTERVAL;
     periodicOperation();
   }
-  if (initRemoteTime != 0 && initRemoteTime < now && floower.isIdle()) {
+  if (initRemoteTime != 0 && initRemoteTime < now && !floower.arePetalsMoving()) {
     initRemoteTime = 0;
     remote.init();
     remote.startAdvertising();
@@ -141,7 +141,7 @@ void loop() {
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
     // plan to enter deep sleep to save power if floower is in open/dark position & remote is not connected
-    if (!batteryCharging && !floower.isLit() && floower.isIdle() && floower.getPetalsOpenLevel() == 0 && !remote.isConnected()) {
+    if (!batteryCharging && !floower.isLit() && !floower.arePetalsMoving() && floower.getPetalsOpenLevel() == 0 && !remote.isConnected()) {
       if (deepSleepTime == 0) {
         planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
       }
@@ -158,8 +158,8 @@ void loop() {
   }
 #endif
 
-  // save some power when flower is idle
-  if (floower.isIdle()) {
+  // save some power when flower is not animating
+  if (!floower.isAnimating()) {
     delay(10);
   }
 }

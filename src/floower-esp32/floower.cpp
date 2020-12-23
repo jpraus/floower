@@ -31,6 +31,8 @@ unsigned long Floower::touchStartedTime = 0;
 unsigned long Floower::touchEndedTime = 0;
 unsigned long Floower::lastTouchTime = 0;
 
+const RgbColor candleColor(178, 45, 0); // 36
+
 Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
 
 void Floower::init() {
@@ -235,6 +237,7 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
 
   pixelsColorMode = colorMode;
   pixelsTargetColor = color;
+  interruptiblePixelsAnimation = false;
 
   ESP_LOGI(LOG_TAG, "Color %d,%d,%d", color.R, color.G, color.B);
 
@@ -289,12 +292,19 @@ RgbColor Floower::getCurrentColor() {
 }
 
 void Floower::startAnimation(FloowerColorAnimation animation) {
+  interruptiblePixelsAnimation = true;
+
   if (animation == RAINBOW) {
     pixelsOriginColor = pixelsColor;
     animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
   else if (animation == CANDLE) {
-    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
+    pixelsTargetColor = pixelsColor = RgbColor(candleColor); // candle orange
+    for (uint8_t i = 0; i < 6; i++) {
+      candleOriginColors[i] = pixelsTargetColor;
+      candleTargetColors[i] = pixelsTargetColor;
+    }
+    animations.StartAnimation(1, 100, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
@@ -322,18 +332,19 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 }
 
 void Floower::pixelsCandleAnimationUpdate(const AnimationParam& param) {
-  HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
-  float hue = hsbOriginal.H + param.progress;
-  if (hue > 1.0) {
-    hue = hue - 1;
+  pixels.SetPixelColor(0, pixelsTargetColor);
+  for (uint8_t i = 0; i < 6; i++) {
+    pixels.SetPixelColor(i + 1, RgbColor::LinearBlend(candleOriginColors[i], candleTargetColors[i], param.progress));
   }
-  pixelsColor = RgbColor(HsbColor(hue, 1, 0.4)); // TODO: fine tune
-  showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {
-    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
-      animations.RestartAnimation(param.index);
+    HsbColor candleHsbColor = HsbColor(candleColor);
+    for (uint8_t i = 0; i < 6; i++) {
+      candleHsbColor.B = random(20, 100) / 100.0;
+      candleOriginColors[i] = candleTargetColors[i];
+      candleTargetColors[i] = RgbColor(candleHsbColor);
     }
+    animations.StartAnimation(param.index, random(10, 400), [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
@@ -351,12 +362,16 @@ bool Floower::isLit() {
   return pixelsPowerOn;
 }
 
+bool Floower::isAnimating() {
+  return !animations.IsAnimating();
+}
+
 bool Floower::arePetalsMoving() {
   return animations.IsAnimationActive(0);
 }
 
-bool Floower::isIdle() {
-  return !animations.IsAnimating();
+bool Floower::isChangingColor() {
+  return (!interruptiblePixelsAnimation && animations.IsAnimationActive(1));
 }
 
 void Floower::acty() {

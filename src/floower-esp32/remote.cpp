@@ -40,35 +40,37 @@ static const char* LOG_TAG = "Remote";
 #define BATTERY_POWER_STATE_DISCHARGING B00101111
 
 // BLE data packets
-#define STATE_PACKET_SIZE 4
-
 typedef struct StatePacketData {
-  byte petalsOpenLevel; // 0-100%, read-write
+  byte petalsOpenLevel; // normally petals open level 0-100%, read-write
   byte R; // 0-255, read-write
   byte G; // 0-255, read-write
   byte B; // 0-255, read-write
+};
+
+#define STATE_PACKET_SIZE 4
+typedef union StatePacket {
+  StatePacketData data;
+  uint8_t bytes[STATE_PACKET_SIZE];
+};
+
+#define STATE_TRANSITION_MODE_BIT_COLOR 0
+#define STATE_TRANSITION_MODE_BIT_PETALS 1 // when this bit is set, the VALUE parameter means open level of petals (0-100%)
+#define STATE_TRANSITION_MODE_BIT_ANIMATION 2 // when this bit is set, the VALUE parameter means ID of animation
+
+typedef struct StateChangePacketData {
+  byte value;
+  byte R; // 0-255, read-write
+  byte G; // 0-255, read-write
+  byte B; // 0-255, read-write
+  byte duration; // 100 of milliseconds
+  byte mode; // 8 flags, see defines above
 
   RgbColor getColor() {
     return RgbColor(R, G, B);
   }
 };
 
-typedef union StatePacket {
-  StatePacketData data;
-  uint8_t bytes[STATE_PACKET_SIZE];
-};
-
 #define STATE_CHANGE_PACKET_SIZE 6
-
-// TODO: define
-#define STATE_TRANSITION_MODE_BIT_COLOR 0
-#define STATE_TRANSITION_MODE_BIT_PETALS 1
-
-typedef struct StateChangePacketData : StatePacketData {
-  byte duration; // 100 of milliseconds
-  byte mode; // transition mode
-};
-
 typedef union StateChangePacket {
   StateChangePacketData data;
   uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
@@ -189,7 +191,7 @@ void Remote::onTakeOver(RemoteTakeOverCallback callback) {
 }
 
 void Remote::setBatteryLevel(uint8_t level, bool charging) {
-  if (deviceConnected && batteryService != nullptr && floower->isIdle()) {
+  if (deviceConnected && batteryService != nullptr && !floower->arePetalsMoving()) {
     ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
 
     BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
@@ -222,7 +224,18 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
     }
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
       // petals open/close
-      remote->floower->setPetalsOpenLevel(statePacket.data.petalsOpenLevel, statePacket.data.duration * 100);
+      remote->floower->setPetalsOpenLevel(statePacket.data.value, statePacket.data.duration * 100);
+    }
+    else if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
+      // play animation (according to value)
+      switch (statePacket.data.value) {
+        case 1:
+          remote->floower->startAnimation(FloowerColorAnimation::RAINBOW);
+          break;
+        case 2:
+          remote->floower->startAnimation(FloowerColorAnimation::CANDLE);
+          break;
+      }
     }
 
     if (remote->takeOverCallback != nullptr) {

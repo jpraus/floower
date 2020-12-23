@@ -56,9 +56,10 @@ class Floower {
     RgbColor getCurrentColor();
     void startAnimation(FloowerColorAnimation animation);
     void stopAnimation(bool retainColor);
-    bool arePetalsMoving();
     bool isLit();
-    bool isIdle();
+    bool isAnimating();
+    bool arePetalsMoving();
+    bool isChangingColor();
 
     void acty();
     Battery readBatteryState();
@@ -106,6 +107,11 @@ class Floower {
     RgbColor pixelsTargetColor; // color after animation
     FloowerColorMode pixelsColorMode;
     bool pixelsPowerOn;
+
+    // leds animations
+    bool interruptiblePixelsAnimation = false;
+    RgbColor candleOriginColors[6];
+    RgbColor candleTargetColors[6];
 
     // touch
     FloowerOnLeafTouchCallback touchCallback;
