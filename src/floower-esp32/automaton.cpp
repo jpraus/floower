@@ -22,6 +22,8 @@ void Automaton::init() {
   changeState(STATE_STANDBY);
   floower->onLeafTouch([=](FloowerTouchEvent event){ onLeafTouch(event); });
   remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
+
+  floower->startAnimation(FloowerColorAnimation::CANDLE);
 }
 
 void Automaton::update() {

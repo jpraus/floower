@@ -294,7 +294,8 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
     animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
   else if (animation == CANDLE) {
-    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
+    pixelsTargetColor = pixelsColor = RgbColor(255, 100, 0); // orange
+    animations.StartAnimation(1, 100, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
@@ -322,18 +323,13 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 }
 
 void Floower::pixelsCandleAnimationUpdate(const AnimationParam& param) {
-  HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
-  float hue = hsbOriginal.H + param.progress;
-  if (hue > 1.0) {
-    hue = hue - 1;
-  }
-  pixelsColor = RgbColor(HsbColor(hue, 1, 0.4)); // TODO: fine tune
-  showColor(pixelsColor);
-
   if (param.state == AnimationState_Completed) {
-    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
-      animations.RestartAnimation(param.index);
+    HsbColor hsbColor = HsbColor(pixelsTargetColor);
+    for (uint8_t i = 0; i < 7; i++) {
+      hsbColor.B = random(40, 100) / 100.0;
+      pixels.SetPixelColor(i, hsbColor);
     }
+    animations.StartAnimation(param.index, random(20, 200), [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
