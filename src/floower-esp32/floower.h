@@ -122,6 +122,10 @@ class Floower {
 
     // acty
     unsigned long actyOffTime;
+
+    // animations
+    RgbColor candleOriginColors[6];
+    RgbColor candleTargetColors[6];
 };
 
 #endif

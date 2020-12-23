@@ -31,6 +31,8 @@ unsigned long Floower::touchStartedTime = 0;
 unsigned long Floower::touchEndedTime = 0;
 unsigned long Floower::lastTouchTime = 0;
 
+const RgbColor candleColor(178, 45, 0); // 36
+
 Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
 
 void Floower::init() {
@@ -294,7 +296,11 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
     animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
   else if (animation == CANDLE) {
-    pixelsTargetColor = pixelsColor = RgbColor(255, 100, 0); // orange
+    pixelsTargetColor = pixelsColor = RgbColor(candleColor); // candle orange
+    for (uint8_t i = 0; i < 6; i++) {
+      candleOriginColors[i] = pixelsTargetColor;
+      candleTargetColors[i] = pixelsTargetColor;
+    }
     animations.StartAnimation(1, 100, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
@@ -323,13 +329,19 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 }
 
 void Floower::pixelsCandleAnimationUpdate(const AnimationParam& param) {
+  pixels.SetPixelColor(0, pixelsTargetColor);
+  for (uint8_t i = 0; i < 6; i++) {
+    pixels.SetPixelColor(i + 1, RgbColor::LinearBlend(candleOriginColors[i], candleTargetColors[i], param.progress));
+  }
+
   if (param.state == AnimationState_Completed) {
-    HsbColor hsbColor = HsbColor(pixelsTargetColor);
-    for (uint8_t i = 0; i < 7; i++) {
-      hsbColor.B = random(40, 100) / 100.0;
-      pixels.SetPixelColor(i, hsbColor);
+    HsbColor candleHsbColor = HsbColor(candleColor);
+    for (uint8_t i = 0; i < 6; i++) {
+      candleHsbColor.B = random(20, 100) / 100.0;
+      candleOriginColors[i] = candleTargetColors[i];
+      candleTargetColors[i] = RgbColor(candleHsbColor);
     }
-    animations.StartAnimation(param.index, random(20, 200), [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
+    animations.StartAnimation(param.index, random(10, 400), [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
