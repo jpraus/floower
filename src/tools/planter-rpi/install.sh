@@ -26,10 +26,10 @@ echo "python3 -u planter.py" >> planter-starter.sh
 if ! grep -q planter-starter /etc/rc.local
 then
 	echo "Adding to rc.local"
-	sudo sed -i -e "\$i \su pi -c \"bash $PWD/planter-starter.sh > $HOME/planter.log 2>&1 &\"\n" /etc/rc.local
+	sudo sed -i -e "\$i \su pi -c \"bash $PWD/planter-starter.sh >> $HOME/planter.log 2>&1 &\"\n" /etc/rc.local
 else
 	echo "Replacing to rc.local"
-	sudo sed -i "/planter-starter/c\su pi -c \"bash $PWD/planter-starter.sh > $HOME/planter.log 2>&1 &\"" /etc/rc.local
+	sudo sed -i "/planter-starter/c\su pi -c \"bash $PWD/planter-starter.sh >> $HOME/planter.log 2>&1 &\"" /etc/rc.local
 fi
 
 echo "Done"
