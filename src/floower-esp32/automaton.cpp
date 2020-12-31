@@ -69,7 +69,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
           // close
           floower->setPetalsOpenLevel(0, 5000);
         }
-        else if (state == STATE_RUNNING) {
+        else if (state == STATE_RUNNING || state == STATE_CANDLE) {
           // shutdown
           floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
           changeState(STATE_STANDBY);  
@@ -78,8 +78,14 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       break;
 
     case TOUCH_LONG:
-      floower->startAnimation(FloowerColorAnimation::RAINBOW);
-      changeState(STATE_RAINBOW);
+      if (state == STATE_STANDBY) {
+        floower->startAnimation(FloowerColorAnimation::CANDLE);
+        changeState(STATE_CANDLE);
+      }
+      else {
+        floower->startAnimation(FloowerColorAnimation::RAINBOW);
+        changeState(STATE_RAINBOW);
+      }
       disabledTouchUp = true;
       break;
 
