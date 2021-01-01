@@ -379,7 +379,7 @@ def send_command(command, value):
         serial_connection.close()
         serial_connection = None
         connected_device = None
-        print("Serial COM error - disconnecting,")
+        print("Serial COM error - disconnecting")
         reset()
 
 
@@ -395,8 +395,16 @@ def flash_firmware(reset):
     lcd.message("Hotovo")
     sleep(1)
 
-    serial_connection.close()
-    serial_connection = serial.Serial(connected_device, 115200, timeout=1)
+    try:
+        serial_connection.close()
+        serial_connection = serial.Serial(connected_device, 115200, timeout=1)
+
+    except serial.serialutil.SerialException:
+        serial_connection.close()
+        serial_connection = None
+        connected_device = None
+        print("Serial COM error - disconnecting")
+        reset()
 
 
 def esptool_write_flash_firmware(reset):
@@ -407,16 +415,6 @@ def esptool_write_flash_firmware(reset):
         command += " --erase-all"
 
     print("Flashing Floower Firmware");
-    print(command);
-    os.system(command)
-
-
-def esptool_write_factory_reset():
-    global connected_device
-
-    command = get_esptool_base_command(connected_device) + " 0x10000 bin/floower-esp32-factoryreset.ino.bin 0x8000 bin/floower-esp32-factoryreset.ino.partitions.bin"
-
-    print("Performing Floower Factory Reset");
     print(command);
     os.system(command)
 
