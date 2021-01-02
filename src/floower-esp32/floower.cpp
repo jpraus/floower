@@ -76,14 +76,20 @@ void Floower::initServo() {
   setServoPowerOn(false);
   pinMode(SERVO_PWR_PIN, OUTPUT);
 
-  servo.setPeriodHertz(50); // standard 50 Hz servo
   if (config->calibrated) {
-    servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
+    if (servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle, 0, 100) == INVALID_SERVO) {
+      ESP_LOGE(LOG_TAG, "Failed to attach petals servo");
+    }
+    ESP_LOGE(LOG_TAG, "Servo initialized");
   }
   else {
     servo.attach(SERVO_PIN); // DANGER! no boundaries to allow calibration
   }
-  servo.write(servoAngle);
+
+  // servo starting position (it should be closed)
+  servo.write(0);
+  servo.setEasingType(EASE_LINEAR);
+  servo.setSpeed(30); // degree per second
 }
 
 void Floower::update() {
@@ -172,15 +178,13 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   if (level == petalsOpenLevel) {
     return; // no change, keep doing the old movement until done
   }
-  petalsOpenLevel = level;
 
-  if (level >= 100) {
-    setPetalsAngle(servoOpenAngle, transitionTime);
+  if (level > 100) {
+    level = 100;
   }
-  else {
-    float position = (servoOpenAngle - servoClosedAngle);
-    position = position * level / 100.0;
-    setPetalsAngle(servoClosedAngle + position, transitionTime);
+  petalsOpenLevel = level;
+  if (servo.startEaseTo(petalsOpenLevel)) {
+    setServoPowerOn(true); 
   }
 }
 
@@ -191,7 +195,9 @@ void Floower::setPetalsAngle(unsigned int angle, int transitionTime) {
   ESP_LOGI(LOG_TAG, "Petals %d%% (%d) in %d", petalsOpenLevel, angle, transitionTime);
 
   // TODO: support transitionTime of 0
-  animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
+  //animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
+  setServoPowerOn(true);
+  servo.startEaseTo(45);
 
   if (changeCallback != nullptr) {
     changeCallback(petalsOpenLevel, pixelsTargetColor);

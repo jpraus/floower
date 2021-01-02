@@ -5,8 +5,8 @@
 #include "config.h"
 #include <functional>
 #include <NeoPixelBus.h>
-#include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
+#include "ServoEasing.h"
 
 enum FloowerColorMode {
   TRANSITION,
@@ -86,7 +86,7 @@ class Floower {
     FloowerChangeCallback changeCallback;
 
     // servo config
-    Servo servo;
+    ServoEasing servo;
     unsigned int servoOpenAngle;
     unsigned int servoClosedAngle;
 
