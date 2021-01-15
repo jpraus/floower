@@ -184,9 +184,10 @@ void powerWatchDog() {
   }
   else if (battery.voltage < POWER_DEAD_THRESHOLD) {
     ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
-    floower.setColor(colorBlack, FloowerColorMode::TRANSITION, 2500);
+    floower.setLowPowerMode(true);
+    floower.setColor(colorRed, FloowerColorMode::FLASH, 1000);
     floower.setPetalsOpenLevel(0, 2500);
-    planDeepSleep(0);
+    planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     batteryDead = true;
   }
   else if (!floower.isLowPowerMode() && battery.voltage < POWER_LOW_ENTER_THRESHOLD) {
