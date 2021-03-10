@@ -60,7 +60,7 @@ void Config::load() {
       setCalibrated();
     }
 
-    // backward compatibility => settings data
+    // backward compatibility => personification data
     if (configVersion < 4) {
       EEPROM.write(EEPROM_ADDRESS_SPEED, DEFAULT_SPEED);
       EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, DEFAULT_MAX_OPEN_LEVEL);
@@ -78,12 +78,12 @@ void Config::load() {
     readFlags();
     readColorScheme();
     readName();
-    readSettings();
+    readPersonification();
   
     ESP_LOGI(LOG_TAG, "Config ready");
     ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags);
     ESP_LOGI(LOG_TAG, "Flags: r%d, %s", initRemoteOnStartup, name.c_str());
-    ESP_LOGI(LOG_TAG, "Sett: tt%d, bh%d, sp%d, mo%d, li%d", settings.touchThreshold, settings.behavior, settings.speed, settings.maxOpenLevel, settings.lightIntensity);
+    ESP_LOGI(LOG_TAG, "P13n: tt%d, bh%d, sp%d, mo%d, li%d", personification.touchThreshold, personification.behavior, personification.speed, personification.maxOpenLevel, personification.lightIntensity);
     for (uint8_t i = 0; i < colorSchemeSize; i++) {
       ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
     }
@@ -113,8 +113,8 @@ void Config::factorySettings() {
   ESP_LOGI(LOG_TAG, "Factory reset");
   setName("Floower");
   setRemoteOnStartup(false);
-  Settings settings = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_LIGHT_INTENSITY};
-  setSettings(settings);
+  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_LIGHT_INTENSITY};
+  setPersonification(personification);
 
   colorScheme[0] = colorWhite;
   colorScheme[1] = colorYellow;
@@ -154,28 +154,31 @@ void Config::setColorScheme(RgbColor* colors, uint8_t size) {
   writeColorScheme();
 }
 
-void Config::setSettings(Settings settings) {
-  this->settings = settings;
-  this->speedMillis = settings.speed * 100;
-  EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, settings.touchThreshold);
-  EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, settings.behavior);
-  EEPROM.write(EEPROM_ADDRESS_SPEED, settings.speed);
-  EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, settings.maxOpenLevel);
-  EEPROM.write(EEPROM_ADDRESS_LIGHT_INTENSITY, settings.lightIntensity);
+void Config::setPersonification(Personification personification) {
+  this->personification = personification;
+  this->speedMillis = personification.speed * 100;
+  EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, personification.touchThreshold);
+  EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, personification.behavior);
+  EEPROM.write(EEPROM_ADDRESS_SPEED, personification.speed);
+  EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, personification.maxOpenLevel);
+  EEPROM.write(EEPROM_ADDRESS_LIGHT_INTENSITY, personification.lightIntensity);
 }
 
-void Config::readSettings() {
-  this->settings.touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
-  this->settings.behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
-  this->settings.speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
-  this->speedMillis = this->settings.speed * 100;
-  this->settings.maxOpenLevel = EEPROM.read(EEPROM_ADDRESS_MAX_OPEN_LEVEL);
-  if (this->settings.maxOpenLevel > 100) {
-    this->settings.maxOpenLevel = 100;
+void Config::readPersonification() {
+  personification.touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
+  personification.behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
+  personification.speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
+  if (personification.speed < 5) {
+    personification.speed = 5;
   }
-  this->settings.lightIntensity = EEPROM.read(EEPROM_ADDRESS_LIGHT_INTENSITY);
-  if (this->settings.lightIntensity > 100) {
-    this->settings.lightIntensity = 100;
+  speedMillis = this->personification.speed * 100;
+  personification.maxOpenLevel = EEPROM.read(EEPROM_ADDRESS_MAX_OPEN_LEVEL);
+  if (personification.maxOpenLevel > 100) {
+    personification.maxOpenLevel = 100;
+  }
+  personification.lightIntensity = EEPROM.read(EEPROM_ADDRESS_LIGHT_INTENSITY);
+  if (personification.lightIntensity > 100) {
+    personification.lightIntensity = 100;
   }
 }
 

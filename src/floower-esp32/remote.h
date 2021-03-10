@@ -62,9 +62,9 @@ class Remote {
     };
 
     // BLE touch threshold characteristics callback
-    class SettingsCharacteristicsCallbacks : public BLECharacteristicCallbacks {
+    class PersonificationCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        SettingsCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        PersonificationCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
       private:
         Remote* remote ;
         void onWrite(BLECharacteristic *characteristic);

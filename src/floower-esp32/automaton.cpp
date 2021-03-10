@@ -70,7 +70,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
           if (!floower->isLit()) {
             floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, config->speedMillis);
           }
-          floower->setPetalsOpenLevel(config->settings.maxOpenLevel, config->speedMillis);
+          floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
           changeState(STATE_RUNNING);
         }
         else if (state == STATE_RUNNING && floower->getPetalsOpenLevel() > 0) {
@@ -85,7 +85,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       }
       else if (state == STATE_BLOOMING) {
         // bloooom
-        floower->setPetalsOpenLevel(config->settings.maxOpenLevel, config->speedMillis);
+        floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
         changeState(STATE_RUNNING);
       }
       break;

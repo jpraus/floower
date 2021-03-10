@@ -30,7 +30,7 @@ const RgbColor colorPurple(148, 0, 178);
 const RgbColor colorPink(178, 0, 73);
 const RgbColor colorBlack(0);
 
-typedef struct Settings {
+typedef struct Personification {
   uint8_t touchThreshold; // read-write
   uint8_t behavior; // read-write
   uint8_t speed; // in 0.1s, read-write
@@ -49,7 +49,7 @@ class Config {
     void setName(String name);
     void setRemoteOnStartup(bool initRemoteOnStartup);
     void setCalibrated();
-    void setSettings(Settings settings);
+    void setPersonification(Personification personification);
     void commit();
 
     // calibration
@@ -67,7 +67,7 @@ class Config {
     uint8_t colorSchemeSize = 0;
     RgbColor colorScheme[10]; // max 10 colors
     String name;
-    Settings settings;
+    Personification personification;
     unsigned int speedMillis; // read-only, precalculated speed in ms
 
   private:
@@ -75,7 +75,7 @@ class Config {
     void writeColorScheme();
     void readColorScheme();
     void readName();
-    void readSettings();
+    void readPersonification();
 
     void writeInt(unsigned int address, unsigned int value);
     unsigned int readInt(unsigned int address);
