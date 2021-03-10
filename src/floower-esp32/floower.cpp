@@ -150,7 +150,7 @@ void Floower::registerOutsideTouch() {
 
 void Floower::enableTouch() {
   detachInterrupt(TOUCH_SENSOR_PIN);
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchThreshold);
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->settings.touchThreshold);
 }
 
 void Floower::touchISR() {

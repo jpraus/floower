@@ -42,7 +42,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
     case TOUCH_DOWN:
       if (state == STATE_STANDBY && !floower->arePetalsMoving() && !floower->isChangingColor()) {
         // light up instantly on touch
-        floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+        floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, config->speedMillis);
         changeState(STATE_BLOOMING);
       }
       else if (state == STATE_RAINBOW) {
@@ -68,24 +68,24 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         if (state == STATE_STANDBY) {
           // open + set color
           if (!floower->isLit()) {
-            floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, 5000);
+            floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, config->speedMillis);
           }
-          floower->setPetalsOpenLevel(100, 5000);
+          floower->setPetalsOpenLevel(config->settings.maxOpenLevel, config->speedMillis);
           changeState(STATE_RUNNING);
         }
         else if (state == STATE_RUNNING && floower->getPetalsOpenLevel() > 0) {
           // close
-          floower->setPetalsOpenLevel(0, 5000);
+          floower->setPetalsOpenLevel(0, config->speedMillis);
         }
         else if (state == STATE_RUNNING) {
           // shutdown
-          floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 2000);
+          floower->setColor(colorBlack, FloowerColorMode::TRANSITION, config->speedMillis);
           changeState(STATE_STANDBY);  
         }
       }
       else if (state == STATE_BLOOMING) {
         // bloooom
-        floower->setPetalsOpenLevel(100, 5000);
+        floower->setPetalsOpenLevel(config->settings.maxOpenLevel, config->speedMillis);
         changeState(STATE_RUNNING);
       }
       break;

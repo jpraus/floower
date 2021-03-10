@@ -17,7 +17,8 @@ static const char* LOG_TAG = "Remote";
 #define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // see StatePacketData
 #define FLOOWER_STATE_CHANGE_UUID "11226015-0424-44d3-b854-9fc332756cbf" // see StateChangePacketData
 #define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R + G + B), ..], COLOR_SCHEME_MAX_LENGTH see config.h
-#define FLOOWER_TOUCH_THRESHOLD_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // uint8
+#define FLOOWER_TOUCH_THRESHOLD_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // uint8, DEPRECATED by FLOOWER_SETTINGS_UUID
+#define FLOOWER_SETTINGS_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // see SettingsPacketData (previously touch threshold)
 //#define FLOOWER__UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b"
 //#define FLOOWER__UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528"
 
@@ -40,11 +41,17 @@ static const char* LOG_TAG = "Remote";
 #define BATTERY_POWER_STATE_DISCHARGING B00101111
 
 // BLE data packets
+#define SETTINGS_PACKET_SIZE 5
+typedef union SettingsPacket {
+  Settings data; // see config.h
+  uint8_t bytes[SETTINGS_PACKET_SIZE];
+};
+
 typedef struct StatePacketData {
-  byte petalsOpenLevel; // normally petals open level 0-100%, read-write
-  byte R; // 0-255, read-write
-  byte G; // 0-255, read-write
-  byte B; // 0-255, read-write
+  uint8_t petalsOpenLevel; // normally petals open level 0-100%, read-write
+  uint8_t R; // 0-255, read-write
+  uint8_t G; // 0-255, read-write
+  uint8_t B; // 0-255, read-write
 };
 
 #define STATE_PACKET_SIZE 4
@@ -58,12 +65,12 @@ typedef union StatePacket {
 #define STATE_TRANSITION_MODE_BIT_ANIMATION 2 // when this bit is set, the VALUE parameter means ID of animation
 
 typedef struct StateChangePacketData {
-  byte value;
-  byte R; // 0-255, read-write
-  byte G; // 0-255, read-write
-  byte B; // 0-255, read-write
-  byte duration; // 100 of milliseconds
-  byte mode; // 8 flags, see defines above
+  uint8_t value;
+  uint8_t R; // 0-255, read-write
+  uint8_t G; // 0-255, read-write
+  uint8_t B; // 0-255, read-write
+  uint8_t duration; // 100 of milliseconds
+  uint8_t mode; // 8 flags, see defines above
 
   RgbColor getColor() {
     return RgbColor(R, G, B);
@@ -117,11 +124,11 @@ void Remote::init() {
     characteristic->setValue(config->name.c_str());
     characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
   
-    // touch threshold characteristics
-    characteristic = floowerService->createCharacteristic(FLOOWER_TOUCH_THRESHOLD_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-    uint8_t touchThreshold = config->touchThreshold;
-    characteristic->setValue(&touchThreshold, 1);
-    characteristic->setCallbacks(new TouchThresholdCharacteristicsCallbacks(this));
+    // settings characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_SETTINGS_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    SettingsPacket settingsPacket = {{config->settings}};
+    characteristic->setValue(settingsPacket.bytes, SETTINGS_PACKET_SIZE);
+    characteristic->setCallbacks(new SettingsCharacteristicsCallbacks(this));
   
     // state read characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
@@ -277,11 +284,23 @@ void Remote::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteri
   }
 }
 
-void Remote::TouchThresholdCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void Remote::SettingsCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
-  if (bytes.length() == 1) {
-    ESP_LOGI(LOG_TAG, "New touch threshold: %d", bytes[0]);
-    remote->config->setTouchThreshold(bytes[0]);
+  if (bytes.length() == SETTINGS_PACKET_SIZE) {
+    SettingsPacket settingsPacket;
+    for (int i = 0; i < SETTINGS_PACKET_SIZE; i ++) {
+      settingsPacket.bytes[i] = bytes[i]; 
+    }
+
+    if (settingsPacket.data.maxOpenLevel > 100) {
+      settingsPacket.data.maxOpenLevel = 100;
+    }
+    if (settingsPacket.data.lightIntensity > 100) {
+      settingsPacket.data.lightIntensity = 100;
+    }
+    ESP_LOGI(LOG_TAG, "New settings: threshold: %d, behavior: %d, speed: %d, maxOpenLevel: %d, intensity: %d", settingsPacket.data.touchThreshold, settingsPacket.data.behavior, settingsPacket.data.speed, settingsPacket.data.maxOpenLevel, settingsPacket.data.lightIntensity);
+    
+    remote->config->setSettings(settingsPacket.data);
     remote->config->commit();
     remote->floower->enableTouch();
   }

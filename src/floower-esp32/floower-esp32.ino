@@ -7,7 +7,7 @@
 
 ///////////// SOFTWARE CONFIGURATION
 
-#define FIRMWARE_VERSION 6
+#define FIRMWARE_VERSION 7
 const bool deepSleepEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION

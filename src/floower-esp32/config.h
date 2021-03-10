@@ -14,6 +14,10 @@
 
 // default values
 #define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
+#define DEFAULT_BEHAVIOR 0
+#define DEFAULT_SPEED 50 // x0.1s = 5 seconds to open/close
+#define DEFAULT_MAX_OPEN_LEVEL 100 // default open level is 100%
+#define DEFAULT_LIGHT_INTENSITY 70 // default intensity is 70%
 
 // default intensity is 70% (178)
 const RgbColor colorRed(156, 0, 0);
@@ -26,6 +30,14 @@ const RgbColor colorPurple(148, 0, 178);
 const RgbColor colorPink(178, 0, 73);
 const RgbColor colorBlack(0);
 
+typedef struct Settings {
+  uint8_t touchThreshold; // read-write
+  uint8_t behavior; // read-write
+  uint8_t speed; // in 0.1s, read-write
+  uint8_t maxOpenLevel; // 0-100, read-write
+  uint8_t lightIntensity; // 0-100, read-write
+};
+
 class Config {
   public:
     Config(uint8_t firmwareVersion) : firmwareVersion(firmwareVersion) {}
@@ -33,14 +45,14 @@ class Config {
     void load();
     void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
     void factorySettings();
-    void setTouchThreshold(uint8_t touchThreshold);
-    void setBehavior(uint8_t behavior);
     void setColorScheme(RgbColor* colors, uint8_t size);
     void setName(String name);
     void setRemoteOnStartup(bool initRemoteOnStartup);
     void setCalibrated();
+    void setSettings(Settings settings);
     void commit();
 
+    // calibration
     unsigned int servoClosed = 1000; // default safe values
     unsigned int servoOpen = 1000;
     uint8_t hardwareRevision = 0;
@@ -51,17 +63,20 @@ class Config {
     bool initRemoteOnStartup = false;
     bool calibrated = false;
 
-    uint8_t touchThreshold = DEFAULT_TOUCH_THRESHOLD;
-    uint8_t behavior = 0;
+    // configration
     uint8_t colorSchemeSize = 0;
     RgbColor colorScheme[10]; // max 10 colors
     String name;
+    Settings settings;
+    unsigned int speedMillis; // read-only, precalculated speed in ms
 
   private:
     void readFlags();
     void writeColorScheme();
     void readColorScheme();
     void readName();
+    void readSettings();
+
     void writeInt(unsigned int address, unsigned int value);
     unsigned int readInt(unsigned int address);
 
