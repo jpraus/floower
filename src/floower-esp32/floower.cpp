@@ -31,7 +31,7 @@ unsigned long Floower::touchStartedTime = 0;
 unsigned long Floower::touchEndedTime = 0;
 unsigned long Floower::lastTouchTime = 0;
 
-const RgbColor candleColor(178, 45, 0); // 36
+const HsbColor candleColor(178, 45, 0); // 36
 
 Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
 
@@ -42,8 +42,8 @@ void Floower::init() {
   pinMode(NEOPIXEL_PWR_PIN, OUTPUT);
 
   pixelsColor = colorBlack;
-  RgbColor pixelsOriginColor = colorBlack;
-  RgbColor pixelsTargetColor = colorBlack;
+  HsbColor pixelsOriginColor = colorBlack;
+  HsbColor pixelsTargetColor = colorBlack;
   pixels.Begin();
   showColor(pixelsColor);
   pixels.Show();
@@ -92,7 +92,7 @@ void Floower::update() {
   handleTimers(now);
 
   // show pixels
-  if (pixelsColor.CalculateBrightness() > 0) {
+  if (pixelsColor.B > 0) {
     setPixelsPowerOn(true);
     pixels.Show();
   }
@@ -230,28 +230,40 @@ int Floower::getCurrentPetalsAngle() {
   return servoAngle;
 }
 
-void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime) {
-  if (color.R == pixelsTargetColor.R && color.G == pixelsTargetColor.G && color.B == pixelsTargetColor.B && pixelsColorMode == colorMode) {
+void Floower::transitionColorBrightness(double brightness, int transitionTime) {
+  if (brightness == pixelsTargetColor.B) {
+    return; // no change
+  }
+  transitionColor(pixelsTargetColor.H, pixelsTargetColor.S, brightness, transitionTime);
+}
+
+void Floower::transitionColor(double hue, double saturation, double brightness, int transitionTime) {
+  if (hue == pixelsTargetColor.H && saturation == pixelsTargetColor.S && brightness == pixelsTargetColor.B) {
     return; // no change
   }
 
-  pixelsColorMode = colorMode;
-  pixelsTargetColor = color;
+  // make smooth transition
+  if (pixelsColor.B == 0) { // current color is black
+    pixelsColor.H = hue;
+    pixelsColor.S = saturation;
+  }
+  else if (brightness == 0) { // target color is black
+    hue = pixelsColor.H;
+    saturation = pixelsColor.S;
+  }
+
+  pixelsTargetColor = HsbColor(hue, saturation, brightness);
   interruptiblePixelsAnimation = false;
 
-  ESP_LOGI(LOG_TAG, "Color %d,%d,%d", color.R, color.G, color.B);
+  ESP_LOGI(LOG_TAG, "Color %.2f,%.2f,%.2f", pixelsTargetColor.H, pixelsTargetColor.S, pixelsTargetColor.B);
 
   if (transitionTime <= 0) {
-    pixelsColor = color;
+    pixelsColor = pixelsTargetColor;
     showColor(pixelsColor);
   }
-  else if (colorMode == TRANSITION) {
+  else {
     pixelsOriginColor = pixelsColor;
     animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
-  }
-  else if (colorMode == FLASH) {
-    pixelsOriginColor = colorBlack; //RgbColor::LinearBlend(color, colorBlack, 0.95);
-    animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
   }
 
   if (changeCallback != nullptr) {
@@ -260,34 +272,41 @@ void Floower::setColor(RgbColor color, FloowerColorMode colorMode, int transitio
 }
 
 void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
-  pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, param.progress);
+  pixelsColor = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(pixelsOriginColor, pixelsTargetColor, param.progress);
   showColor(pixelsColor);
+}
+
+void Floower::flashColor(double hue, double saturation, int flashDuration) {
+  pixelsTargetColor = HsbColor(hue, saturation, 1.0);
+  pixelsColor = pixelsTargetColor;
+  pixelsColor.B = 0;
+
+  interruptiblePixelsAnimation = false;
+  animations.StartAnimation(1, flashDuration, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
 }
 
 void Floower::pixelsFlashAnimationUpdate(const AnimationParam& param) {
   if (param.progress < 0.5) {
-    float progress = NeoEase::CubicInOut(param.progress * 2);
-    pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
+    pixelsColor.B = NeoEase::CubicInOut(param.progress * 2);
   }
   else {
-    float progress = NeoEase::CubicInOut((1 - param.progress) * 2);
-    pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, progress);
+    pixelsColor.B = NeoEase::CubicInOut((1 - param.progress) * 2);
   }
 
   showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {
-    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
+    if (pixelsTargetColor.B > 0) { // while there is something to show
       animations.RestartAnimation(param.index);
     }
   }
 }
 
-RgbColor Floower::getColor() {
+HsbColor Floower::getColor() {
   return pixelsTargetColor;
 }
 
-RgbColor Floower::getCurrentColor() {
+HsbColor Floower::getCurrentColor() {
   return pixelsColor;
 }
 
@@ -299,7 +318,7 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
     animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
   else if (animation == CANDLE) {
-    pixelsTargetColor = pixelsColor = RgbColor(candleColor); // candle orange
+    pixelsTargetColor = pixelsColor = HsbColor(candleColor); // candle orange
     for (uint8_t i = 0; i < 6; i++) {
       candleOriginColors[i] = pixelsTargetColor;
       candleTargetColors[i] = pixelsTargetColor;
@@ -316,16 +335,15 @@ void Floower::stopAnimation(bool retainColor) {
 }
 
 void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
-  HsbColor hsbOriginal = HsbColor(pixelsOriginColor);
-  float hue = hsbOriginal.H + param.progress;
+  float hue = pixelsOriginColor.H + param.progress;
   if (hue > 1.0) {
     hue = hue - 1;
   }
-  pixelsColor = RgbColor(HsbColor(hue, 1, 0.4)); // TODO: fine tune
+  pixelsColor = HsbColor(hue, 1, 0.4); // TODO: fine tune
   showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {
-    if (pixelsTargetColor.CalculateBrightness() > 0) { // while there is something to show
+    if (pixelsTargetColor.B > 0) { // while there is something to show
       animations.RestartAnimation(param.index);
     }
   }
@@ -334,21 +352,19 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 void Floower::pixelsCandleAnimationUpdate(const AnimationParam& param) {
   pixels.SetPixelColor(0, pixelsTargetColor);
   for (uint8_t i = 0; i < 6; i++) {
-    pixels.SetPixelColor(i + 1, RgbColor::LinearBlend(candleOriginColors[i], candleTargetColors[i], param.progress));
+    pixels.SetPixelColor(i + 1, HsbColor::LinearBlend<NeoHueBlendShortestDistance>(candleOriginColors[i], candleTargetColors[i], param.progress));
   }
 
   if (param.state == AnimationState_Completed) {
-    HsbColor candleHsbColor = HsbColor(candleColor);
     for (uint8_t i = 0; i < 6; i++) {
-      candleHsbColor.B = random(20, 100) / 100.0;
       candleOriginColors[i] = candleTargetColors[i];
-      candleTargetColors[i] = RgbColor(candleHsbColor);
+      candleTargetColors[i] = HsbColor(candleColor.H, candleColor.S, random(20, 100) / 100.0);
     }
     animations.StartAnimation(param.index, random(10, 400), [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
-void Floower::showColor(RgbColor color) {
+void Floower::showColor(HsbColor color) {
   if (!lowPowerMode) {
     pixels.ClearTo(color);
   }

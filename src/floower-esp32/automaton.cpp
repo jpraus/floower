@@ -42,7 +42,8 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
     case TOUCH_DOWN:
       if (state == STATE_STANDBY && !floower->arePetalsMoving() && !floower->isChangingColor()) {
         // light up instantly on touch
-        floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, config->speedMillis);
+        HsbColor nextColor = nextRandomColor();
+        floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
         changeState(STATE_BLOOMING);
       }
       else if (state == STATE_RAINBOW) {
@@ -55,7 +56,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         // disable remote init
         remote->stopAdvertising();
         config->setRemoteOnStartup(false);
-        floower->setColor(colorBlack, FloowerColorMode::TRANSITION, 500);
+        floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
       }
       break;
@@ -68,7 +69,8 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         if (state == STATE_STANDBY) {
           // open + set color
           if (!floower->isLit()) {
-            floower->setColor(nextRandomColor(), FloowerColorMode::TRANSITION, config->speedMillis);
+            HsbColor nextColor = nextRandomColor();
+            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
           }
           floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
           changeState(STATE_RUNNING);
@@ -79,7 +81,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         }
         else if (state == STATE_RUNNING) {
           // shutdown
-          floower->setColor(colorBlack, FloowerColorMode::TRANSITION, config->speedMillis);
+          floower->transitionColorBrightness(0, config->speedMillis);
           changeState(STATE_STANDBY);  
         }
       }
@@ -98,7 +100,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
 
     case TOUCH_HOLD:
       if (state == STATE_STANDBY || state == STATE_RAINBOW || state == STATE_BLOOMING) { // init remote when Floower closed (or rainbow started)
-        floower->setColor(colorBlue, FloowerColorMode::FLASH, 1000);
+        floower->flashColor(colorBlue.H, colorBlue.S, 1000);
         remote->init();
         remote->startAdvertising();
         changeState(STATE_REMOTE_INIT);
@@ -119,7 +121,7 @@ void Automaton::changeState(uint8_t newState) {
   }
 }
 
-RgbColor Automaton::nextRandomColor() {
+HsbColor Automaton::nextRandomColor() {
   if (colorsUsed > 0) {
     unsigned long maxColors = pow(2, config->colorSchemeSize) - 1;
     if (maxColors == colorsUsed) {

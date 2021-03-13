@@ -8,11 +8,6 @@
 #include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
 
-enum FloowerColorMode {
-  TRANSITION,
-  FLASH
-};
-
 enum FloowerColorAnimation {
   RAINBOW,
   CANDLE
@@ -31,7 +26,7 @@ struct Battery {
 };
 
 typedef std::function<void(const FloowerTouchEvent& event)> FloowerOnLeafTouchCallback;
-typedef std::function<void(const uint8_t petalsOpenLevel, const RgbColor color)> FloowerChangeCallback;
+typedef std::function<void(const uint8_t petalsOpenLevel, const HsbColor color)> FloowerChangeCallback;
 
 class Floower {
   public:
@@ -51,9 +46,11 @@ class Floower {
     uint8_t getCurrentPetalsOpenLevel();
     int getPetalsAngle();
     int getCurrentPetalsAngle(); 
-    void setColor(RgbColor color, FloowerColorMode colorMode, int transitionTime = 0);
-    RgbColor getColor();
-    RgbColor getCurrentColor();
+    void transitionColor(double hue, double saturation, double brightness, int transitionTime = 0);
+    void transitionColorBrightness(double brightness, int transitionTime = 0);
+    void flashColor(double hue, double saturation, int flashDuration);
+    HsbColor getColor();
+    HsbColor getCurrentColor();
     void startAnimation(FloowerColorAnimation animation);
     void stopAnimation(bool retainColor);
     bool isLit();
@@ -77,7 +74,7 @@ class Floower {
     void pixelsFlashAnimationUpdate(const AnimationParam& param);
     void pixelsRainbowAnimationUpdate(const AnimationParam& param);
     void pixelsCandleAnimationUpdate(const AnimationParam& param);
-    void showColor(RgbColor color);
+    void showColor(HsbColor color);
 
     void handleTimers(unsigned long now);
     static void touchISR();
@@ -102,16 +99,15 @@ class Floower {
     NeoPixelBus<NeoGrbFeature, NeoEsp32I2s0800KbpsMethod> pixels;
 
     // leds state
-    RgbColor pixelsColor; // current color
-    RgbColor pixelsOriginColor; // color before animation
-    RgbColor pixelsTargetColor; // color after animation
-    FloowerColorMode pixelsColorMode;
+    HsbColor pixelsColor; // current color
+    HsbColor pixelsOriginColor; // color before animation
+    HsbColor pixelsTargetColor; // color after animation
     bool pixelsPowerOn;
 
     // leds animations
     bool interruptiblePixelsAnimation = false;
-    RgbColor candleOriginColors[6];
-    RgbColor candleTargetColors[6];
+    HsbColor candleOriginColors[6];
+    HsbColor candleTargetColors[6];
 
     // touch
     FloowerOnLeafTouchCallback touchCallback;

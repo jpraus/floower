@@ -91,12 +91,12 @@ void setup() {
 	  ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
     planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     floower.setLowPowerMode(true);
-    floower.setColor(colorRed, FloowerColorMode::FLASH, 1000);
+    floower.flashColor(colorRed.H, colorRed.S, 1000);
   }
   else if (!config.calibrated) {
     // hardware is not calibrated
     ESP_LOGW(LOG_TAG, "Floower not calibrated");
-    floower.setColor(colorPurple, FloowerColorMode::FLASH, 2000);
+    floower.flashColor(colorPurple.H, colorPurple.S, 2000);
     floower.initServo();
     floower.setPetalsOpenLevel(0, 1000); // reset petals position to known one
     ESP_LOGI(LOG_TAG, "Ready for calibration");
@@ -185,7 +185,7 @@ void powerWatchDog() {
   else if (battery.voltage < POWER_DEAD_THRESHOLD) {
     ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
     floower.setLowPowerMode(true);
-    floower.setColor(colorRed, FloowerColorMode::FLASH, 1000);
+    floower.flashColor(colorRed.H, colorRed.S, 1000);
     floower.setPetalsOpenLevel(0, 2500);
     planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     batteryDead = true;

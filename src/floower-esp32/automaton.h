@@ -16,7 +16,7 @@ class Automaton {
     void onLeafTouch(FloowerTouchEvent event);
     void onRemoteTookOver();
     void changeState(uint8_t newState);
-    RgbColor nextRandomColor();
+    HsbColor nextRandomColor();
 
     Remote *remote;
     Floower *floower;

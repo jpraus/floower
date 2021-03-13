@@ -34,8 +34,8 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_NAME_LENGTH 23 // byte - length of data stored in EEPROM_ADDRESS_NAME (since version 2)
 #define EEPROM_ADDRESS_SPEED 24 // byte - speed of opening/closing in 0.1s (since version 4)
 #define EEPROM_ADDRESS_MAX_OPEN_LEVEL 25 // byte - maximum open level in percents (0-100) (since version 4)
-#define EEPROM_ADDRESS_LIGHT_INTENSITY 26 // byte - intensity of LEDs in percents (0-100), informative - should be already applied to color scheme (since version 4)
-#define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (10x RGB set) - list of up to 10 colors (since version 2)
+#define EEPROM_ADDRESS_COLOR_BRIGHTNESS 26 // byte - intensity of LEDs in percents (0-100), informative - should be already applied to color scheme (since version 4)
+#define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (15x HS set) - array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..] (since version 4)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
 
 void Config::begin() {
@@ -62,9 +62,10 @@ void Config::load() {
 
     // backward compatibility => personification data
     if (configVersion < 4) {
+      resetColorScheme();
       EEPROM.write(EEPROM_ADDRESS_SPEED, DEFAULT_SPEED);
       EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, DEFAULT_MAX_OPEN_LEVEL);
-      EEPROM.write(EEPROM_ADDRESS_LIGHT_INTENSITY, DEFAULT_LIGHT_INTENSITY);
+      EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, DEFAULT_COLOR_BRIGHTNESS);
     }
 
     if (configVersion < CONFIG_VERSION) {
@@ -83,9 +84,9 @@ void Config::load() {
     ESP_LOGI(LOG_TAG, "Config ready");
     ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags);
     ESP_LOGI(LOG_TAG, "Flags: r%d, %s", initRemoteOnStartup, name.c_str());
-    ESP_LOGI(LOG_TAG, "P13n: tt%d, bh%d, sp%d, mo%d, li%d", personification.touchThreshold, personification.behavior, personification.speed, personification.maxOpenLevel, personification.lightIntensity);
+    ESP_LOGI(LOG_TAG, "P13n: tt%d, bh%d, sp%d, mo%d, cb%d", personification.touchThreshold, personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
     for (uint8_t i = 0; i < colorSchemeSize; i++) {
-      ESP_LOGI(LOG_TAG, "Color %d: %d,%d,%d", i, colorScheme[i].R, colorScheme[i].G, colorScheme[i].B);
+      ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
     }
   }
   else {
@@ -113,9 +114,12 @@ void Config::factorySettings() {
   ESP_LOGI(LOG_TAG, "Factory reset");
   setName("Floower");
   setRemoteOnStartup(false);
-  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_LIGHT_INTENSITY};
+  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
   setPersonification(personification);
+  resetColorScheme();
+}
 
+void Config::resetColorScheme() {
   colorScheme[0] = colorWhite;
   colorScheme[1] = colorYellow;
   colorScheme[2] = colorOrange;
@@ -146,7 +150,7 @@ void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
   this->initRemoteOnStartup = initRemoteOnStartup;
 }
 
-void Config::setColorScheme(RgbColor* colors, uint8_t size) {
+void Config::setColorScheme(HsbColor* colors, uint8_t size) {
   this->colorSchemeSize = size;
   for (uint8_t i = 0; i < size; i++) {
     this->colorScheme[i] = colors[i];
@@ -157,11 +161,12 @@ void Config::setColorScheme(RgbColor* colors, uint8_t size) {
 void Config::setPersonification(Personification personification) {
   this->personification = personification;
   this->speedMillis = personification.speed * 100;
+  this->colorBrightness = (double) personification.colorBrightness / 100.0;
   EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, personification.touchThreshold);
   EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, personification.behavior);
   EEPROM.write(EEPROM_ADDRESS_SPEED, personification.speed);
   EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, personification.maxOpenLevel);
-  EEPROM.write(EEPROM_ADDRESS_LIGHT_INTENSITY, personification.lightIntensity);
+  EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, personification.colorBrightness);
 }
 
 void Config::readPersonification() {
@@ -176,30 +181,39 @@ void Config::readPersonification() {
   if (personification.maxOpenLevel > 100) {
     personification.maxOpenLevel = 100;
   }
-  personification.lightIntensity = EEPROM.read(EEPROM_ADDRESS_LIGHT_INTENSITY);
-  if (personification.lightIntensity > 100) {
-    personification.lightIntensity = 100;
+  personification.colorBrightness = EEPROM.read(EEPROM_ADDRESS_COLOR_BRIGHTNESS);
+  if (personification.colorBrightness > 100) {
+    personification.colorBrightness = 100;
   }
+  colorBrightness = (double) personification.colorBrightness / 100.0;
 }
 
 void Config::writeColorScheme() {
-  int8_t address;
   for (uint8_t i = 0; i < colorSchemeSize && i < COLOR_SCHEME_MAX_LENGTH; i++) {
-    address = EEPROM_ADDRESS_COLOR_SCHEME + i * 3;
-    EEPROM.write(address + 0, colorScheme[i].R);
-    EEPROM.write(address + 1, colorScheme[i].G);
-    EEPROM.write(address + 2, colorScheme[i].B);
+    writeInt(EEPROM_ADDRESS_COLOR_SCHEME + i * 2, encodeHSColor(colorScheme[i].H, colorScheme[i].S));
   }
   EEPROM.write(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH, colorSchemeSize);
 }
 
 void Config::readColorScheme() {
-  int8_t address;
   colorSchemeSize = min(EEPROM.read(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH), (uint8_t) COLOR_SCHEME_MAX_LENGTH);
   for(uint8_t i = 0; i < colorSchemeSize; i++) {
-    address = EEPROM_ADDRESS_COLOR_SCHEME + i * 3;
-    colorScheme[i] = RgbColor(EEPROM.read(address + 0), EEPROM.read(address + 1), EEPROM.read(address + 2));
+    colorScheme[i] = decodeHSColor(readInt(EEPROM_ADDRESS_COLOR_SCHEME + i * 2));
   }
+}
+
+uint16_t Config::encodeHSColor(double hue, double saturation) {
+  uint16_t valueH = hue * 360;
+  uint8_t valueS = saturation * 100;
+  return (valueH << 7) | (valueS & 0x7F);
+}
+
+HsbColor Config::decodeHSColor(uint16_t valueHS) {
+  double saturation = valueHS & 0x7F;
+  saturation = saturation / 100.0;
+  double hue = valueHS >> 7;
+  hue = hue / 360.0;
+  return HsbColor(hue, saturation, 1.0);
 }
 
 void Config::setName(String name) {
@@ -222,7 +236,7 @@ void Config::readName() {
   name = String(data);
 }
 
-void Config::writeInt(unsigned int address, unsigned int value) {
+void Config::writeInt(uint16_t address, uint16_t value) {
   uint8_t two = (value & 0xFF);
   uint8_t one = ((value >> 8) & 0xFF);
   
@@ -230,9 +244,9 @@ void Config::writeInt(unsigned int address, unsigned int value) {
   EEPROM.write(address + 1, one);
 }
 
-unsigned int Config::readInt(unsigned int address) {
+uint16_t Config::readInt(uint16_t address) {
   uint8_t two = EEPROM.read(address);
-  unsigned int one = EEPROM.read(address + 1);
+  uint16_t one = EEPROM.read(address + 1);
  
   return (two & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
 }

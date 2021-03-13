@@ -17,25 +17,24 @@
 #define DEFAULT_BEHAVIOR 0
 #define DEFAULT_SPEED 50 // x0.1s = 5 seconds to open/close
 #define DEFAULT_MAX_OPEN_LEVEL 100 // default open level is 100%
-#define DEFAULT_LIGHT_INTENSITY 70 // default intensity is 70%
+#define DEFAULT_COLOR_BRIGHTNESS 70 // default intensity is 70%
 
-// default intensity is 70% (178)
-const RgbColor colorRed(156, 0, 0);
-const RgbColor colorGreen(40, 178, 0);
-const RgbColor colorBlue(0, 65, 178);
-const RgbColor colorYellow(178, 170, 0);
-const RgbColor colorOrange(178, 64, 0);
-const RgbColor colorWhite(178);
-const RgbColor colorPurple(148, 0, 178);
-const RgbColor colorPink(178, 0, 73);
-const RgbColor colorBlack(0);
+const HsbColor colorRed(0.0, 1.0, 1.0);
+const HsbColor colorGreen(0.3, 1.0, 1.0);
+const HsbColor colorBlue(0.61, 1.0, 1.0);
+const HsbColor colorYellow(0.16, 1.0, 1.0);
+const HsbColor colorOrange(0.06, 1.0, 1.0);
+const HsbColor colorWhite(0.0, 0.0, 1.0);
+const HsbColor colorPurple(0.81, 1.0, 1.0);
+const HsbColor colorPink(0.93, 1.0, 1.0);
+const HsbColor colorBlack(0.0, 1.0, 0.0);
 
 typedef struct Personification {
   uint8_t touchThreshold; // read-write
   uint8_t behavior; // read-write
   uint8_t speed; // in 0.1s, read-write
   uint8_t maxOpenLevel; // 0-100, read-write
-  uint8_t lightIntensity; // 0-100, read-write
+  uint8_t colorBrightness; // 0-100, read-write
 };
 
 class Config {
@@ -45,12 +44,16 @@ class Config {
     void load();
     void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
     void factorySettings();
-    void setColorScheme(RgbColor* colors, uint8_t size);
+    void resetColorScheme();
+    void setColorScheme(HsbColor* colors, uint8_t size);
     void setName(String name);
     void setRemoteOnStartup(bool initRemoteOnStartup);
     void setCalibrated();
     void setPersonification(Personification personification);
     void commit();
+
+    static uint16_t encodeHSColor(double hue, double saturation);
+    static HsbColor decodeHSColor(uint16_t valueHS);
 
     // calibration
     unsigned int servoClosed = 1000; // default safe values
@@ -65,10 +68,11 @@ class Config {
 
     // configration
     uint8_t colorSchemeSize = 0;
-    RgbColor colorScheme[10]; // max 10 colors
+    HsbColor colorScheme[10]; // max 10 colors
     String name;
     Personification personification;
     unsigned int speedMillis; // read-only, precalculated speed in ms
+    double colorBrightness; // read-only, precalcuated color brightness (0.0-1.0)
 
   private:
     void readFlags();
@@ -77,8 +81,8 @@ class Config {
     void readName();
     void readPersonification();
 
-    void writeInt(unsigned int address, unsigned int value);
-    unsigned int readInt(unsigned int address);
+    void writeInt(uint16_t address, uint16_t value);
+    uint16_t readInt(uint16_t address);
 
     uint8_t flags = 0;
 

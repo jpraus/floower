@@ -16,9 +16,9 @@ static const char* LOG_TAG = "Remote";
 #define FLOOWER_NAME_UUID "ab130585-2b27-498e-a5a5-019391317350" // string, NAME_MAX_LENGTH see config.h
 #define FLOOWER_STATE_UUID "ac292c4b-8bd0-439b-9260-2d9526fff89a" // see StatePacketData
 #define FLOOWER_STATE_CHANGE_UUID "11226015-0424-44d3-b854-9fc332756cbf" // see StateChangePacketData
-#define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // array of 3 bytes per pre-defined color [(R + G + B), (R + G + B), ..], COLOR_SCHEME_MAX_LENGTH see config.h
+//#define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // DEPRECATED: array of 3 bytes per pre-defined color [(R + G + B), (R + G + B), ..], COLOR_SCHEME_MAX_LENGTH see config.h
+#define FLOOWER_COLORS_SCHEME_UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b" // array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..], COLOR_SCHEME_MAX_LENGTH see config.h
 #define FLOOWER_PERSONIFICATION_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // see PersonificationPacketData (previously touch threshold)
-//#define FLOOWER__UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b"
 //#define FLOOWER__UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528"
 
 // https://docs.springcard.com/books/SpringCore/Host_interfaces/Physical_and_Transport/Bluetooth/Standard_Services
@@ -71,8 +71,8 @@ typedef struct StateChangePacketData {
   uint8_t duration; // 100 of milliseconds
   uint8_t mode; // 8 flags, see defines above
 
-  RgbColor getColor() {
-    return RgbColor(R, G, B);
+  HsbColor getColor() {
+    return HsbColor(RgbColor(R, G, B));
   }
 };
 
@@ -131,7 +131,7 @@ void Remote::init() {
   
     // state read characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
-    RgbColor color = floower->getColor();
+    RgbColor color = RgbColor(floower->getColor());
     StatePacket statePacket = {{floower->getPetalsOpenLevel(), color.R, color.G, color.B}};
     characteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
     characteristic->addDescriptor(new BLE2902());
@@ -144,10 +144,10 @@ void Remote::init() {
     characteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
     size_t size = config->colorSchemeSize * 3;
     uint8_t bytes[size];
-    for (uint8_t b = 0, i = 0; b < size; b += 3, i++) {
-      bytes[b] = config->colorScheme[i].R;
-      bytes[b + 1] = config->colorScheme[i].G;
-      bytes[b + 2] = config->colorScheme[i].B;
+    for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
+      uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
+      bytes[b] = (valueHS >> 8) & 0xFF;
+      bytes[b + 1] = valueHS & 0xFF;
     }
     characteristic->setValue(bytes, size);
     characteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
@@ -155,7 +155,8 @@ void Remote::init() {
     floowerService->start();
   
     // listen to floower state change
-    floower->onChange([=](uint8_t petalsOpenLevel, RgbColor color) {
+    floower->onChange([=](uint8_t petalsOpenLevel, HsbColor hsbColor) {
+      RgbColor color = RgbColor(hsbColor);
       ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
       StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
       BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
@@ -226,7 +227,8 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
 
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
       // blossom color
-      remote->floower->setColor(statePacket.data.getColor(), FloowerColorMode::TRANSITION, statePacket.data.duration * 100);
+      HsbColor color = HsbColor(statePacket.data.getColor());
+      remote->floower->transitionColor(color.H, color.S, remote->config->colorBrightness, statePacket.data.duration * 100);
     }
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
       // petals open/close
@@ -253,15 +255,16 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
 void Remote::ColorsSchemeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
   if (bytes.length() > 0) {
-    size_t size = floor(bytes.length() / 3);
-    size_t bytesSize = size * 3;
-    RgbColor colors[size];
-
-    for (uint8_t b = 0, i = 0; b < bytesSize; b += 3, i++) {
-      colors[i] = RgbColor(bytes[b], bytes[b + 1], bytes[b + 2]);
-    }
+    size_t size = floor(bytes.length() / 2);
+    size_t bytesSize = size * 2;
+    HsbColor colors[size];
 
     ESP_LOGI(LOG_TAG, "New color scheme: %d", size);
+    for (uint8_t b = 0, i = 0; b < bytesSize; b += 3, i++) {
+      colors[i] = Config::decodeHSColor(((uint16_t)bytes[b] << 8) | bytes[b + 1]);
+      ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colors[i].H, colors[i].S);
+    }
+
     remote->config->setColorScheme(colors, size);
     remote->config->commit();
   }
@@ -297,10 +300,10 @@ void Remote::PersonificationCharacteristicsCallbacks::onWrite(BLECharacteristic 
     if (personificationPacket.data.maxOpenLevel > 100) {
       personificationPacket.data.maxOpenLevel = 100;
     }
-    if (personificationPacket.data.lightIntensity > 100) {
-      personificationPacket.data.lightIntensity = 100;
+    if (personificationPacket.data.colorBrightness > 100) {
+      personificationPacket.data.colorBrightness = 100;
     }
-    ESP_LOGI(LOG_TAG, "New personification: touchThreshold=%d, behavior=%d, speed=%d, maxOpenLevel=%d, lightIntensity=%d", personificationPacket.data.touchThreshold, personificationPacket.data.behavior, personificationPacket.data.speed, personificationPacket.data.maxOpenLevel, personificationPacket.data.lightIntensity);
+    ESP_LOGI(LOG_TAG, "New personification: touchThreshold=%d, behavior=%d, speed=%d, maxOpenLevel=%d, colorBrightness=%d", personificationPacket.data.touchThreshold, personificationPacket.data.behavior, personificationPacket.data.speed, personificationPacket.data.maxOpenLevel, personificationPacket.data.colorBrightness);
     
     remote->config->setPersonification(personificationPacket.data);
     remote->config->commit();
@@ -322,7 +325,6 @@ void Remote::ServerCallbacks::onConnect(BLEServer* server) {
 void Remote::ServerCallbacks::onDisconnect(BLEServer* server) {
   ESP_LOGI(LOG_TAG, "Disconnected, start advertising");
   remote->deviceConnected = false;
-  //remote->floower->setColor(RgbColor(0), FloowerColorMode::TRANSITION, 100);
   server->startAdvertising();
   remote->advertising = true;
 };
