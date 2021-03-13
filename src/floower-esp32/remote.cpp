@@ -142,7 +142,7 @@ void Remote::init() {
   
     // color scheme characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-    size_t size = config->colorSchemeSize * 3;
+    size_t size = config->colorSchemeSize * 2;
     uint8_t bytes[size];
     for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
       uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
@@ -260,7 +260,7 @@ void Remote::ColorsSchemeCharacteristicsCallbacks::onWrite(BLECharacteristic *ch
     HsbColor colors[size];
 
     ESP_LOGI(LOG_TAG, "New color scheme: %d", size);
-    for (uint8_t b = 0, i = 0; b < bytesSize; b += 3, i++) {
+    for (uint8_t b = 0, i = 0; b < bytesSize; b += 2, i++) {
       colors[i] = Config::decodeHSColor(((uint16_t)bytes[b] << 8) | bytes[b + 1]);
       ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colors[i].H, colors[i].S);
     }

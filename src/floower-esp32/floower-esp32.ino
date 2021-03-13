@@ -137,6 +137,9 @@ void loop() {
     deepSleepTime = 0;
     enterDeepSleep();
   }
+  if (remote.isConnected()) {
+    floower.acty();
+  }
 
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
