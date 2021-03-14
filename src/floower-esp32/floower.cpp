@@ -31,7 +31,7 @@ unsigned long Floower::touchStartedTime = 0;
 unsigned long Floower::touchEndedTime = 0;
 unsigned long Floower::lastTouchTime = 0;
 
-const HsbColor candleColor(178, 45, 0); // 36
+const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
 Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
 
@@ -318,7 +318,7 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
     animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
   else if (animation == CANDLE) {
-    pixelsTargetColor = pixelsColor = HsbColor(candleColor); // candle orange
+    pixelsTargetColor = pixelsColor = candleColor; // candle orange
     for (uint8_t i = 0; i < 6; i++) {
       candleOriginColors[i] = pixelsTargetColor;
       candleTargetColors[i] = pixelsTargetColor;
@@ -339,7 +339,7 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
   if (hue > 1.0) {
     hue = hue - 1;
   }
-  pixelsColor = HsbColor(hue, 1, 0.4); // TODO: fine tune
+  pixelsColor = HsbColor(hue, 1, config->colorBrightness);
   showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {
