@@ -272,7 +272,13 @@ void Floower::transitionColor(double hue, double saturation, double brightness, 
 }
 
 void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {
-  pixelsColor = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(pixelsOriginColor, pixelsTargetColor, param.progress);
+  double diff = pixelsOriginColor.H - pixelsTargetColor.H;
+  if (diff < 0.2 && diff > -0.2) {
+    pixelsColor = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(pixelsOriginColor, pixelsTargetColor, param.progress);
+  }
+  else {
+    pixelsColor = RgbColor::LinearBlend(pixelsOriginColor, pixelsTargetColor, param.progress);
+  }
   showColor(pixelsColor);
 }
 
