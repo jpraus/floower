@@ -10,6 +10,7 @@
 
 enum FloowerColorAnimation {
   RAINBOW,
+  RAINBOW_LOOP,
   CANDLE
 };
 
@@ -73,6 +74,7 @@ class Floower {
     void pixelsTransitionAnimationUpdate(const AnimationParam& param);
     void pixelsFlashAnimationUpdate(const AnimationParam& param);
     void pixelsRainbowAnimationUpdate(const AnimationParam& param);
+    void pixelsRainbowLoopAnimationUpdate(const AnimationParam& param);
     void pixelsCandleAnimationUpdate(const AnimationParam& param);
     void showColor(HsbColor color);
 

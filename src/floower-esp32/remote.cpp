@@ -228,7 +228,7 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
       // blossom color
       HsbColor color = HsbColor(statePacket.data.getColor());
-      remote->floower->transitionColor(color.H, color.S, remote->config->colorBrightness, statePacket.data.duration * 100);
+      remote->floower->transitionColor(color.H, color.S, color.B, statePacket.data.duration * 100);
     }
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
       // petals open/close
@@ -238,7 +238,7 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
       // play animation (according to value)
       switch (statePacket.data.value) {
         case 1:
-          remote->floower->startAnimation(FloowerColorAnimation::RAINBOW);
+          remote->floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
           break;
         case 2:
           remote->floower->startAnimation(FloowerColorAnimation::CANDLE);

@@ -323,6 +323,10 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
     pixelsOriginColor = pixelsColor;
     animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
+  else if (animation == RAINBOW_LOOP) {
+    pixelsTargetColor = pixelsColor = colorWhite;
+    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowLoopAnimationUpdate(param); });
+  }
   else if (animation == CANDLE) {
     pixelsTargetColor = pixelsColor = candleColor; // candle orange
     for (uint8_t i = 0; i < 6; i++) {
@@ -342,16 +346,31 @@ void Floower::stopAnimation(bool retainColor) {
 
 void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
   float hue = pixelsOriginColor.H + param.progress;
-  if (hue > 1.0) {
+  if (hue >= 1.0) {
     hue = hue - 1;
   }
-  pixelsColor = HsbColor(hue, 1, config->colorBrightness);
+  pixelsColor = HsbColor(hue, 1, pixelsOriginColor.B);
   showColor(pixelsColor);
 
   if (param.state == AnimationState_Completed) {
     if (pixelsTargetColor.B > 0) { // while there is something to show
       animations.RestartAnimation(param.index);
     }
+  }
+}
+
+void Floower::pixelsRainbowLoopAnimationUpdate(const AnimationParam& param) {
+  double hue = param.progress;
+  double step = 1.0 / 6.0;
+  pixels.SetPixelColor(0, HsbColor(param.progress, 1, config->colorBrightness));
+  for (uint8_t i = 1; i < 7; i++, hue += step) {
+    if (hue >= 1.0) {
+      hue = hue - 1;
+    }
+    pixels.SetPixelColor(i, HsbColor(hue, 1, config->colorBrightness));
+  }
+  if (param.state == AnimationState_Completed) {
+    animations.RestartAnimation(param.index);
   }
 }
 
