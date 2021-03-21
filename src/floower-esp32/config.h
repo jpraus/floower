@@ -13,7 +13,8 @@
 #define NAME_MAX_LENGTH 25 // BLE name limit
 
 // default values
-#define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
+#define DEFAULT_TOUCH_THRESHOLD_REV7 45 // lower means lower sensitivity (45 is normal)
+#define DEFAULT_TOUCH_THRESHOLD_REV8 50 // lower means lower sensitivity (45 is normal)
 #define DEFAULT_BEHAVIOR 0
 #define DEFAULT_SPEED 50 // x0.1s = 5 seconds to open/close
 #define DEFAULT_MAX_OPEN_LEVEL 100 // default open level is 100%
