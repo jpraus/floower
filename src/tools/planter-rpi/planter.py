@@ -266,7 +266,7 @@ def draw_screen():
 
     if screen == SCREEN_CONNECT:
         lcd.clear()
-        lcd.message("Pripoj Floower")
+        lcd.message("Pripoj Floower\nv%s" % VERSION)
 
     elif screen == SCREEN_MENU:
         lcd.clear()
@@ -502,7 +502,7 @@ def main():
 
     print("Floower Planter Tool v%s" % VERSION)
     lcd.clear()
-    lcd.message("Floower Planter\nv%s" % VERSION)
+    lcd.message("Sazec Kyticek\nv%s" % VERSION)
     sleep(5)
 
     reset()
