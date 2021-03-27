@@ -7,7 +7,7 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
-VERSION = 9
+VERSION = 10
 
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
@@ -440,8 +440,13 @@ def discover_and_connect_serial():
             serial_connection = serial.Serial(com, 115200, timeout=1)
             connected_device = com
             return True
-        except (PermissionError):
+        except PermissionError:
             print("Permission error connecting to", com)
+            lcd.clear()
+            lcd.message("Chyba Pripojeni")
+            sleep(1)
+        except serial.serialutil.SerialException:
+            print("Serial error connecting to", com)
             lcd.clear()
             lcd.message("Chyba Pripojeni")
             sleep(1)
