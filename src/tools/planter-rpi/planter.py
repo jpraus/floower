@@ -57,7 +57,7 @@ SCREEN_DISCONNECT = 8
 SCREEN_FLASH = 9
 
 serial_number = 0
-hw_revision = 7
+hw_revision = 8
 close_value = 0
 open_value = 0
 screen = 0
