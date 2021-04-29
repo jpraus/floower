@@ -8,7 +8,7 @@
 ///////////// SOFTWARE CONFIGURATION
 
 #define FIRMWARE_VERSION 7
-const bool deepSleepEnabled = true;
+const bool deepSleepEnabled = false;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
@@ -97,13 +97,13 @@ void setup() {
     // hardware is not calibrated
     ESP_LOGW(LOG_TAG, "Floower not calibrated");
     floower.flashColor(colorPurple.H, colorPurple.S, 2000);
-    floower.initServo();
+    floower.initStepper();
     floower.setPetalsOpenLevel(0, 1000); // reset petals position to known one
     ESP_LOGI(LOG_TAG, "Ready for calibration");
   }
   else {
     // normal operation
-    floower.initServo();
+    floower.initStepper();
     if (!wasSleeping) {
       floower.setPetalsOpenLevel(0, 100); // reset petals position to known one
     }

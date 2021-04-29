@@ -3,9 +3,9 @@
 
 #include "Arduino.h"
 #include "config.h"
+#include "tmc2300.h"
 #include <functional>
 #include <NeoPixelBus.h>
-#include <ESP32Servo.h>
 #include <NeoPixelAnimator.h>
 
 enum FloowerColorAnimation {
@@ -24,6 +24,7 @@ enum FloowerTouchEvent {
 struct Battery {
   float voltage;
   uint8_t level;
+  bool charging;
 };
 
 typedef std::function<void(const FloowerTouchEvent& event)> FloowerOnLeafTouchCallback;
@@ -33,7 +34,7 @@ class Floower {
   public:
     Floower(Config *config);
     void init();
-    void initServo();
+    void initStepper();
     void update();
 
     void registerOutsideTouch();
@@ -66,11 +67,11 @@ class Floower {
     bool isLowPowerMode();
 
   private:
-    bool setServoPowerOn(bool powerOn);
+    bool setStepperPowerOn(bool powerOn);
     bool setPixelsPowerOn(bool powerOn);
 
     NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
-    void servoAnimationUpdate(const AnimationParam& param);
+    void stepperAnimationUpdate(const AnimationParam& param);
     void pixelsTransitionAnimationUpdate(const AnimationParam& param);
     void pixelsFlashAnimationUpdate(const AnimationParam& param);
     void pixelsRainbowAnimationUpdate(const AnimationParam& param);
@@ -84,18 +85,12 @@ class Floower {
     Config *config;
     FloowerChangeCallback changeCallback;
 
-    // servo config
-    Servo servo;
-    unsigned int servoOpenAngle;
-    unsigned int servoClosedAngle;
+    // stepper config
+    TMC2300 driver;
 
-    // servo state
+    // stepper state
     int8_t petalsOpenLevel; // 0-100% (target angle in percentage)
-    signed int servoAngle; // current angle
-    signed int servoOriginAngle; // angle before animation
-    signed int servoTargetAngle; // angle after animation
-    bool servoPowerOn;
-    unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
+    bool stepperPowerOn;
 
     // leds
     NeoPixelBus<NeoGrbFeature, NeoEsp32I2s0800KbpsMethod> pixels;
@@ -111,6 +106,10 @@ class Floower {
     HsbColor candleOriginColors[6];
     HsbColor candleTargetColors[6];
 
+    // status LED
+    HsbColor statusColor = colorBlack;
+    NeoPixelBus<NeoGrbFeature, NeoEsp32I2s1800KbpsMethod> statusPixel;
+
     // touch
     FloowerOnLeafTouchCallback touchCallback;
     static unsigned long touchStartedTime;
@@ -123,9 +122,6 @@ class Floower {
     // battery
     Battery batteryState;
     bool lowPowerMode;
-
-    // acty
-    unsigned long actyOffTime;
 };
 
 #endif

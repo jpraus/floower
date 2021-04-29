@@ -11,9 +11,19 @@ static const char* LOG_TAG = "Floower";
 #define NEOPIXEL_PIN 27
 #define NEOPIXEL_PWR_PIN 25
 
-#define SERVO_PIN 26
-#define SERVO_PWR_PIN 33
-#define SERVO_POWER_OFF_DELAY 500
+#define TMC_EN_PIN 33
+#define TMC_STEP_PIN 18
+#define TMC_DIR_PIN 19
+#define TMC_UART_RX_PIN 26
+#define TMC_UART_TX_PIN 14
+#define TMC_DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
+#define TMC_R_SENSE 0.13f       // Match to your driver Rsense
+
+#define BATTERY_ANALOG_PIN 36 // VP
+#define USB_ANALOG_PIN 39 // VN
+#define CHARGE_PIN 35
+
+#define STATUS_NEOPIXEL_PIN 32
 
 #define TOUCH_SENSOR_PIN 4
 #define TOUCH_FADE_TIME 75 // 50
@@ -21,19 +31,13 @@ static const char* LOG_TAG = "Floower";
 #define TOUCH_HOLD_TIME_THRESHOLD 5000 // 5s to recognize hold touch
 #define TOUCH_COOLDOWN_TIME 300 // prevent random touch within 300ms after last touch
 
-#define BATTERY_ANALOG_PIN 36 // VP
-#define USB_ANALOG_PIN 39 // VN
-
-#define ACTY_LED_PIN 2
-#define ACTY_BLINK_TIME 50
-
 unsigned long Floower::touchStartedTime = 0;
 unsigned long Floower::touchEndedTime = 0;
 unsigned long Floower::lastTouchTime = 0;
 
 const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
-Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN) {}
+Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN), driver(&Serial, TMC_R_SENSE, TMC_DRIVER_ADDRESS) {}
 
 void Floower::init() {
   // LEDs
@@ -54,36 +58,29 @@ void Floower::init() {
   analogSetCycles(8); // num of cycles per sample, 8 is default optimal
   analogSetSamples(1); // num of samples
 
-  // acty LED
-  pinMode(ACTY_LED_PIN, OUTPUT);
-  digitalWrite(ACTY_LED_PIN, HIGH);
+  // charge state input
+  pinMode(CHARGE_PIN, INPUT);
+  statusPixel.Begin();
+  statusPixel.ClearTo(statusColor);
+  statusPixel.Show();
 
   // this need to be done in init in order to enable deep sleep wake up
   enableTouch();
 }
 
-void Floower::initServo() {
-  // default servo configuration
-  servoOpenAngle = config->servoOpen;
-  servoClosedAngle = config->servoClosed;
-  servoAngle = config->servoClosed;
-  servoOriginAngle = config->servoClosed;
-  servoTargetAngle = config->servoClosed;
-  petalsOpenLevel = -1; // 0-100% (-1 unknown)
+void Floower::initStepper() {
+  // default stepper configuration
+  //servoOpenAngle = config->servoOpen;
+  //servoClosedAngle = config->servoClosed;
+  //servoAngle = config->servoClosed;
+  //servoOriginAngle = config->servoClosed;
+  //servoTargetAngle = config->servoClosed;
+  //petalsOpenLevel = -1; // 0-100% (-1 unknown)
 
-  // servo
-  servoPowerOn = true; // to make setServoPowerOn effective
-  setServoPowerOn(false);
-  pinMode(SERVO_PWR_PIN, OUTPUT);
-
-  servo.setPeriodHertz(50); // standard 50 Hz servo
-  if (config->calibrated) {
-    servo.attach(SERVO_PIN, servoClosedAngle, servoOpenAngle);
-  }
-  else {
-    servo.attach(SERVO_PIN); // DANGER! no boundaries to allow calibration
-  }
-  servo.write(servoAngle);
+  // stepper
+  stepperPowerOn = true; // to make setStepperPowerOn effective
+  setStepperPowerOn(false);
+  pinMode(TMC_EN_PIN, OUTPUT);
 }
 
 void Floower::update() {
@@ -94,12 +91,15 @@ void Floower::update() {
   // show pixels
   if (pixelsColor.B > 0) {
     setPixelsPowerOn(true);
-    pixels.Show();
+    if (pixels.IsDirty() && pixels.CanShow()) {
+      pixels.Show();
+    }
   }
-  else {
+  else if (pixelsPowerOn) {
     pixels.Show();
     setPixelsPowerOn(false);
   }
+  statusPixel.Show();
 
   if (touchStartedTime > 0) {
     unsigned int touchTime = now - touchStartedTime;
@@ -174,18 +174,18 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   }
   petalsOpenLevel = level;
 
-  if (level >= 100) {
+  /*if (level >= 100) {
     setPetalsAngle(servoOpenAngle, transitionTime);
   }
   else {
     float position = (servoOpenAngle - servoClosedAngle);
     position = position * level / 100.0;
     setPetalsAngle(servoClosedAngle + position, transitionTime);
-  }
+  }*/
 }
 
 void Floower::setPetalsAngle(unsigned int angle, int transitionTime) {
-  servoOriginAngle = servoAngle;
+  /*servoOriginAngle = servoAngle;
   servoTargetAngle = angle;
 
   ESP_LOGI(LOG_TAG, "Petals %d%% (%d) in %d", petalsOpenLevel, angle, transitionTime);
@@ -195,18 +195,18 @@ void Floower::setPetalsAngle(unsigned int angle, int transitionTime) {
 
   if (changeCallback != nullptr) {
     changeCallback(petalsOpenLevel, pixelsTargetColor);
-  }
+  }*/
 }
 
-void Floower::servoAnimationUpdate(const AnimationParam& param) {
-  servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * param.progress;
+void Floower::stepperAnimationUpdate(const AnimationParam& param) {
+  /*servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * param.progress;
 
   setServoPowerOn(true);
   servo.write(servoAngle);
 
   if (param.state == AnimationState_Completed) {
     servoPowerOffTime = millis() + SERVO_POWER_OFF_DELAY;
-  }
+  }*/
 }
 
 uint8_t Floower::getPetalsOpenLevel() {
@@ -214,20 +214,22 @@ uint8_t Floower::getPetalsOpenLevel() {
 }
 
 uint8_t Floower::getCurrentPetalsOpenLevel() {
-  if (arePetalsMoving()) {
+  /*if (arePetalsMoving()) {
     float range = servoOpenAngle - servoClosedAngle;
     float current = servoAngle - servoClosedAngle;
     return (current / range) * 100;
-  }
+  }*/
   return petalsOpenLevel;
 }
 
 int Floower::getPetalsAngle() {
-  return servoTargetAngle;
+  //return servoTargetAngle;
+  return -1;
 }
 
 int Floower::getCurrentPetalsAngle() {
-  return servoAngle;
+  //return servoAngle;
+  return -1;
 }
 
 void Floower::transitionColorBrightness(double brightness, int transitionTime) {
@@ -416,8 +418,8 @@ bool Floower::isChangingColor() {
 }
 
 void Floower::acty() {
-  digitalWrite(ACTY_LED_PIN, HIGH);
-  actyOffTime = millis() + ACTY_BLINK_TIME;
+  // digitalWrite(ACTY_LED_PIN, HIGH);
+  //actyOffTime = millis() + ACTY_BLINK_TIME;
 }
 
 bool Floower::setPixelsPowerOn(bool powerOn) {
@@ -437,20 +439,18 @@ bool Floower::setPixelsPowerOn(bool powerOn) {
   return false; // no change
 }
 
-bool Floower::setServoPowerOn(bool powerOn) {
-  if (powerOn && !servoPowerOn) {
-    servoPowerOffTime = 0;
-    servoPowerOn = true;
-    ESP_LOGD(LOG_TAG, "Servo power ON");
-    digitalWrite(SERVO_PWR_PIN, LOW);
+bool Floower::setStepperPowerOn(bool powerOn) {
+  if (powerOn && !stepperPowerOn) {
+    stepperPowerOn = true;
+    ESP_LOGD(LOG_TAG, "Stepper power ON");
+    digitalWrite(TMC_EN_PIN, HIGH);
     delay(5); // TODO
     return true;
   }
-  if (!powerOn && servoPowerOn) {
-    servoPowerOffTime = 0;
-    servoPowerOn = false;
-    ESP_LOGD(LOG_TAG, "Servo power OFF");
-    digitalWrite(SERVO_PWR_PIN, HIGH);
+  if (!powerOn && stepperPowerOn) {
+    stepperPowerOn = false;
+    ESP_LOGD(LOG_TAG, "Stepper power OFF");
+    digitalWrite(TMC_EN_PIN, LOW);
     return true;
   }
   return false; // no change
@@ -459,12 +459,15 @@ bool Floower::setServoPowerOn(bool powerOn) {
 Battery Floower::readBatteryState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
-
   uint8_t level = _min(_max(0, voltage - 3.3) * 111, 100); // 3.3 .. 0%, 4.2 .. 100%
+  bool charging = digitalRead(CHARGE_PIN) == LOW;
 
-  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%%", reading, voltage, level);
+  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : "");
 
-  batteryState = {voltage, level};
+  statusColor = charging ? colorRed : colorGreen;
+  statusPixel.SetPixelColor(0, statusColor);
+
+  batteryState = {voltage, level, charging};
   return batteryState;
 }
 
@@ -488,12 +491,5 @@ bool Floower::isLowPowerMode() {
 }
 
 void Floower::handleTimers(unsigned long now) {
-  if (servoPowerOffTime > 0 && servoPowerOffTime < now) {
-    servoPowerOffTime = 0;
-    setServoPowerOn(false);
-  }
-  if (actyOffTime > 0 && actyOffTime < now) {
-    actyOffTime = 0;
-    digitalWrite(ACTY_LED_PIN, LOW); 
-  }
+  
 }
