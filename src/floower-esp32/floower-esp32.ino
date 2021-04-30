@@ -72,18 +72,15 @@ void setup() {
   //esp_wifi_stop();
   btStop();
   floower.init();
-  floower.readBatteryState(); // calibrate the ADC
-  delay(50); // wait to warm-uo
+  floower.readPowerState(); // calibrate the ADC
+  delay(50); // wait to warm-up
 
   // check if there is enough power to run
-  batteryCharging = floower.isUSBPowered();
-  if (!batteryCharging) {
-    Battery battery = floower.readBatteryState();
-    if (battery.voltage < POWER_DEAD_THRESHOLD) {
-      delay(500);
-      battery = floower.readBatteryState(); // re-verify the voltage after .5s
-      batteryDead = battery.voltage < POWER_DEAD_THRESHOLD;
-    }
+  PowerState powerState = floower.readPowerState();
+  if (!powerState.usbPowered && powerState.batteryVoltage < POWER_DEAD_THRESHOLD) {
+    delay(500);
+    powerState = floower.readPowerState(); // re-verify the voltage after .5s
+    batteryDead = powerState.batteryVoltage < POWER_DEAD_THRESHOLD;
   }
 
   if (batteryDead) {
@@ -178,27 +175,26 @@ void powerWatchDog() {
     return;
   }
 
-  batteryCharging = floower.isUSBPowered();
-  Battery battery = floower.readBatteryState();
-  remote.setBatteryLevel(battery.level, batteryCharging);
+  PowerState powerState = floower.readPowerState();
+  remote.setBatteryLevel(powerState.batteryLevel, powerState.usbPowered);
 
-  if (batteryCharging) {
+  if (powerState.usbPowered) {
     floower.setLowPowerMode(false);
   }
-  else if (battery.voltage < POWER_DEAD_THRESHOLD) {
-    ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", battery.voltage);
+  else if (powerState.batteryVoltage < POWER_DEAD_THRESHOLD) {
+    ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", powerState.batteryVoltage);
     floower.setLowPowerMode(true);
     floower.flashColor(colorRed.H, colorRed.S, 1000);
     floower.setPetalsOpenLevel(0, 2500);
     planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     batteryDead = true;
   }
-  else if (!floower.isLowPowerMode() && battery.voltage < POWER_LOW_ENTER_THRESHOLD) {
-    ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", battery.voltage);
+  else if (!floower.isLowPowerMode() && powerState.batteryVoltage < POWER_LOW_ENTER_THRESHOLD) {
+    ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", powerState.batteryVoltage);
     floower.setLowPowerMode(true);
   }
-  else if (floower.isLowPowerMode() && battery.voltage >= POWER_LOW_LEAVE_THRESHOLD) {
-    ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", battery.voltage);
+  else if (floower.isLowPowerMode() && powerState.batteryVoltage >= POWER_LOW_LEAVE_THRESHOLD) {
+    ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", powerState.batteryVoltage);
     floower.setLowPowerMode(false);
   }
 }

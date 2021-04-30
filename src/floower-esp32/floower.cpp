@@ -456,24 +456,20 @@ bool Floower::setServoPowerOn(bool powerOn) {
   return false; // no change
 }
 
-Battery Floower::readBatteryState() {
+PowerState Floower::readPowerState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
-
   uint8_t level = _min(_max(0, voltage - 3.3) * 111, 100); // 3.3 .. 0%, 4.2 .. 100%
+  bool usbPowered = true;
 
-  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%%", reading, voltage, level);
-
-  batteryState = {voltage, level};
-  return batteryState;
-}
-
-bool Floower::isUSBPowered() {
-  if (config->hardwareRevision <= 5) {
-    return true; // logic board with revision 5 lack the USB detection circuitry, pretend its always charging
+  if (config->hardwareRevision > 5) { // logic board with revision 5 lack the USB detection circuitry, pretend its always charging
+    usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
   }
-  float reading = analogRead(USB_ANALOG_PIN); // 0-4095
-  return reading > 2000; // ~2900 is 5V
+
+  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, usbPowered ? "USB" : "");
+
+  powerState = {voltage, level, usbPowered};
+  return powerState;
 }
 
 void Floower::setLowPowerMode(bool lowPowerMode) {

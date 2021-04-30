@@ -34,24 +34,6 @@ struct REG_IHOLD_IRUN {
       uint8_t iholddelay : 4;
     };
   };
-
-  void setRmsCurrent(uint16_t mA, float RSense, float holdMultiplier = 0.5) {
-    uint8_t CS = 32.0 * 1.41421 * mA / 1000.0 * (RSense + 0.02) / 0.325 - 1;
-
-    // if Current Scale is too low, turn on high sensitivity R_sense and calculate again
-    if (CS < 16) {
-      vsense(true);
-      CS = 32.0 * 1.41421 * mA / 1000.0 * (RSense + 0.02) / 0.180 - 1;
-    }
-    else { // If CS >= 16, turn off high_sense_r
-      vsense(false);
-    }
-    if (CS > 31) {
-      CS = 31;
-    }
-    irun = CS;
-    ihold = CS * holdMultiplier;
-  }
 };
 
 struct REG_DRV_STATUS {
