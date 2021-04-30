@@ -93,10 +93,12 @@ void Floower::update() {
 
   // show pixels
   if (pixelsColor.B > 0) {
-    setPixelsPowerOn(true);
-    pixels.Show();
+    if (pixels.IsDirty() && pixels.CanShow()) {
+      setPixelsPowerOn(true);
+      pixels.Show();
+    }
   }
-  else {
+  else if (pixelsPowerOn) {
     pixels.Show();
     setPixelsPowerOn(false);
   }
