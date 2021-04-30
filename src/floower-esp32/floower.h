@@ -21,10 +21,11 @@ enum FloowerTouchEvent {
   TOUCH_UP
 };
 
-struct Battery {
-  float voltage;
-  uint8_t level;
-  bool charging;
+struct PowerState {
+  float batteryVoltage;
+  uint8_t batteryLevel;
+  bool batteryCharging;
+  bool usbPowered;
 };
 
 typedef std::function<void(const FloowerTouchEvent& event)> FloowerOnLeafTouchCallback;
@@ -61,8 +62,7 @@ class Floower {
     bool isChangingColor();
 
     void acty();
-    Battery readBatteryState();
-    bool isUSBPowered();
+    PowerState readPowerState();
     void setLowPowerMode(bool lowPowerMode);
     bool isLowPowerMode();
 
@@ -120,7 +120,7 @@ class Floower {
     bool longTouchRegistered = false;
 
     // battery
-    Battery batteryState;
+    PowerState powerState;
     bool lowPowerMode;
 };
 

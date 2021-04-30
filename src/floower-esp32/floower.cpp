@@ -456,27 +456,21 @@ bool Floower::setStepperPowerOn(bool powerOn) {
   return false; // no change
 }
 
-Battery Floower::readBatteryState() {
+PowerState Floower::readPowerState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
   uint8_t level = _min(_max(0, voltage - 3.3) * 111, 100); // 3.3 .. 0%, 4.2 .. 100%
+
   bool charging = digitalRead(CHARGE_PIN) == LOW;
+  bool usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
 
-  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : "");
+  ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
 
-  statusColor = charging ? colorRed : colorGreen;
+  statusColor = charging ? colorRed : (usbPowered ? colorGreen : colorBlack);
   statusPixel.SetPixelColor(0, statusColor);
 
-  batteryState = {voltage, level, charging};
-  return batteryState;
-}
-
-bool Floower::isUSBPowered() {
-  if (config->hardwareRevision <= 5) {
-    return true; // logic board with revision 5 lack the USB detection circuitry, pretend its always charging
-  }
-  float reading = analogRead(USB_ANALOG_PIN); // 0-4095
-  return reading > 2000; // ~2900 is 5V
+  powerState = {voltage, level, charging, usbPowered};
+  return powerState;
 }
 
 void Floower::setLowPowerMode(bool lowPowerMode) {
