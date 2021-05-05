@@ -406,7 +406,7 @@ bool Floower::isLit() {
 }
 
 bool Floower::isAnimating() {
-  return !animations.IsAnimating();
+  return animations.IsAnimating();
 }
 
 bool Floower::arePetalsMoving() {
