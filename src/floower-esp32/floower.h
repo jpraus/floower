@@ -7,6 +7,7 @@
 #include <functional>
 #include <NeoPixelBus.h>
 #include <NeoPixelAnimator.h>
+#include <AccelStepper.h>
 
 enum FloowerColorAnimation {
   RAINBOW,
@@ -86,7 +87,8 @@ class Floower {
     FloowerChangeCallback changeCallback;
 
     // stepper config
-    TMC2300 driver;
+    TMC2300 stepperDriver;
+    AccelStepper stepperMotion;
 
     // stepper state
     int8_t petalsOpenLevel; // 0-100% (target angle in percentage)

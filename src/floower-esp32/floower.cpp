@@ -8,7 +8,7 @@
 static const char* LOG_TAG = "Floower";
 #endif
 
-#define NEOPIXEL_PIN 27
+#define NEOPIXEL_PIN 27 // 27
 #define NEOPIXEL_PWR_PIN 25
 
 #define TMC_EN_PIN 33
@@ -18,6 +18,8 @@ static const char* LOG_TAG = "Floower";
 #define TMC_UART_TX_PIN 14
 #define TMC_DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
 #define TMC_R_SENSE 0.13f       // Match to your driver Rsense
+#define TMC_MICROSTEPS 32
+#define TMC_OPEN_STEPS 30000
 
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
@@ -37,7 +39,10 @@ unsigned long Floower::lastTouchTime = 0;
 
 const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
-Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN), driver(&Serial, TMC_R_SENSE, TMC_DRIVER_ADDRESS) {}
+Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN) {
+  Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
+  pinMode(CHARGE_PIN, INPUT);
+}
 
 void Floower::init() {
   // LEDs
@@ -59,7 +64,6 @@ void Floower::init() {
   analogSetSamples(1); // num of samples
 
   // charge state input
-  pinMode(CHARGE_PIN, INPUT);
   statusPixel.Begin();
   statusPixel.ClearTo(statusColor);
   statusPixel.Show();
@@ -76,17 +80,45 @@ void Floower::initStepper() {
   //servoOriginAngle = config->servoClosed;
   //servoTargetAngle = config->servoClosed;
   //petalsOpenLevel = -1; // 0-100% (-1 unknown)
+  //Serial1.begin(500000, SERIAL_8N1, 26, 14);
 
   // stepper
-  stepperPowerOn = true; // to make setStepperPowerOn effective
-  setStepperPowerOn(false);
+  stepperPowerOn = false; // to make setStepperPowerOn effective
+  setStepperPowerOn(true);
   pinMode(TMC_EN_PIN, OUTPUT);
+
+  // verify stepper is available
+  if (stepperDriver.testConnection()) {
+    ESP_LOGE(LOG_TAG, "TMC2300 comm failed");
+  }
+
+  REG_IOIN iont = stepperDriver.readIontReg();
+  Serial.print("IOIN=");
+  Serial.println(iont.sr, BIN);
+  Serial.print("Version=");
+  Serial.println(iont.version);
+
+  REG_CHOPCONF chopconf = stepperDriver.readChopconf();
+  Serial.print("Microsteps=");
+  Serial.println(chopconf.getMicrosteps());
+  chopconf.setMicrosteps(TMC_MICROSTEPS);
+  stepperDriver.writeChopconfReg(chopconf);
+
+  stepperMotion.setPinsInverted(true, false, false);
+  stepperMotion.setMaxSpeed(8000);
+  stepperMotion.setAcceleration(8000);
+  stepperMotion.setCurrentPosition(TMC_OPEN_STEPS);
+  stepperMotion.moveTo(0); // 0 = closed
 }
 
 void Floower::update() {
   animations.UpdateAnimations();
   unsigned long now = millis();
   handleTimers(now);
+
+  if (stepperMotion.distanceToGo() != 0) {
+    stepperMotion.run();
+  }
 
   // show pixels
   if (pixelsColor.B > 0) {
@@ -99,7 +131,9 @@ void Floower::update() {
     pixels.Show();
     setPixelsPowerOn(false);
   }
-  statusPixel.Show();
+  if (statusPixel.IsDirty() && statusPixel.CanShow()) {
+    statusPixel.Show();
+  }
 
   if (touchStartedTime > 0) {
     unsigned int touchTime = now - touchStartedTime;
@@ -174,14 +208,13 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   }
   petalsOpenLevel = level;
 
-  /*if (level >= 100) {
-    setPetalsAngle(servoOpenAngle, transitionTime);
+  if (level >= 100) {
+    stepperMotion.moveTo(TMC_OPEN_STEPS);
   }
   else {
-    float position = (servoOpenAngle - servoClosedAngle);
-    position = position * level / 100.0;
-    setPetalsAngle(servoClosedAngle + position, transitionTime);
-  }*/
+    // TODO: calculate speed according to transitionTime
+    stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
+  }
 }
 
 void Floower::setPetalsAngle(unsigned int angle, int transitionTime) {
@@ -406,7 +439,7 @@ bool Floower::isLit() {
 }
 
 bool Floower::isAnimating() {
-  return !animations.IsAnimating();
+  return animations.IsAnimating() || stepperMotion.distanceToGo() != 0;
 }
 
 bool Floower::arePetalsMoving() {

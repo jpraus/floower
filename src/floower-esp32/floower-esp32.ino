@@ -14,13 +14,13 @@ const bool deepSleepEnabled = false;
 // following constant are used only when Floower is calibrated in factory
 // never ever uncomment the CALIBRATE_HARDWARE flag, you will overwrite your hardware calibration settings and probably break the Floower
 
-#define CALIBRATE_HARDWARE_SERIAL 1
+//#define CALIBRATE_HARDWARE_SERIAL 1
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
 //#define SERVO_CLOSED 800 // 650
 //#define SERVO_OPEN SERVO_CLOSED + 500 // 700
-//#define SERIAL_NUMBER 32
-//#define REVISION 6
+//#define SERIAL_NUMBER 1
+//#define REVISION 9
 
 ///////////// POWER MODE
 
