@@ -104,7 +104,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
       break;
 
     case TOUCH_HOLD:
-      if (config->bluetoothEnabled && (state == STATE_STANDBY || state == STATE_RAINBOW || state == STATE_BLOOMING)) { // init remote when Floower closed (or rainbow started)
+      if (config->bluetoothEnabled && floower->getPetalsOpenLevel() == 0 && (state == STATE_STANDBY || state == STATE_RAINBOW || state == STATE_BLOOMING)) { // init remote when Floower closed (or rainbow started)
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
         remote->init();
         remote->startAdvertising();
