@@ -69,7 +69,12 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         disabledTouchUp = false;
       }
       else if (!floower->arePetalsMoving() && !floower->isChangingColor()) {
-        if (state == STATE_STANDBY) {
+        if (state == STATE_BLOOMING) {
+          // open
+          floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
+          changeState(STATE_RUNNING);
+        }
+        else if (state == STATE_STANDBY) {
           // open + set color
           if (!floower->isLit()) {
             HsbColor nextColor = nextRandomColor();
