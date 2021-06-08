@@ -105,8 +105,8 @@ void Floower::initStepper() {
   stepperDriver.writeChopconfReg(chopconf);
 
   stepperMotion.setPinsInverted(true, false, false);
-  stepperMotion.setMaxSpeed(8000);
-  stepperMotion.setAcceleration(8000);
+  stepperMotion.setMaxSpeed(4000);
+  stepperMotion.setAcceleration(4000);
   stepperMotion.setCurrentPosition(TMC_OPEN_STEPS);
   stepperMotion.moveTo(0); // 0 = closed
 }
