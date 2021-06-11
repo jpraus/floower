@@ -38,6 +38,9 @@ void Automaton::update() {
  * (Standby) - Hold Touch -> (Connect to Remote) - Touch -> (Standby)
  */
 void Automaton::onLeafTouch(FloowerTouchEvent event) {
+  if (!config->touchEnabled) {
+    return;
+  }
   switch (event) {
     case TOUCH_DOWN:
       if (state == STATE_STANDBY && !floower->arePetalsMoving() && !floower->isChangingColor()) {

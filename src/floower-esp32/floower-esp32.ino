@@ -8,9 +8,12 @@
 ///////////// SOFTWARE CONFIGURATION
 
 #define FIRMWARE_VERSION 7
-const bool deepSleepEnabled = true;
+
+// feature flags
+const bool deepSleepEnabled = false;
 const bool bluetoothEnabled = true;
-const bool rainbowEnabled = true;
+const bool rainbowEnabled = false;
+const bool touchEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
@@ -62,6 +65,7 @@ void setup() {
   configure();
   config.bluetoothEnabled = bluetoothEnabled;
   config.rainbowEnabled = rainbowEnabled;
+  config.touchEnabled = touchEnabled;
 
   // after wake up setup
   bool wasSleeping = false;

@@ -70,6 +70,7 @@ class Config {
     // feature flags
     bool bluetoothEnabled = false;
     bool rainbowEnabled = false;
+    bool touchEnabled = false;
 
     // configration
     uint8_t colorSchemeSize = 0;
