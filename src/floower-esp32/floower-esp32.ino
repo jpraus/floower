@@ -8,7 +8,12 @@
 ///////////// SOFTWARE CONFIGURATION
 
 #define FIRMWARE_VERSION 7
+
+// feature flags
 const bool deepSleepEnabled = false;
+const bool bluetoothEnabled = true;
+const bool rainbowEnabled = false;
+const bool touchEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
@@ -58,6 +63,9 @@ void setup() {
 
   // read configuration
   configure();
+  config.bluetoothEnabled = bluetoothEnabled;
+  config.rainbowEnabled = rainbowEnabled;
+  config.touchEnabled = touchEnabled;
 
   // after wake up setup
   bool wasSleeping = false;
@@ -125,7 +133,7 @@ void loop() {
     periodicOperationsTime = now + PERIODIC_OPERATIONS_INTERVAL;
     periodicOperation();
   }
-  if (initRemoteTime != 0 && initRemoteTime < now && !floower.arePetalsMoving()) {
+  if (config.bluetoothEnabled && initRemoteTime != 0 && initRemoteTime < now && !floower.arePetalsMoving()) {
     initRemoteTime = 0;
     remote.init();
     remote.startAdvertising();

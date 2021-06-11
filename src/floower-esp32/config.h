@@ -67,6 +67,10 @@ class Config {
     bool initRemoteOnStartup = false;
     bool calibrated = false;
 
+    // feature flags
+    bool bluetoothEnabled = false;
+    bool rainbowEnabled = false;
+    bool touchEnabled = false;
     // configration
     uint8_t colorSchemeSize = 0;
     HsbColor colorScheme[10]; // max 10 colors
