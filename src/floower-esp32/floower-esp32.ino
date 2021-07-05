@@ -191,7 +191,7 @@ void powerWatchDog() {
 
   PowerState powerState = floower.readPowerState();
   remote.setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
-  //usbPowered = powerState.usbPowered;
+  usbPowered = powerState.usbPowered;
 
   if (usbPowered) {
     floower.setLowPowerMode(false);
