@@ -7,12 +7,12 @@
 
 ///////////// SOFTWARE CONFIGURATION
 
-#define FIRMWARE_VERSION 7
+#define FIRMWARE_VERSION 8
 
 // feature flags
-const bool deepSleepEnabled = false;
+const bool deepSleepEnabled = true;
 const bool bluetoothEnabled = true;
-const bool rainbowEnabled = false;
+const bool rainbowEnabled = true;
 const bool touchEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -22,10 +22,8 @@ const bool touchEnabled = true;
 //#define CALIBRATE_HARDWARE_SERIAL 1
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
-//#define SERVO_CLOSED 800 // 650
-//#define SERVO_OPEN SERVO_CLOSED + 500 // 700
-//#define SERIAL_NUMBER 1
-//#define REVISION 9
+#define SERIAL_NUMBER 402
+#define REVISION 9
 
 ///////////// POWER MODE
 
@@ -43,7 +41,7 @@ const bool touchEnabled = true;
 #define WDT_TIMEOUT 10 // 10s for watch dog, reset with ever periodic operation
 
 bool batteryDead = false;
-bool batteryCharging = false;
+bool usbPowered = false;
 long deepSleepTime = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
@@ -102,21 +100,16 @@ void setup() {
     // hardware is not calibrated
     ESP_LOGW(LOG_TAG, "Floower not calibrated");
     floower.flashColor(colorPurple.H, colorPurple.S, 2000);
-    floower.initStepper();
-    floower.setPetalsOpenLevel(0, 1000); // reset petals position to known one
+    floower.initStepper(35000); // open steps, force the Floower to close
     ESP_LOGI(LOG_TAG, "Ready for calibration");
   }
   else {
     // normal operation
     floower.initStepper();
-    if (!wasSleeping) {
-      floower.setPetalsOpenLevel(0, 100); // reset petals position to known one
-    }
+    automaton.init();
     if (config.initRemoteOnStartup) {
       initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
     }
-
-    automaton.init();
     ESP_LOGI(LOG_TAG, "Ready");
   }
 
@@ -149,7 +142,7 @@ void loop() {
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
     // plan to enter deep sleep to save power if floower is in open/dark position & remote is not connected
-    if (!batteryCharging && !floower.isLit() && !floower.arePetalsMoving() && floower.getPetalsOpenLevel() == 0 && !remote.isConnected()) {
+    if (!usbPowered && !floower.isLit() && !floower.arePetalsMoving() && floower.getPetalsOpenLevel() == 0 && !remote.isConnected()) {
       if (deepSleepTime == 0) {
         planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
       }
@@ -185,6 +178,7 @@ void powerWatchDog() {
 
   PowerState powerState = floower.readPowerState();
   remote.setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
+  usbPowered = powerState.usbPowered;
 
   if (powerState.usbPowered) {
     floower.setLowPowerMode(false);
@@ -223,7 +217,7 @@ void enterDeepSleep() {
 void configure() {
   config.begin();
 #ifdef CALIBRATE_HARDWARE
-  config.hardwareCalibration(SERVO_CLOSED, SERVO_OPEN, REVISION, SERIAL_NUMBER);
+  config.hardwareCalibration(REVISION, SERIAL_NUMBER);
   config.factorySettings();
   config.setCalibrated();
   config.commit();
@@ -249,21 +243,7 @@ void calibrateOverSerial() {
     }
     else if (data == '\n'){ // end of command
       long value = calibrationValue.toInt();
-      if (calibationCommand == 'C') { // servo closed angle limit
-        if (value > 0) {
-          ESP_LOGI(LOG_TAG, "New closed angle %d", value);
-          floower.setPetalsAngle(value, abs(value - floower.getCurrentPetalsAngle()) * 4);
-          config.servoClosed = value;
-        }
-      }
-      else if (calibationCommand == 'O') { // servo open angle limit
-        if (value > 0) {
-          ESP_LOGI(LOG_TAG, "New open angle %d", value);
-          floower.setPetalsAngle(value, abs(value - floower.getCurrentPetalsAngle()) * 4);
-          config.servoOpen = value;
-        }
-      }
-      else if (calibationCommand == 'N') { // serial number
+      if (calibationCommand == 'N') { // serial number
         ESP_LOGI(LOG_TAG, "New S/N %d", value);
         config.serialNumber = value;
       }

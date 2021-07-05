@@ -27,6 +27,8 @@ static const char* LOG_TAG = "Floower";
 
 #define STATUS_NEOPIXEL_PIN 32
 
+#define ANIMATION_INDEX_LEDS 1
+
 #define TOUCH_SENSOR_PIN 4
 #define TOUCH_FADE_TIME 75 // 50
 #define TOUCH_LONG_TIME_THRESHOLD 2000 // 2s to recognize long touch
@@ -72,15 +74,8 @@ void Floower::init() {
   enableTouch();
 }
 
-void Floower::initStepper() {
-  // default stepper configuration
-  //servoOpenAngle = config->servoOpen;
-  //servoClosedAngle = config->servoClosed;
-  //servoAngle = config->servoClosed;
-  //servoOriginAngle = config->servoClosed;
-  //servoTargetAngle = config->servoClosed;
-  //petalsOpenLevel = -1; // 0-100% (-1 unknown)
-  //Serial1.begin(500000, SERIAL_8N1, 26, 14);
+void Floower::initStepper(long currentPosition) {
+  petalsOpenLevel = 0; // 0-100%
 
   // stepper
   stepperPowerOn = false; // to make setStepperPowerOn effective
@@ -107,8 +102,8 @@ void Floower::initStepper() {
   stepperMotion.setPinsInverted(true, false, false);
   stepperMotion.setMaxSpeed(4000);
   stepperMotion.setAcceleration(4000);
-  stepperMotion.setCurrentPosition(TMC_OPEN_STEPS);
-  stepperMotion.moveTo(0); // 0 = closed
+  stepperMotion.setCurrentPosition(currentPosition); // closed (-> positive is open)
+  stepperMotion.moveTo(0);
 }
 
 void Floower::update() {
@@ -140,28 +135,28 @@ void Floower::update() {
     unsigned long sinceLastTouch = millis() - lastTouchTime;
 
     if (!touchRegistered) {
-      ESP_LOGD(LOG_TAG, "Touch Down");
+      ESP_LOGI(LOG_TAG, "Touch Down");
       touchRegistered = true;
       if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_DOWN);
       }
     }
     if (!longTouchRegistered && touchTime > TOUCH_LONG_TIME_THRESHOLD) {
-      ESP_LOGD(LOG_TAG, "Long Touch %d", touchTime);
+      ESP_LOGI(LOG_TAG, "Long Touch %d", touchTime);
       longTouchRegistered = true;
       if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_LONG);
       }
     }
     if (!holdTouchRegistered && touchTime > TOUCH_HOLD_TIME_THRESHOLD) {
-      ESP_LOGD(LOG_TAG, "Hold Touch %d", touchTime);
+      ESP_LOGI(LOG_TAG, "Hold Touch %d", touchTime);
       holdTouchRegistered = true;
       if (touchCallback != nullptr) {
         touchCallback(FloowerTouchEvent::TOUCH_HOLD);
       }
     }
     if (sinceLastTouch > TOUCH_FADE_TIME) {
-      ESP_LOGD(LOG_TAG, "Touch Up %d", sinceLastTouch);
+      ESP_LOGI(LOG_TAG, "Touch Up %d", sinceLastTouch);
       touchStartedTime = 0;
       touchEndedTime = now;
       touchRegistered = false;
@@ -173,7 +168,7 @@ void Floower::update() {
     }
   }
   else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOLDOWN_TIME) {
-    ESP_LOGD(LOG_TAG, "Touch enabled");
+    ESP_LOGI(LOG_TAG, "Touch enabled");
     touchEndedTime = 0;
   }
 }
@@ -203,6 +198,8 @@ void Floower::onChange(FloowerChangeCallback callback) {
 }
 
 void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
+  ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
+
   if (level == petalsOpenLevel) {
     return; // no change, keep doing the old movement until done
   }
@@ -215,31 +212,10 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
     // TODO: calculate speed according to transitionTime
     stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
   }
-}
-
-void Floower::setPetalsAngle(unsigned int angle, int transitionTime) {
-  /*servoOriginAngle = servoAngle;
-  servoTargetAngle = angle;
-
-  ESP_LOGI(LOG_TAG, "Petals %d%% (%d) in %d", petalsOpenLevel, angle, transitionTime);
-
-  // TODO: support transitionTime of 0
-  animations.StartAnimation(0, transitionTime, [=](const AnimationParam& param){ servoAnimationUpdate(param); });
 
   if (changeCallback != nullptr) {
     changeCallback(petalsOpenLevel, pixelsTargetColor);
-  }*/
-}
-
-void Floower::stepperAnimationUpdate(const AnimationParam& param) {
-  /*servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * param.progress;
-
-  setServoPowerOn(true);
-  servo.write(servoAngle);
-
-  if (param.state == AnimationState_Completed) {
-    servoPowerOffTime = millis() + SERVO_POWER_OFF_DELAY;
-  }*/
+  }
 }
 
 uint8_t Floower::getPetalsOpenLevel() {
@@ -247,22 +223,16 @@ uint8_t Floower::getPetalsOpenLevel() {
 }
 
 uint8_t Floower::getCurrentPetalsOpenLevel() {
-  /*if (arePetalsMoving()) {
-    float range = servoOpenAngle - servoClosedAngle;
-    float current = servoAngle - servoClosedAngle;
-    return (current / range) * 100;
-  }*/
+  if (stepperMotion.distanceToGo() != 0) {
+    float position = stepperMotion.currentPosition();
+    return (position / TMC_OPEN_STEPS) * 100;
+  }
+  // optimization, no need to calculate the actual position when movement is finished
   return petalsOpenLevel;
 }
 
-int Floower::getPetalsAngle() {
-  //return servoTargetAngle;
-  return -1;
-}
-
-int Floower::getCurrentPetalsAngle() {
-  //return servoAngle;
-  return -1;
+bool Floower::arePetalsMoving() {
+  return stepperMotion.distanceToGo() != 0;
 }
 
 void Floower::transitionColorBrightness(double brightness, int transitionTime) {
@@ -298,7 +268,7 @@ void Floower::transitionColor(double hue, double saturation, double brightness, 
   }
   else {
     pixelsOriginColor = pixelsColor;
-    animations.StartAnimation(1, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
+    animations.StartAnimation(ANIMATION_INDEX_LEDS, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
   }
 
   if (changeCallback != nullptr) {
@@ -323,7 +293,7 @@ void Floower::flashColor(double hue, double saturation, int flashDuration) {
   pixelsColor.B = 0;
 
   interruptiblePixelsAnimation = false;
-  animations.StartAnimation(1, flashDuration, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
+  animations.StartAnimation(ANIMATION_INDEX_LEDS, flashDuration, [=](const AnimationParam& param){ pixelsFlashAnimationUpdate(param); });
 }
 
 void Floower::pixelsFlashAnimationUpdate(const AnimationParam& param) {
@@ -356,11 +326,11 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
 
   if (animation == RAINBOW) {
     pixelsOriginColor = pixelsColor;
-    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
+    animations.StartAnimation(ANIMATION_INDEX_LEDS, 10000, [=](const AnimationParam& param){ pixelsRainbowAnimationUpdate(param); });
   }
   else if (animation == RAINBOW_LOOP) {
     pixelsTargetColor = pixelsColor = colorWhite;
-    animations.StartAnimation(1, 10000, [=](const AnimationParam& param){ pixelsRainbowLoopAnimationUpdate(param); });
+    animations.StartAnimation(ANIMATION_INDEX_LEDS, 10000, [=](const AnimationParam& param){ pixelsRainbowLoopAnimationUpdate(param); });
   }
   else if (animation == CANDLE) {
     pixelsTargetColor = pixelsColor = candleColor; // candle orange
@@ -368,12 +338,12 @@ void Floower::startAnimation(FloowerColorAnimation animation) {
       candleOriginColors[i] = pixelsTargetColor;
       candleTargetColors[i] = pixelsTargetColor;
     }
-    animations.StartAnimation(1, 100, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
+    animations.StartAnimation(ANIMATION_INDEX_LEDS, 100, [=](const AnimationParam& param){ pixelsCandleAnimationUpdate(param); });
   }
 }
 
 void Floower::stopAnimation(bool retainColor) {
-  animations.StopAnimation(1);
+  animations.StopAnimation(ANIMATION_INDEX_LEDS);
   if (retainColor) {
     pixelsTargetColor = pixelsColor;
   }
@@ -442,10 +412,6 @@ bool Floower::isAnimating() {
   return animations.IsAnimating() || stepperMotion.distanceToGo() != 0;
 }
 
-bool Floower::arePetalsMoving() {
-  return animations.IsAnimationActive(0);
-}
-
 bool Floower::isChangingColor() {
   return (!interruptiblePixelsAnimation && animations.IsAnimationActive(1));
 }
@@ -504,6 +470,10 @@ PowerState Floower::readPowerState() {
 
   powerState = {voltage, level, charging, usbPowered};
   return powerState;
+}
+
+bool Floower::isUsbPowered() {
+  return powerState.usbPowered;
 }
 
 void Floower::setLowPowerMode(bool lowPowerMode) {

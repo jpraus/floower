@@ -36,7 +36,7 @@ class Floower {
   public:
     Floower(Config *config);
     void init();
-    void initStepper();
+    void initStepper(long currentPosition = 0);
     void update();
 
     void registerOutsideTouch();
@@ -45,11 +45,8 @@ class Floower {
     void onChange(FloowerChangeCallback callback);
 
     void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
-    void setPetalsAngle(unsigned int angle, int transitionTime = 0);
     uint8_t getPetalsOpenLevel();
     uint8_t getCurrentPetalsOpenLevel();
-    int getPetalsAngle();
-    int getCurrentPetalsAngle(); 
     void transitionColor(double hue, double saturation, double brightness, int transitionTime = 0);
     void transitionColorBrightness(double brightness, int transitionTime = 0);
     void flashColor(double hue, double saturation, int flashDuration);
@@ -64,6 +61,7 @@ class Floower {
 
     void acty();
     PowerState readPowerState();
+    bool isUsbPowered();
     void setLowPowerMode(bool lowPowerMode);
     bool isLowPowerMode();
 
@@ -72,7 +70,6 @@ class Floower {
     bool setPixelsPowerOn(bool powerOn);
 
     NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
-    void stepperAnimationUpdate(const AnimationParam& param);
     void pixelsTransitionAnimationUpdate(const AnimationParam& param);
     void pixelsFlashAnimationUpdate(const AnimationParam& param);
     void pixelsRainbowAnimationUpdate(const AnimationParam& param);
