@@ -69,9 +69,6 @@ void Floower::init() {
   statusPixel.Begin();
   statusPixel.ClearTo(statusColor);
   statusPixel.Show();
-
-  // this need to be done in init in order to enable deep sleep wake up
-  enableTouch();
 }
 
 void Floower::initStepper(long currentPosition) {
@@ -177,9 +174,13 @@ void Floower::registerOutsideTouch() {
   touchISR();
 }
 
-void Floower::enableTouch() {
+void Floower::enableTouch(bool defer) {
   detachInterrupt(TOUCH_SENSOR_PIN);
   touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->personification.touchThreshold);
+  if (defer) {
+    touchEndedTime = millis();
+  }
+  ESP_LOGI(LOG_TAG, "Touch enabled");
 }
 
 void Floower::touchISR() {
@@ -462,13 +463,14 @@ PowerState Floower::readPowerState() {
 
   bool charging = digitalRead(CHARGE_PIN) == LOW;
   bool usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
+  bool switchedOn = reading > 0; // there is voltage of battery present
 
   ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
 
   statusColor = charging ? colorRed : (usbPowered ? colorGreen : colorBlack);
   statusPixel.SetPixelColor(0, statusColor);
 
-  powerState = {voltage, level, charging, usbPowered};
+  powerState = {voltage, level, charging, usbPowered, switchedOn};
   return powerState;
 }
 

@@ -22,7 +22,7 @@ const bool touchEnabled = true;
 //#define CALIBRATE_HARDWARE_SERIAL 1
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
-#define SERIAL_NUMBER 402
+#define SERIAL_NUMBER 400
 #define REVISION 9
 
 ///////////// POWER MODE
@@ -42,6 +42,7 @@ const bool touchEnabled = true;
 
 bool batteryDead = false;
 bool usbPowered = false;
+bool switchedOn = false;
 long deepSleepTime = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
@@ -56,7 +57,7 @@ void setup() {
   ESP_LOGI(LOG_TAG, "Initializing");
 
   // start watchdog timer
-  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_init(WDT_TIMEOUT, true); // enable panic so ESP32 restarts
   esp_task_wdt_add(NULL);
 
   // read configuration
@@ -103,12 +104,24 @@ void setup() {
     floower.initStepper(35000); // open steps, force the Floower to close
     ESP_LOGI(LOG_TAG, "Ready for calibration");
   }
+  else if (config.hardwareRevision < 9) {
+    // incompatible hardware
+    ESP_LOGW(LOG_TAG, "Floower is not compatible");
+    floower.flashColor(colorRed.H, colorRed.S, 2000);
+  }
   else {
     // normal operation
     floower.initStepper();
-    automaton.init();
-    if (config.initRemoteOnStartup) {
-      initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
+    floower.enableTouch(!wasSleeping);
+    switchedOn = powerState.switchedOn;
+    if (switchedOn) {
+      automaton.init();
+      if (config.initRemoteOnStartup) {
+        initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
+      }
+    }
+    else {
+      ESP_LOGI(LOG_TAG, "Power switch is OFF");
     }
     ESP_LOGI(LOG_TAG, "Ready");
   }
@@ -178,10 +191,24 @@ void powerWatchDog() {
 
   PowerState powerState = floower.readPowerState();
   remote.setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
-  usbPowered = powerState.usbPowered;
+  //usbPowered = powerState.usbPowered;
 
-  if (powerState.usbPowered) {
+  if (usbPowered) {
     floower.setLowPowerMode(false);
+    if (powerState.switchedOn != switchedOn) {
+      switchedOn = powerState.switchedOn;
+      if (switchedOn) {
+        ESP_LOGI(LOG_TAG, "Switched ON");
+        automaton.init();
+        if (config.initRemoteOnStartup) {
+          initRemoteTime = millis();
+        }
+      }
+      else {
+        ESP_LOGI(LOG_TAG, "Switched OFF");
+        automaton.suspend();
+      }
+    }
   }
   else if (powerState.batteryVoltage < POWER_DEAD_THRESHOLD) {
     ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", powerState.batteryVoltage);

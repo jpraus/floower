@@ -11,6 +11,7 @@ class Automaton {
     Automaton(Remote *remote, Floower *floower, Config *config);
     void init();
     void update();
+    void suspend();
 
   private:
     void onLeafTouch(FloowerTouchEvent event);
@@ -22,6 +23,7 @@ class Automaton {
     Floower *floower;
     Config *config;
 
+    boolean enabled = false;
     uint8_t state;
     unsigned long colorsUsed = 0;
     bool disabledTouchUp = false;

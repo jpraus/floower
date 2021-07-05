@@ -23,6 +23,14 @@ void Automaton::init() {
   changeState(STATE_STANDBY);
   floower->onLeafTouch([=](FloowerTouchEvent event){ onLeafTouch(event); });
   remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
+  enabled = true;
+}
+
+void Automaton::suspend() {
+  floower->transitionColorBrightness(0, config->speedMillis);
+  floower->setPetalsOpenLevel(0, config->speedMillis);
+  changeState(STATE_STANDBY);
+  enabled = false;
 }
 
 void Automaton::update() {
@@ -38,7 +46,7 @@ void Automaton::update() {
  * (Standby) - Hold Touch -> (Connect to Remote) - Touch -> (Standby)
  */
 void Automaton::onLeafTouch(FloowerTouchEvent event) {
-  if (!config->touchEnabled) {
+  if (!enabled || !config->touchEnabled) {
     return;
   }
   switch (event) {
@@ -89,7 +97,7 @@ void Automaton::onLeafTouch(FloowerTouchEvent event) {
         }
         else if (state == STATE_RUNNING) {
           // shutdown
-          floower->transitionColorBrightness(0, config->speedMillis);
+          floower->transitionColorBrightness(0, config->speedMillis / 2);
           changeState(STATE_STANDBY);  
         }
       }

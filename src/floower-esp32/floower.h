@@ -27,6 +27,7 @@ struct PowerState {
   uint8_t batteryLevel;
   bool batteryCharging;
   bool usbPowered;
+  bool switchedOn;
 };
 
 typedef std::function<void(const FloowerTouchEvent& event)> FloowerOnLeafTouchCallback;
@@ -40,7 +41,7 @@ class Floower {
     void update();
 
     void registerOutsideTouch();
-    void enableTouch();
+    void enableTouch(bool defer = false);
     void onLeafTouch(FloowerOnLeafTouchCallback callback);
     void onChange(FloowerChangeCallback callback);
 
