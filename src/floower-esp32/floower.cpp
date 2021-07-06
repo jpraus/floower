@@ -27,7 +27,9 @@ static const char* LOG_TAG = "Floower";
 
 #define STATUS_NEOPIXEL_PIN 32
 
+#define ANIMATIONS_INDECES 3
 #define ANIMATION_INDEX_LEDS 1
+#define ANIMATION_INDEX_STATUS 2
 
 #define TOUCH_SENSOR_PIN 4
 #define TOUCH_FADE_TIME 75 // 50
@@ -41,7 +43,7 @@ unsigned long Floower::lastTouchTime = 0;
 
 const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
-Floower::Floower(Config *config) : config(config), animations(2), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN) {
+Floower::Floower(Config *config) : config(config), animations(ANIMATIONS_INDECES), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN) {
   Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
   pinMode(CHARGE_PIN, INPUT);
 }
@@ -410,16 +412,50 @@ bool Floower::isLit() {
 }
 
 bool Floower::isAnimating() {
-  return animations.IsAnimating() || stepperMotion.distanceToGo() != 0;
+  return animations.IsAnimationActive(ANIMATION_INDEX_LEDS) || stepperMotion.distanceToGo() != 0;
 }
 
 bool Floower::isChangingColor() {
-  return (!interruptiblePixelsAnimation && animations.IsAnimationActive(1));
+  return (!interruptiblePixelsAnimation && animations.IsAnimationActive(ANIMATION_INDEX_LEDS));
 }
 
-void Floower::acty() {
-  // digitalWrite(ACTY_LED_PIN, HIGH);
-  //actyOffTime = millis() + ACTY_BLINK_TIME;
+void Floower::showStatus(HsbColor color, FloowerStatusAnimation animation, int duration) {
+  statusColor = color;
+  statusPixel.SetPixelColor(0, color);
+
+  if (animation == STILL) {
+    animations.StopAnimation(ANIMATION_INDEX_STATUS);    
+  }
+  else if (animation == BLINK_ONCE) {
+    animations.StartAnimation(ANIMATION_INDEX_STATUS, duration, [=](const AnimationParam& param){ statusBlinkOnceAnimationUpdate(param); });
+  }
+  else if (animation == PULSATING) {
+    animations.StartAnimation(ANIMATION_INDEX_STATUS, duration, [=](const AnimationParam& param){ statusPulsatingAnimationUpdate(param); });
+  }
+}
+
+void Floower::statusBlinkOnceAnimationUpdate(const AnimationParam& param) {
+  if (param.state == AnimationState_Completed) {
+    statusColor = colorBlack;
+    statusPixel.SetPixelColor(0, statusColor);
+  }
+}
+
+void Floower::statusPulsatingAnimationUpdate(const AnimationParam& param) {
+  if (param.progress < 0.5) {
+    statusColor.B = NeoEase::CubicInOut(0.75 - param.progress);
+  }
+  else {
+    statusColor.B = NeoEase::CubicInOut(param.progress - 0.25);
+  }
+
+  statusPixel.SetPixelColor(0, statusColor);
+
+  if (param.state == AnimationState_Completed) {
+    if (statusColor.B > 0) { // while there is something to show
+      animations.RestartAnimation(param.index);
+    }
+  }
 }
 
 bool Floower::setPixelsPowerOn(bool powerOn) {
@@ -466,9 +502,6 @@ PowerState Floower::readPowerState() {
   bool switchedOn = reading > 0; // there is voltage of battery present
 
   ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
-
-  statusColor = charging ? colorRed : (usbPowered ? colorGreen : colorBlack);
-  statusPixel.SetPixelColor(0, statusColor);
 
   powerState = {voltage, level, charging, usbPowered, switchedOn};
   return powerState;

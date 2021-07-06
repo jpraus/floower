@@ -15,6 +15,12 @@ enum FloowerColorAnimation {
   CANDLE
 };
 
+enum FloowerStatusAnimation {
+  STILL,
+  BLINK_ONCE,
+  PULSATING
+};
+
 enum FloowerTouchEvent {
   TOUCH_DOWN,
   TOUCH_LONG, // >2s
@@ -60,7 +66,8 @@ class Floower {
     bool arePetalsMoving();
     bool isChangingColor();
 
-    void acty();
+    void showStatus(HsbColor color, FloowerStatusAnimation animation, int duration);
+
     PowerState readPowerState();
     bool isUsbPowered();
     void setLowPowerMode(bool lowPowerMode);
@@ -77,6 +84,8 @@ class Floower {
     void pixelsRainbowLoopAnimationUpdate(const AnimationParam& param);
     void pixelsCandleAnimationUpdate(const AnimationParam& param);
     void showColor(HsbColor color);
+    void statusBlinkOnceAnimationUpdate(const AnimationParam& param);
+    void statusPulsatingAnimationUpdate(const AnimationParam& param);
 
     void handleTimers(unsigned long now);
     static void touchISR();

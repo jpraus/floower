@@ -22,7 +22,7 @@ const bool touchEnabled = true;
 //#define CALIBRATE_HARDWARE_SERIAL 1
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
-#define SERIAL_NUMBER 400
+#define SERIAL_NUMBER 401
 #define REVISION 9
 
 ///////////// POWER MODE
@@ -37,7 +37,7 @@ const bool touchEnabled = true;
 #define REMOTE_INIT_TIMEOUT 2000 // delay init of BLE to lower the power surge on startup
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define BATTERY_DEAD_WARNING_DURATION 5000 // how long to show battery dead status
-#define PERIODIC_OPERATIONS_INTERVAL 3000
+#define PERIODIC_OPERATIONS_INTERVAL 2000
 #define WDT_TIMEOUT 10 // 10s for watch dog, reset with ever periodic operation
 
 bool batteryDead = false;
@@ -46,6 +46,11 @@ bool switchedOn = false;
 long deepSleepTime = 0;
 long periodicOperationsTime = 0;
 long initRemoteTime = 0;
+
+#define INDICATE_STATUS_ACTY 0
+#define INDICATE_STATUS_CHARGING 1
+#define INDICATE_STATUS_REMOTE 2
+uint8_t indicatingStatus = 0;
 
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
@@ -148,9 +153,6 @@ void loop() {
     deepSleepTime = 0;
     enterDeepSleep();
   }
-  if (remote.isConnected()) {
-    floower.acty();
-  }
 
   // plan to enter deep sleep in inactivity
   if (deepSleepEnabled && !batteryDead) {
@@ -180,8 +182,24 @@ void loop() {
 
 void periodicOperation() {
   esp_task_wdt_reset();
-  floower.acty();
   powerWatchDog();
+  indicateStatus(INDICATE_STATUS_REMOTE, remote.isConnected());
+  indicateStatus(INDICATE_STATUS_ACTY, true);
+}
+
+void switchSoftPower(boolean newSwitchedOn) {
+  switchedOn = newSwitchedOn;
+  if (switchedOn) {
+    ESP_LOGI(LOG_TAG, "Switched ON");
+    automaton.init();
+    if (config.initRemoteOnStartup) {
+      initRemoteTime = millis();
+    }
+  }
+  else {
+    ESP_LOGI(LOG_TAG, "Switched OFF");
+    automaton.suspend();
+  }
 }
 
 void powerWatchDog() {
@@ -191,23 +209,13 @@ void powerWatchDog() {
 
   PowerState powerState = floower.readPowerState();
   remote.setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
+  indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
   usbPowered = powerState.usbPowered;
 
   if (usbPowered) {
     floower.setLowPowerMode(false);
     if (powerState.switchedOn != switchedOn) {
-      switchedOn = powerState.switchedOn;
-      if (switchedOn) {
-        ESP_LOGI(LOG_TAG, "Switched ON");
-        automaton.init();
-        if (config.initRemoteOnStartup) {
-          initRemoteTime = millis();
-        }
-      }
-      else {
-        ESP_LOGI(LOG_TAG, "Switched OFF");
-        automaton.suspend();
-      }
+      switchSoftPower(powerState.switchedOn);
     }
   }
   else if (powerState.batteryVoltage < POWER_DEAD_THRESHOLD) {
@@ -225,6 +233,32 @@ void powerWatchDog() {
   else if (floower.isLowPowerMode() && powerState.batteryVoltage >= POWER_LOW_LEAVE_THRESHOLD) {
     ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", powerState.batteryVoltage);
     floower.setLowPowerMode(false);
+  }
+}
+
+void indicateStatus(uint8_t status, bool enable) {
+  if (enable) {
+    if (status == INDICATE_STATUS_ACTY && indicatingStatus == INDICATE_STATUS_ACTY) {
+      floower.showStatus(colorPurple, FloowerStatusAnimation::BLINK_ONCE, 50);
+    }
+    else if (indicatingStatus != status) {
+      switch (status) {
+        case INDICATE_STATUS_CHARGING: // charging has the top priotity
+          floower.showStatus(colorRed, FloowerStatusAnimation::PULSATING, 2000);
+          indicatingStatus = status;
+          break;
+        case INDICATE_STATUS_REMOTE:
+          if (indicatingStatus != INDICATE_STATUS_CHARGING) {
+            floower.showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
+            indicatingStatus = status;
+          }
+          break;
+      }
+    }
+  }
+  else if (indicatingStatus == status) {
+    indicatingStatus = INDICATE_STATUS_ACTY; // idle status
+    floower.showStatus(colorBlack, FloowerStatusAnimation::STILL, 0);
   }
 }
 

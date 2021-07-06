@@ -61,9 +61,7 @@ void Config::load() {
     if (configVersion < 4) {
       resetColorScheme();
       hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
-      if (hardwareRevision >= 8 && hardwareRevision < 255) {
-        EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, DEFAULT_TOUCH_THRESHOLD_REV8); // newer boards are less sensitive
-      }
+      EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, DEFAULT_TOUCH_THRESHOLD);
       EEPROM.write(EEPROM_ADDRESS_SPEED, DEFAULT_SPEED);
       EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, DEFAULT_MAX_OPEN_LEVEL);
       EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, DEFAULT_COLOR_BRIGHTNESS);
@@ -113,8 +111,7 @@ void Config::factorySettings() {
   ESP_LOGI(LOG_TAG, "Factory reset");
   setName("Floower");
   setRemoteOnStartup(false);
-  uint8_t touchTreshold = (hardwareRevision == 8) ? DEFAULT_TOUCH_THRESHOLD_REV8 : DEFAULT_TOUCH_THRESHOLD; // newer boards are less sensitive
-  Personification personification = {touchTreshold, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
+  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
   setPersonification(personification);
   resetColorScheme();
 }
