@@ -44,20 +44,20 @@ static const char* LOG_TAG = "Remote";
 typedef union PersonificationPacket {
   Personification data; // see config.h
   uint8_t bytes[PERSONIFICATION_PACKET_SIZE];
-};
+} PersonificationPacket;
 
 typedef struct StatePacketData {
   uint8_t petalsOpenLevel; // normally petals open level 0-100%, read-write
   uint8_t R; // 0-255, read-write
   uint8_t G; // 0-255, read-write
   uint8_t B; // 0-255, read-write
-};
+} StatePacketData;
 
 #define STATE_PACKET_SIZE 4
 typedef union StatePacket {
   StatePacketData data;
   uint8_t bytes[STATE_PACKET_SIZE];
-};
+} StatePacket;
 
 #define STATE_TRANSITION_MODE_BIT_COLOR 0
 #define STATE_TRANSITION_MODE_BIT_PETALS 1 // when this bit is set, the VALUE parameter means open level of petals (0-100%)
@@ -74,13 +74,13 @@ typedef struct StateChangePacketData {
   HsbColor getColor() {
     return HsbColor(RgbColor(R, G, B));
   }
-};
+} StateChangePacketData;
 
 #define STATE_CHANGE_PACKET_SIZE 6
 typedef union StateChangePacket {
   StateChangePacketData data;
   uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
-};
+} StateChangePacket;
 
 Remote::Remote(Floower *floower, Config *config)
     : floower(floower), config(config) {
@@ -215,6 +215,7 @@ void Remote::setBatteryLevel(uint8_t level, bool charging) {
 BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {
   BLECharacteristic* characteristic = service->createCharacteristic(uuid, BLECharacteristic::PROPERTY_READ);                      
   characteristic->setValue(value);
+  return characteristic;
 }
 
 void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
