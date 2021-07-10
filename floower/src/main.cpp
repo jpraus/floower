@@ -20,8 +20,8 @@ const bool touchEnabled = true;
 // never ever uncomment the CALIBRATE_HARDWARE flag, you will overwrite your hardware calibration settings and probably break the Floower
 
 //#define CALIBRATE_HARDWARE_SERIAL 1
-#define FACTORY_RESET 1
-#define CALIBRATE_HARDWARE 1
+//#define FACTORY_RESET 1
+//#define CALIBRATE_HARDWARE 1
 #define SERIAL_NUMBER 402
 #define REVISION 9
 
@@ -86,7 +86,7 @@ void setup() {
   }
 
   // init hardware
-  //esp_wifi_stop();
+  esp_wifi_stop();
   btStop();
   floower.init();
   floower.readPowerState(); // calibrate the ADC
