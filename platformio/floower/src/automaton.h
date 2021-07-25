@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 #include "config.h"
-#include "floower.h"
+#include "hardware/floower.h"
 #include "remote.h"
 
 class Automaton {

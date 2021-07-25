@@ -4,7 +4,7 @@
 
 #include "Arduino.h"
 #include "config.h"
-#include "tmc2300.h"
+#include <tmc2300.h>
 #include <functional>
 #include <NeoPixelBus.h>
 #include <NeoPixelAnimator.h>

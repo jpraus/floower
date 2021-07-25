@@ -1,13 +1,13 @@
+#define FIRMWARE_VERSION 8
+#define HARDWARE_REVISION 9 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
+
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
-#include "floower.h"
 #include "config.h"
 #include "automaton.h"
 #include "remote.h"
 
 ///////////// SOFTWARE CONFIGURATION
-
-#define FIRMWARE_VERSION 8
 
 // feature flags
 const bool deepSleepEnabled = true;
@@ -23,7 +23,6 @@ const bool touchEnabled = true;
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
 #define SERIAL_NUMBER 402
-#define REVISION 9
 
 ///////////// POWER MODE
 
@@ -86,7 +85,7 @@ void setup() {
   }
 
   // init hardware
-  esp_wifi_stop();
+  //esp_wifi_stop();
   btStop();
   floower.init();
   floower.readPowerState(); // calibrate the ADC
@@ -283,7 +282,7 @@ void enterDeepSleep() {
 void configure() {
   config.begin();
 #ifdef CALIBRATE_HARDWARE
-  config.hardwareCalibration(REVISION, SERIAL_NUMBER);
+  config.hardwareCalibration(HARDWARE_REVISION, SERIAL_NUMBER);
   config.factorySettings();
   config.setCalibrated();
   config.commit();
