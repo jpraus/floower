@@ -87,22 +87,13 @@ class Floower {
     void statusBlinkOnceAnimationUpdate(const AnimationParam& param);
     void statusPulsatingAnimationUpdate(const AnimationParam& param);
 
-    void handleTimers(unsigned long now);
     static void touchISR();
 
     Config *config;
     FloowerChangeCallback changeCallback;
 
-    // petals
+    // petals motor
     Petals *petals;
-
-    // stepper config
-    TMC2300 stepperDriver;
-    AccelStepper stepperMotion;
-
-    // stepper state
-    int8_t petalsOpenLevel; // 0-100% (target angle in percentage)
-    bool stepperPowerOn;
 
     // leds
     NeoPixelBus<NeoGrbFeature, NeoEsp32I2s0800KbpsMethod> pixels;

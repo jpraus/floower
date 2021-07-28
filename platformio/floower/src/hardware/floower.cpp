@@ -11,16 +11,6 @@ static const char* LOG_TAG = "Floower";
 #define NEOPIXEL_PIN 27 // 27
 #define NEOPIXEL_PWR_PIN 25
 
-#define TMC_EN_PIN 33
-#define TMC_STEP_PIN 18
-#define TMC_DIR_PIN 19
-#define TMC_UART_RX_PIN 26
-#define TMC_UART_TX_PIN 14
-#define TMC_DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
-#define TMC_R_SENSE 0.13f       // Match to your driver Rsense
-#define TMC_MICROSTEPS 32
-#define TMC_OPEN_STEPS 30000
-
 #define BATTERY_ANALOG_PIN 36 // VP
 #define USB_ANALOG_PIN 39 // VN
 #define CHARGE_PIN 35
@@ -43,9 +33,9 @@ unsigned long Floower::lastTouchTime = 0;
 
 const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
-Floower::Floower(Config *config) : animations(ANIMATIONS_INDECES), config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN) {
-  petals = new StepperPetals(config);
-  Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
+Floower::Floower(Config *config) : animations(ANIMATIONS_INDECES), config(config), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN) {
+  //petals = new StepperPetals(config);
+  petals = new ServoPetals(config);
   pinMode(CHARGE_PIN, INPUT);
 }
 
@@ -75,45 +65,12 @@ void Floower::init() {
 }
 
 void Floower::initStepper(long currentPosition) {
-  petalsOpenLevel = 0; // 0-100%
-
-  // stepper
-  stepperPowerOn = false; // to make setStepperPowerOn effective
-  setStepperPowerOn(true);
-  pinMode(TMC_EN_PIN, OUTPUT);
-
-  // verify stepper is available
-  if (stepperDriver.testConnection()) {
-    ESP_LOGE(LOG_TAG, "TMC2300 comm failed");
-  }
-
-  REG_IOIN iont = stepperDriver.readIontReg();
-  Serial.print("IOIN=");
-  Serial.println(iont.sr, BIN);
-  Serial.print("Version=");
-  Serial.println(iont.version);
-
-  REG_CHOPCONF chopconf = stepperDriver.readChopconf();
-  Serial.print("Microsteps=");
-  Serial.println(chopconf.getMicrosteps());
-  chopconf.setMicrosteps(TMC_MICROSTEPS);
-  stepperDriver.writeChopconfReg(chopconf);
-
-  stepperMotion.setPinsInverted(true, false, false);
-  stepperMotion.setMaxSpeed(4000);
-  stepperMotion.setAcceleration(4000);
-  stepperMotion.setCurrentPosition(currentPosition); // closed (-> positive is open)
-  stepperMotion.moveTo(0);
+  petals->init(currentPosition);
 }
 
 void Floower::update() {
+  petals->update();
   animations.UpdateAnimations();
-  unsigned long now = millis();
-  handleTimers(now);
-
-  if (stepperMotion.distanceToGo() != 0) {
-    stepperMotion.run();
-  }
 
   // show pixels
   if (pixelsColor.B > 0) {
@@ -130,6 +87,7 @@ void Floower::update() {
     statusPixel.Show();
   }
 
+  unsigned long now = millis();
   if (touchStartedTime > 0) {
     unsigned int touchTime = now - touchStartedTime;
     unsigned long sinceLastTouch = millis() - lastTouchTime;
@@ -202,41 +160,23 @@ void Floower::onChange(FloowerChangeCallback callback) {
 }
 
 void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
-  ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
-
-  if (level == petalsOpenLevel) {
-    return; // no change, keep doing the old movement until done
-  }
-  petalsOpenLevel = level;
-
-  if (level >= 100) {
-    stepperMotion.moveTo(TMC_OPEN_STEPS);
-  }
-  else {
-    // TODO: calculate speed according to transitionTime
-    stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
-  }
+  petals->setPetalsOpenLevel(level, transitionTime);
 
   if (changeCallback != nullptr) {
-    changeCallback(petalsOpenLevel, pixelsTargetColor);
+    changeCallback(level, pixelsTargetColor);
   }
 }
 
 uint8_t Floower::getPetalsOpenLevel() {
-  return petalsOpenLevel;
+  return petals->getPetalsOpenLevel();
 }
 
 uint8_t Floower::getCurrentPetalsOpenLevel() {
-  if (stepperMotion.distanceToGo() != 0) {
-    float position = stepperMotion.currentPosition();
-    return (position / TMC_OPEN_STEPS) * 100;
-  }
-  // optimization, no need to calculate the actual position when movement is finished
-  return petalsOpenLevel;
+  return petals->getCurrentPetalsOpenLevel();
 }
 
 bool Floower::arePetalsMoving() {
-  return stepperMotion.distanceToGo() != 0;
+  return petals->arePetalsMoving();
 }
 
 void Floower::transitionColorBrightness(double brightness, int transitionTime) {
@@ -276,7 +216,7 @@ void Floower::transitionColor(double hue, double saturation, double brightness, 
   }
 
   if (changeCallback != nullptr) {
-    changeCallback(petalsOpenLevel, pixelsTargetColor);
+    changeCallback(getPetalsOpenLevel(), pixelsTargetColor);
   }
 }
 
@@ -413,7 +353,7 @@ bool Floower::isLit() {
 }
 
 bool Floower::isAnimating() {
-  return animations.IsAnimationActive(ANIMATION_INDEX_LEDS) || stepperMotion.distanceToGo() != 0;
+  return animations.IsAnimationActive(ANIMATION_INDEX_LEDS) || petals->arePetalsMoving();
 }
 
 bool Floower::isChangingColor() {
@@ -476,23 +416,6 @@ bool Floower::setPixelsPowerOn(bool powerOn) {
   return false; // no change
 }
 
-bool Floower::setStepperPowerOn(bool powerOn) {
-  if (powerOn && !stepperPowerOn) {
-    stepperPowerOn = true;
-    ESP_LOGD(LOG_TAG, "Stepper power ON");
-    digitalWrite(TMC_EN_PIN, HIGH);
-    delay(5); // TODO
-    return true;
-  }
-  if (!powerOn && stepperPowerOn) {
-    stepperPowerOn = false;
-    ESP_LOGD(LOG_TAG, "Stepper power OFF");
-    digitalWrite(TMC_EN_PIN, LOW);
-    return true;
-  }
-  return false; // no change
-}
-
 PowerState Floower::readPowerState() {
   float reading = analogRead(BATTERY_ANALOG_PIN); // 0-4095
   float voltage = reading * 0.00181; // 1/4069 for scale * analog reference voltage is 3.6V * 2 for using 1:1 voltage divider + adjustment
@@ -521,8 +444,4 @@ void Floower::setLowPowerMode(bool lowPowerMode) {
 
 bool Floower::isLowPowerMode() {
   return lowPowerMode;
-}
-
-void Floower::handleTimers(unsigned long now) {
-  
 }
