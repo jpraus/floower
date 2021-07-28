@@ -1,5 +1,4 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
 #include "Arduino.h"
 #include <EEPROM.h>
@@ -91,5 +90,3 @@ class Config {
     uint8_t flags = 0;
 
 };
-
-#endif

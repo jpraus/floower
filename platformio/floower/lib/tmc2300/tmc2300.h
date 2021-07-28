@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Arduino.h>
 #include <Stream.h>
 #include "tmc2300-regs.h"

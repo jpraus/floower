@@ -1,5 +1,4 @@
-#ifndef REMOTE_H
-#define REMOTE_H
+#pragma once
 
 #include "Arduino.h"
 #include <BLEDevice.h>
@@ -80,5 +79,3 @@ class Remote {
         void onDisconnect(BLEServer* server);
     };
 };
-
-#endif

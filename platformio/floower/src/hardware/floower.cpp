@@ -44,6 +44,7 @@ unsigned long Floower::lastTouchTime = 0;
 const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
 Floower::Floower(Config *config) : animations(ANIMATIONS_INDECES), config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN) {
+  petals = new StepperPetals(config);
   Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
   pinMode(CHARGE_PIN, INPUT);
 }

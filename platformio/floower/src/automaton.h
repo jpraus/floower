@@ -1,5 +1,4 @@
-#ifndef AUTOMATON_H
-#define AUTOMATON_H
+#pragma once
 
 #include "Arduino.h"
 #include "config.h"
@@ -28,5 +27,3 @@ class Automaton {
     unsigned long colorsUsed = 0;
     bool disabledTouchUp = false;
 };
-
-#endif

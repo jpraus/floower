@@ -1,26 +1,36 @@
-#ifndef PETALS_H
-#define PETALS_H
+#pragma once
 
 #include "Arduino.h"
 #include "config.h"
 #include <tmc2300.h>
 #include <AccelStepper.h>
+#include <ESP32Servo.h>
 
 class Petals {
   public:
-    Petals(Config *config);
-    void init();
-    void initStepper(long currentPosition = 0);
+    virtual void init(long currentPosition = 0) = 0;
+    virtual void update() = 0;
+
+    virtual void setPetalsOpenLevel(uint8_t level, int transitionTime = 0) = 0;
+    virtual uint8_t getPetalsOpenLevel() = 0;
+    virtual uint8_t getCurrentPetalsOpenLevel() = 0;
+    virtual bool arePetalsMoving() = 0;
+    virtual bool setEnabled(bool enabled) = 0;
+};
+
+class StepperPetals : public Petals {
+  public:
+    StepperPetals(Config *config);
+    void init(long currentPosition = 0);
     void update();
 
     void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
     uint8_t getPetalsOpenLevel();
     uint8_t getCurrentPetalsOpenLevel();
     bool arePetalsMoving();
+    bool setEnabled(bool enabled);
 
   private:
-    bool setStepperPowerOn(bool powerOn);
-
     Config *config;
 
     // stepper config
@@ -29,7 +39,5 @@ class Petals {
 
     // stepper state
     int8_t petalsOpenLevel; // 0-100% (target angle in percentage)
-    bool stepperPowerOn;
+    bool enabled;
 };
-
-#endif

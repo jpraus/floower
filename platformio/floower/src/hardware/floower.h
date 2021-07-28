@@ -1,9 +1,8 @@
-#ifndef FLOOWER_H
-#define FLOOWER_H
-
+#pragma once
 
 #include "Arduino.h"
 #include "config.h"
+#include "petals.h"
 #include <tmc2300.h>
 #include <functional>
 #include <NeoPixelBus.h>
@@ -94,6 +93,9 @@ class Floower {
     Config *config;
     FloowerChangeCallback changeCallback;
 
+    // petals
+    Petals *petals;
+
     // stepper config
     TMC2300 stepperDriver;
     AccelStepper stepperMotion;
@@ -133,5 +135,3 @@ class Floower {
     PowerState powerState;
     bool lowPowerMode;
 };
-
-#endif
