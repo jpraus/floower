@@ -5,7 +5,7 @@
 #define LOG_TAG ""
 #else
 #include "esp_log.h"
-static const char* LOG_TAG = "Floower";
+static const char* LOG_TAG = "StepperPetals";
 #endif
 
 #define TMC_EN_PIN 33
@@ -104,7 +104,6 @@ bool StepperPetals::setEnabled(bool enabled) {
     this->enabled = true;
     ESP_LOGD(LOG_TAG, "Stepper power ON");
     digitalWrite(TMC_EN_PIN, HIGH);
-    delay(5); // TODO
     return true;
   }
   if (!enabled && this->enabled) {
