@@ -48,9 +48,12 @@ void Config::load() {
   uint8_t configVersion = EEPROM.read(EEPROM_ADDRESS_CONFIG_VERSION);
 
   if (configVersion > 0 && configVersion < 255) {
+    servoClosed = readInt(EEPROM_ADDRESS_SERVO_CLOSED);
+    servoOpen = readInt(EEPROM_ADDRESS_SERVO_OPEN);
+
     // backward compatibility => reset to factory settings
     if (configVersion < 2) {
-      hardwareCalibration(0, 0);
+      hardwareCalibration(servoClosed, servoOpen, 0, 0);
       factorySettings();
     }
 
@@ -96,17 +99,18 @@ void Config::load() {
   }
 }
 
-void Config::hardwareCalibration(uint8_t hardwareRevision, unsigned int serialNumber) {
-  ESP_LOGW(LOG_TAG, "New HW config: R%d, SN%d", hardwareRevision, serialNumber);
+void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber) {
+  ESP_LOGW(LOG_TAG, "New HW config: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
   EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
   EEPROM.write(EEPROM_ADDRESS_LEDS_MODEL, 0); // 0 - WS2812b, 1 - SK6812 not used any longer
+  writeInt(EEPROM_ADDRESS_SERVO_CLOSED, servoClosed);
+  writeInt(EEPROM_ADDRESS_SERVO_OPEN, servoOpen);
   EEPROM.write(EEPROM_ADDRESS_REVISION, hardwareRevision);
   writeInt(EEPROM_ADDRESS_SERIALNUMBER, serialNumber);
   EEPROM.write(EEPROM_ADDRESS_FLAGS, 0);
 
-  // TODO
-  //this->servoClosed = servoClosed;
-  //this->servoOpen = servoOpen;
+  this->servoClosed = servoClosed;
+  this->servoOpen = servoOpen;
   this->hardwareRevision = hardwareRevision;
   this->serialNumber = serialNumber;
 }

@@ -45,10 +45,8 @@ void ServoPetals::update() {
     if (movementTransitionTime > 0 && movementStartTime > 0 && movementStartTime <= now) {
       // calculate the progress as the result of time function of the animation function
       progress = (now - movementStartTime) / (float) movementTransitionTime;
-      Serial.println(progress);
     }
     servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * progress;
-    Serial.println(servoAngle);
     setEnabled(true);
     servo.write(servoAngle);
 

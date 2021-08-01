@@ -77,7 +77,7 @@ void Calibration::calibrateOverSerial() {
             }
             else if (serialCommand == 'E') { // end of calibration
                 //config->hardwareCalibration(config->servoClosed, config->servoOpen, config->hardwareRevision, config->serialNumber);
-                config->hardwareCalibration(config->hardwareRevision, config->serialNumber);
+                config->hardwareCalibration(0, 0, config->hardwareRevision, config->serialNumber);
                 config->factorySettings();
                 config->setCalibrated();
                 config->commit();

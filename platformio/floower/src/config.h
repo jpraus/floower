@@ -41,7 +41,7 @@ class Config {
     Config(uint8_t firmwareVersion) : firmwareVersion(firmwareVersion) {}
     void begin();
     void load();
-    void hardwareCalibration(uint8_t hardwareRevision, unsigned int serialNumber);
+    void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
     void factorySettings();
     void resetColorScheme();
     void setColorScheme(HsbColor* colors, uint8_t size);

@@ -62,11 +62,11 @@ class ServoPetals : public Petals {
 
     // servo state
     int8_t petalsOpenLevel; // 0-100% (target angle in percentage)
-    unsigned int servoAngle; // current angle
-    unsigned int servoOriginAngle; // angle before animation
-    unsigned int servoTargetAngle; // angle after animation
+    int16_t servoAngle; // current angle, keep signed to be able to calculate closing
+    int16_t servoOriginAngle; // angle before animation, keep signed to be able to calculate closing
+    int16_t servoTargetAngle; // angle after animation, keep signed to be able to calculate closing
     unsigned long movementStartTime;
-    unsigned int movementTransitionTime;
+    uint16_t movementTransitionTime;
     bool enabled;
     unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
 };
