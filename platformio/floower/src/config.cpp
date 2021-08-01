@@ -1,4 +1,4 @@
-#include "config.h"
+#include "Config.h"
 #include "math.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
@@ -28,13 +28,15 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_FLAGS 9 // byte (8 bites) - config flags [calibrated,initRemoteOnStartup,,,,,,] (since version 3)
 
 // Customizable values (20+)
-#define EEPROM_ADDRESS_TOUCH_THRESHOLD 20 // byte (since version 2)
+#define EEPROM_ADDRESS_TOUCH_THRESHOLD 20 // byte (since version 2) - calibrated touch threshold value
 #define EEPROM_ADDRESS_BEHAVIOR 21 // byte - enumeration of predefined behaviors (since version 2)
 #define EEPROM_ADDRESS_COLOR_SCHEME_LENGTH 22 // 1 byte - number of colors set in EEPROM_ADDRESS_COLOR_SCHEME (since version 2)
 #define EEPROM_ADDRESS_NAME_LENGTH 23 // byte - length of data stored in EEPROM_ADDRESS_NAME (since version 2)
 #define EEPROM_ADDRESS_SPEED 24 // byte - speed of opening/closing in 0.1s (since version 4)
 #define EEPROM_ADDRESS_MAX_OPEN_LEVEL 25 // byte - maximum open level in percents (0-100) (since version 4)
 #define EEPROM_ADDRESS_COLOR_BRIGHTNESS 26 // byte - intensity of LEDs in percents (0-100), informative - should be already applied to color scheme (since version 4)
+// TODO: touch threshold adjustment not used at the moment
+//#define EEPROM_ADDRESS_TOUCH_THRESHOLD_ADJUSTMENT 27 // byte (since version 5) - adjusted touch threshold if needed by user
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (15x HS set) - array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..] (since version 4)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
 
@@ -75,15 +77,16 @@ void Config::load() {
 
     hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
     serialNumber = readInt(EEPROM_ADDRESS_SERIALNUMBER);
+    touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
     readFlags();
     readColorScheme();
     readName();
     readPersonification();
   
     ESP_LOGI(LOG_TAG, "Config ready");
-    ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags);
+    ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d, tt%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags, touchThreshold);
     ESP_LOGI(LOG_TAG, "Flags: r%d, %s", initRemoteOnStartup, name.c_str());
-    ESP_LOGI(LOG_TAG, "P13n: tt%d, bh%d, sp%d, mo%d, cb%d", personification.touchThreshold, personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
+    ESP_LOGI(LOG_TAG, "P13n: bh%d, sp%d, mo%d, cb%d", personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
     for (uint8_t i = 0; i < colorSchemeSize; i++) {
       ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
     }
@@ -101,8 +104,9 @@ void Config::hardwareCalibration(uint8_t hardwareRevision, unsigned int serialNu
   writeInt(EEPROM_ADDRESS_SERIALNUMBER, serialNumber);
   EEPROM.write(EEPROM_ADDRESS_FLAGS, 0);
 
-  this->servoClosed = servoClosed;
-  this->servoOpen = servoOpen;
+  // TODO
+  //this->servoClosed = servoClosed;
+  //this->servoOpen = servoOpen;
   this->hardwareRevision = hardwareRevision;
   this->serialNumber = serialNumber;
 }
@@ -111,7 +115,7 @@ void Config::factorySettings() {
   ESP_LOGI(LOG_TAG, "Factory reset");
   setName("Floower");
   setRemoteOnStartup(false);
-  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
+  Personification personification = {DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
   setPersonification(personification);
   resetColorScheme();
 }
@@ -155,11 +159,15 @@ void Config::setColorScheme(HsbColor* colors, uint8_t size) {
   writeColorScheme();
 }
 
+void Config::setTouchThreshold(uint8_t touchThreshold) {
+  EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, touchThreshold);
+  this->touchThreshold = touchThreshold;
+}
+
 void Config::setPersonification(Personification personification) {
   this->personification = personification;
   this->speedMillis = personification.speed * 100;
   this->colorBrightness = (double) personification.colorBrightness / 100.0;
-  EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, personification.touchThreshold);
   EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, personification.behavior);
   EEPROM.write(EEPROM_ADDRESS_SPEED, personification.speed);
   EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, personification.maxOpenLevel);
@@ -167,7 +175,6 @@ void Config::setPersonification(Personification personification) {
 }
 
 void Config::readPersonification() {
-  personification.touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
   personification.behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
   personification.speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
   if (personification.speed < 5) {

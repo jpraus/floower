@@ -16,6 +16,8 @@ static const char* LOG_TAG = "Floower";
 #define CHARGE_PIN 35
 
 #define STATUS_NEOPIXEL_PIN 32
+#define ACTY_LED_PIN 2
+#define ACTY_BLINK_TIME 50
 
 #define ANIMATIONS_INDECES 3
 #define ANIMATION_INDEX_LEDS 1
@@ -137,7 +139,7 @@ void Floower::registerOutsideTouch() {
 
 void Floower::enableTouch(bool defer) {
   detachInterrupt(TOUCH_SENSOR_PIN);
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->personification.touchThreshold);
+  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchThreshold);
   if (defer) {
     touchEndedTime = millis();
   }
@@ -149,6 +151,10 @@ void Floower::touchISR() {
   if (touchStartedTime == 0 && touchEndedTime == 0) {
     touchStartedTime = lastTouchTime;
   }
+}
+
+uint8_t Floower::readTouch() {
+  return touchRead(TOUCH_SENSOR_PIN);
 }
 
 void Floower::onLeafTouch(FloowerOnLeafTouchCallback callback) {
@@ -339,13 +345,7 @@ void Floower::pixelsCandleAnimationUpdate(const AnimationParam& param) {
 }
 
 void Floower::showColor(HsbColor color) {
-  if (!lowPowerMode) {
-    pixels.ClearTo(color);
-  }
-  else {
-    pixels.ClearTo(colorBlack);
-    pixels.SetPixelColor(0, color);
-  }
+  pixels.ClearTo(color);
 }
 
 bool Floower::isLit() {
@@ -422,8 +422,12 @@ PowerState Floower::readPowerState() {
   uint8_t level = _min(_max(0, voltage - 3.3) * 111, 100); // 3.3 .. 0%, 4.2 .. 100%
 
   bool charging = digitalRead(CHARGE_PIN) == LOW;
-  bool usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
   bool switchedOn = reading > 0; // there is voltage of battery present
+  bool usbPowered = true;
+
+  if (config->hardwareRevision > 5) { // logic board with revision 5 lack the USB detection circuitry, pretend its always charging
+    usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
+  }
 
   ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
 
@@ -433,15 +437,4 @@ PowerState Floower::readPowerState() {
 
 bool Floower::isUsbPowered() {
   return powerState.usbPowered;
-}
-
-void Floower::setLowPowerMode(bool lowPowerMode) {
-  if (this->lowPowerMode != lowPowerMode) {
-    this->lowPowerMode = lowPowerMode;
-    showColor(pixelsColor);
-  }
-}
-
-bool Floower::isLowPowerMode() {
-  return lowPowerMode;
 }

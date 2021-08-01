@@ -48,6 +48,7 @@ void ServoPetals::update() {
       Serial.println(progress);
     }
     servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * progress;
+    Serial.println(servoAngle);
     setEnabled(true);
     servo.write(servoAngle);
 

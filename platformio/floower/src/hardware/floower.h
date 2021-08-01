@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Arduino.h"
-#include "config.h"
-#include "petals.h"
+#include "Config.h"
+#include "hardware/Petals.h"
 #include <tmc2300.h>
 #include <functional>
 #include <NeoPixelBus.h>
@@ -48,6 +48,7 @@ class Floower {
 
     void registerOutsideTouch();
     void enableTouch(bool defer = false);
+    uint8_t readTouch();
     void onLeafTouch(FloowerOnLeafTouchCallback callback);
     void onChange(FloowerChangeCallback callback);
 
@@ -70,8 +71,6 @@ class Floower {
 
     PowerState readPowerState();
     bool isUsbPowered();
-    void setLowPowerMode(bool lowPowerMode);
-    bool isLowPowerMode();
 
   private:
     bool setStepperPowerOn(bool powerOn);
@@ -124,5 +123,4 @@ class Floower {
 
     // battery
     PowerState powerState;
-    bool lowPowerMode;
 };

@@ -4,6 +4,7 @@
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include "config.h"
+#include "Calibration.h"
 #include "automaton.h"
 #include "remote.h"
 
@@ -19,7 +20,7 @@ const bool touchEnabled = true;
 // following constant are used only when Floower is calibrated in factory
 // never ever uncomment the CALIBRATE_HARDWARE flag, you will overwrite your hardware calibration settings and probably break the Floower
 
-//#define CALIBRATE_HARDWARE_SERIAL 1
+#define CALIBRATE_HARDWARE_SERIAL 1
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
 #define SERIAL_NUMBER 402
@@ -27,8 +28,6 @@ const bool touchEnabled = true;
 ///////////// POWER MODE
 
 // tuned for 1600mAh LIPO battery
-#define POWER_LOW_ENTER_THRESHOLD 0 // enter state when voltage drop below this threshold (3.55)
-#define POWER_LOW_LEAVE_THRESHOLD 0 // leave state when voltage rise above this threshold (3.6)
 #define POWER_DEAD_THRESHOLD 3.4
 
 ///////////// CODE
@@ -55,6 +54,7 @@ Config config(FIRMWARE_VERSION);
 Floower floower(&config);
 Remote remote(&floower, &config);
 Automaton automaton(&remote, &floower, &config);
+Calibration calibration(&floower, &config);
 
 void configure();
 void planDeepSleep(long timeoutMs);
@@ -99,24 +99,21 @@ void setup() {
     batteryDead = powerState.batteryVoltage < POWER_DEAD_THRESHOLD;
   }
 
+  //config.calibrated = false;
+
   if (batteryDead) {
     // battery is dead, do not wake up, shutdown after a status color
 	  ESP_LOGW(LOG_TAG, "Battery is dead, shutting down");
     planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
-    floower.setLowPowerMode(true);
     floower.flashColor(colorRed.H, colorRed.S, 1000);
   }
   else if (!config.calibrated) {
     // hardware is not calibrated
     ESP_LOGW(LOG_TAG, "Floower not calibrated");
     floower.flashColor(colorPurple.H, colorPurple.S, 2000);
+    // TODO
     floower.initStepper(35000); // open steps, force the Floower to close
     ESP_LOGI(LOG_TAG, "Ready for calibration");
-  }
-  else if (config.hardwareRevision < 9) {
-    // incompatible hardware
-    ESP_LOGW(LOG_TAG, "Floower is not compatible");
-    floower.flashColor(colorRed.H, colorRed.S, 2000);
   }
   else {
     // normal operation
@@ -174,7 +171,7 @@ void loop() {
 
 #ifdef CALIBRATE_HARDWARE_SERIAL
   if (!config.calibrated) {
-    calibrateOverSerial();
+    calibration.calibrate();
   }
 #endif
 
@@ -236,26 +233,16 @@ void powerWatchDog() {
   usbPowered = powerState.usbPowered;
 
   if (usbPowered) {
-    floower.setLowPowerMode(false);
     if (powerState.switchedOn != switchedOn) {
       switchSoftPower(powerState.switchedOn);
     }
   }
   else if (powerState.batteryVoltage < POWER_DEAD_THRESHOLD) {
     ESP_LOGW(LOG_TAG, "Shutting down, battery is dead (%dV)", powerState.batteryVoltage);
-    floower.setLowPowerMode(true);
     floower.flashColor(colorRed.H, colorRed.S, 1000);
     floower.setPetalsOpenLevel(0, 2500);
     planDeepSleep(BATTERY_DEAD_WARNING_DURATION);
     batteryDead = true;
-  }
-  else if (!floower.isLowPowerMode() && powerState.batteryVoltage < POWER_LOW_ENTER_THRESHOLD) {
-    ESP_LOGI(LOG_TAG, "Entering low power mode (%dV)", powerState.batteryVoltage);
-    floower.setLowPowerMode(true);
-  }
-  else if (floower.isLowPowerMode() && powerState.batteryVoltage >= POWER_LOW_LEAVE_THRESHOLD) {
-    ESP_LOGI(LOG_TAG, "Leaving low power mode (%dV)", powerState.batteryVoltage);
-    floower.setLowPowerMode(false);
   }
 }
 
@@ -293,43 +280,3 @@ void configure() {
 #endif
   config.load();
 }
-
-#ifdef CALIBRATE_HARDWARE_SERIAL
-
-uint8_t calibationCommand = 0;
-String calibrationValue;
-
-void calibrateOverSerial() {
-  if (Serial.available() > 0) {
-    char data = Serial.read();
-    if (calibationCommand == 0) { // start of command
-      calibationCommand = data;
-      calibrationValue = "";
-    }
-    else if (data == '\n'){ // end of command
-      long value = calibrationValue.toInt();
-      if (calibationCommand == 'N') { // serial number
-        ESP_LOGI(LOG_TAG, "New S/N %d", value);
-        config.serialNumber = value;
-      }
-      else if (calibationCommand == 'H') { // hardware revision
-        ESP_LOGI(LOG_TAG, "New HW revision %d", value);
-        config.hardwareRevision = value;
-      }
-      else if (calibationCommand == 'E') { // end of calibration
-        config.hardwareCalibration(config.servoClosed, config.servoOpen, config.hardwareRevision, config.serialNumber);
-        config.factorySettings();
-        config.setCalibrated();
-        config.commit();
-        ESP_LOGI(LOG_TAG, "Calibration done");
-        ESP.restart(); // restart now
-      }
-      calibationCommand = 0;
-    }
-    else { // command value
-      calibrationValue += data;
-    }
-  }
-}
-
-#endif

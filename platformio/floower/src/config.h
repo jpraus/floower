@@ -12,7 +12,7 @@
 #define NAME_MAX_LENGTH 25 // BLE name limit
 
 // default values
-#define DEFAULT_TOUCH_THRESHOLD 64 // lower means lower sensitivity (45 is normal)
+#define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
 #define DEFAULT_BEHAVIOR 0
 #define DEFAULT_SPEED 50 // x0.1s = 5 seconds to open/close
 #define DEFAULT_MAX_OPEN_LEVEL 100 // default open level is 100%
@@ -29,7 +29,7 @@ const HsbColor colorPink(0.93, 1.0, 1.0);
 const HsbColor colorBlack(0.0, 1.0, 0.0);
 
 typedef struct Personification {
-  uint8_t touchThreshold; // read-write
+  uint8_t touchThreshold; // read-only, TODO: not used, kept for backward compatibility
   uint8_t behavior; // read-write
   uint8_t speed; // in 0.1s, read-write
   uint8_t maxOpenLevel; // 0-100, read-write
@@ -45,6 +45,7 @@ class Config {
     void factorySettings();
     void resetColorScheme();
     void setColorScheme(HsbColor* colors, uint8_t size);
+    void setTouchThreshold(uint8_t touchThreshold);
     void setName(String name);
     void setRemoteOnStartup(bool initRemoteOnStartup);
     void setCalibrated();
@@ -72,6 +73,7 @@ class Config {
     // configration
     uint8_t colorSchemeSize = 0;
     HsbColor colorScheme[10]; // max 10 colors
+    uint8_t touchThreshold; // read-only
     String name;
     Personification personification;
     unsigned int speedMillis; // read-only, precalculated speed in ms
