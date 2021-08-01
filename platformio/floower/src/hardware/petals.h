@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Arduino.h"
-#include "config.h"
+#include "Config.h"
 #include <tmc2300.h>
 #include <AccelStepper.h>
 #include <ESP32Servo.h>

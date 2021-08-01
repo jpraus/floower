@@ -2,7 +2,7 @@
 
 #include "Arduino.h"
 #include "Config.h"
-#include "hardware/floower.h"
+#include "hardware/Floower.h"
 
 struct TouchCalibration {
     uint8_t samples;

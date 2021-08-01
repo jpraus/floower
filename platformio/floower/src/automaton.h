@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Arduino.h"
-#include "config.h"
-#include "hardware/floower.h"
-#include "remote.h"
+#include "Config.h"
+#include "hardware/Floower.h"
+#include "Remote.h"
 
 class Automaton {
   public:

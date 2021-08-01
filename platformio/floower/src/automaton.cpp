@@ -1,4 +1,4 @@
-#include "automaton.h"
+#include "Automaton.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"

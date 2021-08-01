@@ -3,10 +3,10 @@
 
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
-#include "config.h"
+#include "Config.h"
 #include "Calibration.h"
-#include "automaton.h"
-#include "remote.h"
+#include "Automaton.h"
+#include "Remote.h"
 
 ///////////// SOFTWARE CONFIGURATION
 
