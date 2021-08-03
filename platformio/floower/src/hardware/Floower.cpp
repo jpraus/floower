@@ -51,19 +51,19 @@ void Floower::init() {
   pixelsOriginColor = colorBlack;
   pixelsTargetColor = colorBlack;
   pixels.Begin();
-  showColor(pixelsColor);
+  statusPixel.ClearTo(pixelsColor);
   pixels.Show();
+
+  statusColor = colorBlack;
+  statusPixel.Begin();
+  statusPixel.ClearTo(statusColor);
+  statusPixel.Show();
 
   // configure ADC for battery level reading
   analogReadResolution(12); // se0t 12bit resolution (0-4095)
   analogSetAttenuation(ADC_11db); // set AREF to be 3.6V
   //analogSetCycles(8); // num of cycles per sample, 8 is default optimal
   //analogSetSamples(1); // num of samples
-
-  // charge state input
-  statusPixel.Begin();
-  statusPixel.ClearTo(statusColor);
-  statusPixel.Show();
 }
 
 void Floower::initStepper(long currentPosition) {
@@ -92,7 +92,7 @@ void Floower::update() {
   unsigned long now = millis();
   if (touchStartedTime > 0) {
     unsigned int touchTime = now - touchStartedTime;
-    unsigned long sinceLastTouch = millis() - lastTouchTime;
+    unsigned long sinceLastTouch = now - lastTouchTime;
 
     if (!touchRegistered) {
       ESP_LOGI(LOG_TAG, "Touch Down");
@@ -127,7 +127,7 @@ void Floower::update() {
       }
     }
   }
-  else if (touchEndedTime > 0 && millis() - touchEndedTime > TOUCH_COOLDOWN_TIME) {
+  else if (touchEndedTime > 0 && now - touchEndedTime > TOUCH_COOLDOWN_TIME) {
     ESP_LOGI(LOG_TAG, "Touch enabled");
     touchEndedTime = 0;
   }
@@ -137,13 +137,26 @@ void Floower::registerOutsideTouch() {
   touchISR();
 }
 
-void Floower::enableTouch(bool defer) {
-  detachInterrupt(TOUCH_SENSOR_PIN);
-  touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchThreshold);
-  if (defer) {
-    touchEndedTime = millis();
-  }
-  ESP_LOGI(LOG_TAG, "Touch enabled");
+void Floower::enableTouch(FloowerOnLeafTouchCallback callback, bool defer) {
+    touchCallback = callback;
+    touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchThreshold);
+    if (defer) {
+        touchEndedTime = millis();
+    }
+    else {
+        ESP_LOGI(LOG_TAG, "Touch enabled");
+    }
+}
+
+void Floower::reconfigureTouch() {
+    detachInterrupt(TOUCH_SENSOR_PIN);
+    touchAttachInterrupt(TOUCH_SENSOR_PIN, Floower::touchISR, config->touchThreshold);
+    ESP_LOGI(LOG_TAG, "Touch reconfigured");
+}
+
+void Floower::disableTouch() {
+    detachInterrupt(TOUCH_SENSOR_PIN);
+    ESP_LOGI(LOG_TAG, "Touch disabled");
 }
 
 void Floower::touchISR() {
@@ -155,10 +168,6 @@ void Floower::touchISR() {
 
 uint8_t Floower::readTouch() {
   return touchRead(TOUCH_SENSOR_PIN);
-}
-
-void Floower::onLeafTouch(FloowerOnLeafTouchCallback callback) {
-  touchCallback = callback;
 }
 
 void Floower::onChange(FloowerChangeCallback callback) {

@@ -13,11 +13,12 @@ struct TouchCalibration {
 class Calibration {
     public:
         Calibration(Floower *floower, Config *config);
-        void calibrate();
+        void init();
+        void update();
 
     private:
         void calibrateTouch();
-        void calibrateOverSerial();
+        void calibrateListenSerial();
 
         Floower *floower;
         Config *config;

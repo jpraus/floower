@@ -67,6 +67,7 @@ class Config {
     bool calibrated = false;
 
     // feature flags
+    bool deepSleepEnabled = false;
     bool bluetoothEnabled = false;
     bool rainbowEnabled = false;
     bool touchEnabled = false;
@@ -76,7 +77,7 @@ class Config {
     uint8_t touchThreshold; // read-only
     String name;
     Personification personification;
-    unsigned int speedMillis; // read-only, precalculated speed in ms
+    uint16_t speedMillis; // read-only, precalculated speed in ms
     double colorBrightness; // read-only, precalcuated color brightness (0.0-1.0)
 
   private:

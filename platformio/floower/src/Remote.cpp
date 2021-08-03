@@ -308,7 +308,7 @@ void Remote::PersonificationCharacteristicsCallbacks::onWrite(BLECharacteristic 
     
     remote->config->setPersonification(personificationPacket.data);
     remote->config->commit();
-    remote->floower->enableTouch();
+    remote->floower->reconfigureTouch();
   }
 }
 

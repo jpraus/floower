@@ -21,7 +21,7 @@ Automaton::Automaton(Remote *remote, Floower *floower, Config *config)
 
 void Automaton::init() {
   changeState(STATE_STANDBY);
-  floower->onLeafTouch([=](FloowerTouchEvent event){ onLeafTouch(event); });
+  //floower->onLeafTouch([=](FloowerTouchEvent event){ onLeafTouch(event); });
   remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
   enabled = true;
 }

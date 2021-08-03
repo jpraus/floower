@@ -47,9 +47,10 @@ class Floower {
     void update();
 
     void registerOutsideTouch();
-    void enableTouch(bool defer = false);
+    void enableTouch(FloowerOnLeafTouchCallback callback, bool defer = false);
+    void reconfigureTouch();
+    void disableTouch();
     uint8_t readTouch();
-    void onLeafTouch(FloowerOnLeafTouchCallback callback);
     void onChange(FloowerChangeCallback callback);
 
     void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
