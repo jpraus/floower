@@ -13,8 +13,7 @@ static const char* LOG_TAG = "StateMachine";
 
 #define STATE_STANDBY 0
 #define STATE_RUNNING 1
-#define STATE_LOW_BATTERY 2
-#define STATE_SOFT_POWER_OFF 3
+#define STATE_OFF 2
 #define STATE_BLUETOOTH_PAIRING 4
 
 #define INDICATE_STATUS_ACTY 0
@@ -37,12 +36,12 @@ StateMachine::StateMachine(Config *config, Floower *floower, Remote *remote)
         : config(config), floower(floower), remote(remote) {
     softPower = false;
     lowBattery = false;
-    state = STATE_STANDBY;
+    state = STATE_OFF;
 }
 
 void StateMachine::init(bool wokeUp) {
     // check if there is enough power to run
-    PowerState powerState = floower->readPowerState();
+    powerState = floower->readPowerState();
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
         delay(500); // wait and re-verify the voltage to make sure the battery is really dead
     }
@@ -91,6 +90,12 @@ void StateMachine::update() {
 }
 
 void StateMachine::onLeafTouch(FloowerTouchEvent event) {
+    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY) {
+        floower->flashColor(colorBlue.H, colorBlue.S, 1000);
+        remote->init();
+        remote->startAdvertising();
+        changeState(STATE_BLUETOOTH_PAIRING);
+    }
     // TODO
 }
 
@@ -104,9 +109,6 @@ void StateMachine::enablePeripherals(bool wokeUp) {
 }
 
 void StateMachine::disablePeripherals() {
-    uint16_t speed = config->speedMillis / 2;
-    floower->transitionColorBrightness(0, speed);
-    floower->setPetalsOpenLevel(0, speed);
     floower->disableTouch();
     // TODO: disconnect remote
     // TODO: disable petals?
@@ -117,60 +119,48 @@ bool StateMachine::isIdle() {
 }
 
 void StateMachine::powerWatchDog(bool wokeUp) {
-    PowerState powerState = floower->readPowerState();
-    remote->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
-    indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
+    PowerState newPowerState = floower->readPowerState();
 
-    if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
-        // low battery (* -> LOW_BATTERY)
-        if (state != STATE_LOW_BATTERY) {
-            // shutdown
-            ESP_LOGW(LOG_TAG, "Shutting down, battery low voltage (%dV)", powerState.batteryVoltage);
-            if (powerState.switchedOn) {
-                floower->flashColor(colorRed.H, colorRed.S, 1000);
-                floower->setPetalsOpenLevel(0, 2500);
-            }
-            changeState(STATE_LOW_BATTERY);
+    if (!newPowerState.usbPowered && newPowerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
+        // not powered by USB (switch must be ON) and low battery (* -> OFF)
+        if (state != STATE_OFF) {
+            ESP_LOGW(LOG_TAG, "Shutting down, battery low voltage (%dV)", newPowerState.batteryVoltage);
+            floower->flashColor(colorRed.H, colorRed.S, 1000);
+            floower->setPetalsOpenLevel(0, 2500);
+            disablePeripherals();
+            changeState(STATE_OFF);
             planDeepSleep(LOW_BATTERY_WARNING_DURATION);
         }
     }
-    else if (!powerState.switchedOn) {
-        // power by USB but switched off (STANDBY, BLUETOOTH_PAIRING, RUNNING* -> SOFT_POWER_OFF)
-        if (state != STATE_SOFT_POWER_OFF) {
+    else if (!newPowerState.switchedOn) {
+        // power by USB but switch is OFF (* -> OFF)
+        if (state != STATE_OFF) {
             ESP_LOGW(LOG_TAG, "Switched OFF");
+            floower->transitionColorBrightness(0, 2500);
+            floower->setPetalsOpenLevel(0, 2500);
             disablePeripherals();
-            changeState(STATE_SOFT_POWER_OFF);
+            changeState(STATE_OFF);
         }
     }
-    else if (powerState.usbPowered) {
-        // powered by USB // LOW_BATTERY, SOFT_POWER_OFF -> STANDBY
-        if (state == STATE_LOW_BATTERY) {
+    else {
+        // powered by USB or battery and switch is ON
+        if (state == STATE_OFF) {
             ESP_LOGI(LOG_TAG, "Power restored");
             enablePeripherals(wokeUp);
             changeState(STATE_STANDBY);
         }
-        else if (state == STATE_SOFT_POWER_OFF) {
-            ESP_LOGI(LOG_TAG, "Switched ON");
-            enablePeripherals(wokeUp);
-            changeState(STATE_STANDBY);
-        }
-        unplanDeepSleep(); // should not enter deep sleep while being powered by USB
     }
-    else {
-        // powered by battery
-        if (state == STATE_STANDBY && deepSleepTime == 0) {
-            planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
-        }
-    }
+
+    powerState = newPowerState;
+    remote->setBatteryLevel(newPowerState.batteryLevel, newPowerState.batteryCharging);
+    indicateStatus(INDICATE_STATUS_CHARGING, newPowerState.batteryCharging);
 }
 
 void StateMachine::changeState(uint8_t newState) {
     if (state != newState) {
         state = newState;
         ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
-    }
-    if (state != STATE_STANDBY && state != STATE_LOW_BATTERY) {
-        unplanDeepSleep(); // can enter deep sleep only from standby and low battery state
+        unplanDeepSleep();
     }
 }
 

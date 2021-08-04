@@ -35,6 +35,8 @@ class StateMachine {
         bool lowBattery = false;
 
         uint8_t state;
+        PowerState powerState;
+
         unsigned long watchDogsTime = 0;
         unsigned long initRemoteTime = 0;
         unsigned long deepSleepTime = 0;
