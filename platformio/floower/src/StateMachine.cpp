@@ -34,8 +34,6 @@ static const char* LOG_TAG = "StateMachine";
 
 StateMachine::StateMachine(Config *config, Floower *floower, Remote *remote)
         : config(config), floower(floower), remote(remote) {
-    softPower = false;
-    lowBattery = false;
     state = STATE_OFF;
 }
 
@@ -96,7 +94,14 @@ void StateMachine::onLeafTouch(FloowerTouchEvent event) {
         remote->startAdvertising();
         changeState(STATE_BLUETOOTH_PAIRING);
     }
-    // TODO
+    else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
+        // bluetooth pairing interrupted
+        remote->stopAdvertising();
+        config->setRemoteOnStartup(false);
+        floower->transitionColorBrightness(0, 500);
+        changeState(STATE_STANDBY);
+    }
+    // TODO call behavior
 }
 
 void StateMachine::enablePeripherals(bool wokeUp) {
@@ -110,6 +115,7 @@ void StateMachine::enablePeripherals(bool wokeUp) {
 
 void StateMachine::disablePeripherals() {
     floower->disableTouch();
+    remote->stopAdvertising();
     // TODO: disconnect remote
     // TODO: disable petals?
 }
@@ -119,12 +125,12 @@ bool StateMachine::isIdle() {
 }
 
 void StateMachine::powerWatchDog(bool wokeUp) {
-    PowerState newPowerState = floower->readPowerState();
+    powerState = floower->readPowerState();
 
-    if (!newPowerState.usbPowered && newPowerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
+    if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
         // not powered by USB (switch must be ON) and low battery (* -> OFF)
         if (state != STATE_OFF) {
-            ESP_LOGW(LOG_TAG, "Shutting down, battery low voltage (%dV)", newPowerState.batteryVoltage);
+            ESP_LOGW(LOG_TAG, "Shutting down, battery low voltage (%dV)", powerState.batteryVoltage);
             floower->flashColor(colorRed.H, colorRed.S, 1000);
             floower->setPetalsOpenLevel(0, 2500);
             disablePeripherals();
@@ -132,7 +138,7 @@ void StateMachine::powerWatchDog(bool wokeUp) {
             planDeepSleep(LOW_BATTERY_WARNING_DURATION);
         }
     }
-    else if (!newPowerState.switchedOn) {
+    else if (!powerState.switchedOn) {
         // power by USB but switch is OFF (* -> OFF)
         if (state != STATE_OFF) {
             ESP_LOGW(LOG_TAG, "Switched OFF");
@@ -151,9 +157,8 @@ void StateMachine::powerWatchDog(bool wokeUp) {
         }
     }
 
-    powerState = newPowerState;
-    remote->setBatteryLevel(newPowerState.batteryLevel, newPowerState.batteryCharging);
-    indicateStatus(INDICATE_STATUS_CHARGING, newPowerState.batteryCharging);
+    remote->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
+    indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
 }
 
 void StateMachine::changeState(uint8_t newState) {

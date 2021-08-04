@@ -31,9 +31,6 @@ class StateMachine {
 
         //Behavior *behavior = nullptr;
 
-        bool softPower = false;
-        bool lowBattery = false;
-
         uint8_t state;
         PowerState powerState;
 
