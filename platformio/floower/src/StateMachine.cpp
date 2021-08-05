@@ -14,8 +14,8 @@ static const char* LOG_TAG = "StateMachine";
 
 #define STATE_STANDBY 0
 #define STATE_RUNNING 1
-#define STATE_OFF 128
-#define STATE_BLUETOOTH_PAIRING 129
+#define STATE_OFF 2
+#define STATE_BLUETOOTH_PAIRING 3
 
 #define INDICATE_STATUS_ACTY 0
 #define INDICATE_STATUS_CHARGING 1
@@ -70,8 +70,9 @@ void StateMachine::init(bool wokeUp) {
 }
 
 void StateMachine::update() {
-    if (behavior != nullptr && state < 128) {
-        behavior->update();
+    if (behavior != nullptr && (state == STATE_STANDBY || state == STATE_RUNNING)) {
+        bool running = behavior->update();
+        changeState(running ? STATE_RUNNING : STATE_STANDBY);
     }
 
     // timers
@@ -133,7 +134,7 @@ void StateMachine::disablePeripherals() {
 }
 
 bool StateMachine::isIdle() {
-    return false;
+    return state == STATE_STANDBY;
 }
 
 void StateMachine::powerWatchDog(bool wokeUp) {

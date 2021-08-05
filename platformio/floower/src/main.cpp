@@ -5,7 +5,6 @@
 #include <esp_task_wdt.h>
 #include "Config.h"
 #include "Calibration.h"
-#include "Automaton.h"
 #include "Remote.h"
 #include "StateMachine.h"
 
