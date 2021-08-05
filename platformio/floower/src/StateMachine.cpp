@@ -1,5 +1,6 @@
 #include "StateMachine.h"
 #include <esp_task_wdt.h>
+#include "behavior/BloomingBehavior.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -13,8 +14,8 @@ static const char* LOG_TAG = "StateMachine";
 
 #define STATE_STANDBY 0
 #define STATE_RUNNING 1
-#define STATE_OFF 2
-#define STATE_BLUETOOTH_PAIRING 4
+#define STATE_OFF 128
+#define STATE_BLUETOOTH_PAIRING 129
 
 #define INDICATE_STATUS_ACTY 0
 #define INDICATE_STATUS_CHARGING 1
@@ -63,9 +64,16 @@ void StateMachine::init(bool wokeUp) {
 
     // run watchdog at periodic intervals
     watchDogsTime = millis() + WATCHDOGS_INTERVAL; // TODO millis overflow
+
+    behavior = new BloomingBehavior(config, floower, remote);
+    behavior->init();
 }
 
 void StateMachine::update() {
+    if (behavior != nullptr && state < 128) {
+        behavior->update();
+    }
+
     // timers
     long now = millis();
     if (watchDogsTime < now) {
@@ -100,6 +108,10 @@ void StateMachine::onLeafTouch(FloowerTouchEvent event) {
         config->setRemoteOnStartup(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
+    }
+
+    if (behavior != nullptr) {
+        behavior->onLeafTouch(event);
     }
     // TODO call behavior
 }

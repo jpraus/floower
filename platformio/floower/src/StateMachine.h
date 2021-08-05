@@ -4,7 +4,7 @@
 #include "Config.h"
 #include "hardware/Floower.h"
 #include "Remote.h"
-//#include "Behavior.h"
+#include "behavior/Behavior.h"
 
 class StateMachine {
     public:
@@ -29,7 +29,7 @@ class StateMachine {
         Floower *floower;
         Remote *remote;
 
-        //Behavior *behavior = nullptr;
+        Behavior *behavior = nullptr;
 
         uint8_t state;
         PowerState powerState;
