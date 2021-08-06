@@ -16,6 +16,7 @@ static const char* LOG_TAG = "StateMachine";
 #define STATE_RUNNING 1
 #define STATE_OFF 2
 #define STATE_BLUETOOTH_PAIRING 3
+#define STATE_CALIBRATION 4
 
 #define INDICATE_STATUS_ACTY 0
 #define INDICATE_STATUS_CHARGING 1
@@ -36,6 +37,7 @@ static const char* LOG_TAG = "StateMachine";
 StateMachine::StateMachine(Config *config, Floower *floower, Remote *remote)
         : config(config), floower(floower), remote(remote) {
     state = STATE_OFF;
+    behavior = new BloomingBehavior(config, floower, remote);
 }
 
 void StateMachine::init(bool wokeUp) {
@@ -48,15 +50,6 @@ void StateMachine::init(bool wokeUp) {
     // run power watchdog to initialize state according to power
     powerWatchDog(wokeUp);
 
-    /*else if (!config.calibrated) {
-        // hardware is not calibrated
-        ESP_LOGW(LOG_TAG, "Floower not calibrated");
-        calibration.setup();
-        floower.flashColor(colorPurple.H, colorPurple.S, 2000);
-        // TODO
-        floower.initStepper(35000); // open steps, force the Floower to close
-        ESP_LOGI(LOG_TAG, "Ready for calibration");
-    }*/
     if (state == STATE_STANDBY) {
         // normal operation
         ESP_LOGI(LOG_TAG, "Ready");
@@ -65,14 +58,13 @@ void StateMachine::init(bool wokeUp) {
     // run watchdog at periodic intervals
     watchDogsTime = millis() + WATCHDOGS_INTERVAL; // TODO millis overflow
 
-    behavior = new BloomingBehavior(config, floower, remote);
     behavior->init();
 }
 
 void StateMachine::update() {
-    if (behavior != nullptr && (state == STATE_STANDBY || state == STATE_RUNNING)) {
-        bool running = behavior->update();
-        changeState(running ? STATE_RUNNING : STATE_STANDBY);
+    if (state == STATE_STANDBY || state == STATE_RUNNING) {
+        behavior->update();
+        changeState(behavior->isIdle() ? STATE_STANDBY : STATE_RUNNING);
     }
 
     // timers
@@ -97,10 +89,11 @@ void StateMachine::update() {
 }
 
 void StateMachine::onLeafTouch(FloowerTouchEvent event) {
-    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY) {
+    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY && behavior->isBluetoothPairingAllowed()) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
         remote->init();
         remote->startAdvertising();
+        behavior->suspend();
         changeState(STATE_BLUETOOTH_PAIRING);
     }
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
@@ -108,13 +101,12 @@ void StateMachine::onLeafTouch(FloowerTouchEvent event) {
         remote->stopAdvertising();
         config->setRemoteOnStartup(false);
         floower->transitionColorBrightness(0, 500);
+        behavior->resume();
         changeState(STATE_STANDBY);
     }
-
-    if (behavior != nullptr) {
+    else if (state != STATE_OFF) {
         behavior->onLeafTouch(event);
     }
-    // TODO call behavior
 }
 
 void StateMachine::enablePeripherals(bool wokeUp) {
