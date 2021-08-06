@@ -9,13 +9,17 @@
 class BloomingBehavior : public Behavior {
     public:
         BloomingBehavior(Config *config, Floower *floower, Remote *remote);
-        bool init();
-        bool update();
+        void init();
+        void update();
         void suspend();
         void resume();
+        bool isIdle();
+        bool isBluetoothPairingAllowed();
         bool onLeafTouch(FloowerTouchEvent event);
 
     private:
+        void changeStateIfIdle(state_t fromState, state_t toState);
+        void changeState(state_t newState);
         HsbColor nextRandomColor();
 
         Config *config;
@@ -25,6 +29,6 @@ class BloomingBehavior : public Behavior {
         bool enabled = false;
         state_t state;
         unsigned long colorsUsed = 0;
-        bool disabledTouchUp = false;
+        bool preventTouchUp = false;
   
 };

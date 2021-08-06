@@ -13,7 +13,7 @@
 // feature flags
 const bool deepSleepEnabled = true;
 const bool bluetoothEnabled = true;
-const bool rainbowEnabled = true;
+const bool colorPickerEnabled = true;
 const bool touchEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -50,7 +50,7 @@ void setup() {
     configure();
     config.deepSleepEnabled = deepSleepEnabled;
     config.bluetoothEnabled = bluetoothEnabled;
-    config.rainbowEnabled = rainbowEnabled;
+    config.colorPickerEnabled = colorPickerEnabled;
     config.touchEnabled = touchEnabled;
 
     // after wake up setup

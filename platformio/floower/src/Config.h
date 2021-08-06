@@ -69,7 +69,7 @@ class Config {
     // feature flags
     bool deepSleepEnabled = false;
     bool bluetoothEnabled = false;
-    bool rainbowEnabled = false;
+    bool colorPickerEnabled = false;
     bool touchEnabled = false;
     // configration
     uint8_t colorSchemeSize = 0;

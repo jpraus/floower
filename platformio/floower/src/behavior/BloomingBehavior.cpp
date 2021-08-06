@@ -9,95 +9,134 @@ static const char* LOG_TAG = "BloomingBehavior";
 #endif
 
 #define STATE_STANDBY 0
-#define STATE_BLOOMING 10
-#define STATE_RUNNING 11
-#define STATE_RAINBOW 12
-#define STATE_CANDLE 13
+#define STATE_BLOOM_LIGHT 1
+#define STATE_BLOOM_OPENING 2
+#define STATE_BLOOMED 3
+#define STATE_BLOOMED_PICKER 4
+#define STATE_BLOOM_CLOSING 5
+#define STATE_LIGHT 6
+#define STATE_LIGHT_PICKER 7
+#define STATE_GOING_OFF 8
+
 
 BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, Remote *remote)
     : config(config), floower(floower), remote(remote) {
 }
 
-bool BloomingBehavior::init() {
+void BloomingBehavior::init() {
     state = STATE_STANDBY;
-    return false;
 }
 
-bool BloomingBehavior::update() {
-    return true;
+void BloomingBehavior::update() {
+    if (state != STATE_STANDBY) {
+        changeStateIfIdle(STATE_BLOOM_OPENING, STATE_BLOOMED);
+        changeStateIfIdle(STATE_BLOOM_CLOSING, STATE_LIGHT);
+        changeStateIfIdle(STATE_GOING_OFF, STATE_STANDBY);
+    }
+}
+
+bool BloomingBehavior::isIdle() {
+    return state == STATE_STANDBY;
+}
+
+bool BloomingBehavior::isBluetoothPairingAllowed() {
+    return state == STATE_STANDBY || state == STATE_BLOOM_LIGHT;
 }
 
 void BloomingBehavior::suspend() {
-
+    state = STATE_STANDBY;
 }
 
 void BloomingBehavior::resume() {
-
+    state = STATE_STANDBY;
 }
 
 bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
-    switch (event) {
-        case TOUCH_DOWN:
-            if (state == STATE_STANDBY && !floower->arePetalsMoving() && !floower->isChangingColor()) {
-                // light up instantly on touch
+    if (event == TOUCH_DOWN) {
+        if (state == STATE_STANDBY) {
+            // light up instantly on touch
+            HsbColor nextColor = nextRandomColor();
+            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
+            changeState(STATE_BLOOM_LIGHT);
+            return true;
+        }
+        else if (state == STATE_BLOOMED_PICKER) {
+            // stop color picker animation
+            floower->stopAnimation(true);
+            preventTouchUp = true;
+            changeState(STATE_BLOOMED);
+            return true;
+        }
+        else if (state == STATE_LIGHT_PICKER) {
+            // stop color picker animation
+            floower->stopAnimation(true);
+            preventTouchUp = true;
+            changeState(STATE_LIGHT);
+            return true;
+        }
+    }
+    else if (event == TOUCH_UP) {
+        if (preventTouchUp) {
+            preventTouchUp = false;
+        }
+        else {
+            if (state == STATE_STANDBY) {
+                // light + open
                 HsbColor nextColor = nextRandomColor();
                 floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
-                state = STATE_BLOOMING;
-            }
-            else if (state == STATE_RAINBOW) {
-                // stop rainbow animation
-                floower->stopAnimation(true);
-                state = STATE_RUNNING;
-                disabledTouchUp = true;
-            }
-            break;
-
-        case TOUCH_UP:
-            if (disabledTouchUp) {
-                disabledTouchUp = false;
-            }
-            else if (!floower->arePetalsMoving() && !floower->isChangingColor()) {
-                if (state == STATE_BLOOMING) {
-                    // open
-                    floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-                    state = STATE_RUNNING;
-                }
-                else if (state == STATE_STANDBY) {
-                    // open + set color
-                    if (!floower->isLit()) {
-                        HsbColor nextColor = nextRandomColor();
-                        floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
-                    }
-                    floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-                    state = STATE_RUNNING;
-                }
-                else if (state == STATE_RUNNING && floower->getPetalsOpenLevel() > 0) {
-                    // close
-                    floower->setPetalsOpenLevel(0, config->speedMillis);
-                }
-                else if (state == STATE_RUNNING) {
-                    // shutdown
-                    floower->transitionColorBrightness(0, config->speedMillis / 2);
-                    state = STATE_STANDBY; 
-                }
-            }
-            else if (state == STATE_BLOOMING) {
-                // bloooom
                 floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-                state = STATE_RUNNING;
+                changeState(STATE_BLOOM_OPENING);
+                return true;
             }
-            break;
-
-        case TOUCH_LONG:
-            if (config->rainbowEnabled) {
+            else if (state == STATE_BLOOM_LIGHT) {
+                // open
+                floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
+                changeState(STATE_BLOOM_OPENING);
+                return true;
+            }
+            else if (state == STATE_BLOOMED) {
+                // close
+                floower->setPetalsOpenLevel(0, config->speedMillis);
+                changeState(STATE_BLOOM_CLOSING);
+                return true;
+            }
+            else if (state == STATE_LIGHT) {
+                // shutdown
+                floower->transitionColorBrightness(0, config->speedMillis / 2);
+                changeState(STATE_GOING_OFF);
+                return true;
+            }
+        }
+    }
+    else if (event == TOUCH_LONG) {
+        if (config->colorPickerEnabled) {
+            if (state == STATE_STANDBY || state == STATE_BLOOM_LIGHT || state == STATE_LIGHT) {
                 floower->startAnimation(FloowerColorAnimation::RAINBOW);
-                state = STATE_RAINBOW;
-                disabledTouchUp = true;
+                preventTouchUp = true;
+                changeState(STATE_LIGHT_PICKER);
+                return true;
             }
-            break;
+            else if (state == STATE_BLOOMED) {
+                floower->startAnimation(FloowerColorAnimation::RAINBOW);
+                preventTouchUp = true;
+                changeState(STATE_BLOOMED_PICKER);
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
-        case TOUCH_HOLD:
-            break;
+void BloomingBehavior::changeStateIfIdle(state_t fromState, state_t toState) {
+    if (state == fromState && !floower->arePetalsMoving() && !floower->isChangingColor()) {
+        changeState(toState);
+    }
+}
+
+void BloomingBehavior::changeState(state_t newState) {
+    if (state != newState) {
+        state = newState;
+        ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
     }
 }
 
