@@ -10,21 +10,12 @@
 static const char* LOG_TAG = "StateMachine";
 #endif
 
-// STATES
-
-#define STATE_STANDBY 0
-#define STATE_RUNNING 1
-#define STATE_OFF 2
-#define STATE_BLUETOOTH_PAIRING 3
-#define STATE_CALIBRATION 4
-
 #define INDICATE_STATUS_ACTY 0
 #define INDICATE_STATUS_CHARGING 1
 #define INDICATE_STATUS_REMOTE 2
 
-// POWER MANAGEMENT
+// POWER MANAGEMENT (tuned for 1600mAh LIPO battery)
 
-// tuned for 1600mAh LIPO battery
 #define LOW_BATTERY_THRESHOLD_V 3.4
 
 // TIMINGS
@@ -37,7 +28,6 @@ static const char* LOG_TAG = "StateMachine";
 StateMachine::StateMachine(Config *config, Floower *floower, Remote *remote)
         : config(config), floower(floower), remote(remote) {
     state = STATE_OFF;
-    behavior = new BloomingBehavior(config, floower, remote);
 }
 
 void StateMachine::init(bool wokeUp) {
@@ -57,16 +47,9 @@ void StateMachine::init(bool wokeUp) {
 
     // run watchdog at periodic intervals
     watchDogsTime = millis() + WATCHDOGS_INTERVAL; // TODO millis overflow
-
-    behavior->init();
 }
 
 void StateMachine::update() {
-    if (state == STATE_STANDBY || state == STATE_RUNNING) {
-        behavior->update();
-        changeState(behavior->isIdle() ? STATE_STANDBY : STATE_RUNNING);
-    }
-
     // timers
     long now = millis();
     if (watchDogsTime < now) {
@@ -88,25 +71,23 @@ void StateMachine::update() {
     }
 }
 
-void StateMachine::onLeafTouch(FloowerTouchEvent event) {
-    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY && behavior->isBluetoothPairingAllowed()) {
+bool StateMachine::onLeafTouch(FloowerTouchEvent event) {
+    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
         remote->init();
         remote->startAdvertising();
-        behavior->suspend();
         changeState(STATE_BLUETOOTH_PAIRING);
+        return true;
     }
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
         // bluetooth pairing interrupted
         remote->stopAdvertising();
         config->setRemoteOnStartup(false);
         floower->transitionColorBrightness(0, 500);
-        behavior->resume();
         changeState(STATE_STANDBY);
+        return true;
     }
-    else if (state != STATE_OFF) {
-        behavior->onLeafTouch(event);
-    }
+    return false;
 }
 
 void StateMachine::enablePeripherals(bool wokeUp) {
@@ -164,6 +145,12 @@ void StateMachine::powerWatchDog(bool wokeUp) {
 
     remote->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
     indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
+}
+
+void StateMachine::changeStateIfIdle(state_t fromState, state_t toState) {
+    if (state == fromState && !floower->arePetalsMoving() && !floower->isChangingColor()) {
+        changeState(toState);
+    }
 }
 
 void StateMachine::changeState(uint8_t newState) {

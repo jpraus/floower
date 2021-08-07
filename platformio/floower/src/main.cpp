@@ -6,7 +6,7 @@
 #include "Config.h"
 #include "Calibration.h"
 #include "Remote.h"
-#include "StateMachine.h"
+#include "behavior/BloomingBehavior.h"
 
 ///////////// SOFTWARE CONFIGURATION
 
@@ -30,8 +30,7 @@ const bool touchEnabled = true;
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
 Remote remote(&floower, &config);
-Calibration calibration(&floower, &config);
-StateMachine stateMachine(&config, &floower, &remote);
+Behavior *behavior;
 
 void configure();
 void planDeepSleep(long timeoutMs);
@@ -70,21 +69,21 @@ void setup() {
     delay(50); // wait to warm-up
 
     // init state machine, this is core logic
-    stateMachine.init(wokeUp);
+    if (!config.calibrated) {
+        behavior = new Calibration(&config, &floower);
+    }
+    else {
+        behavior = new BloomingBehavior(&config, &floower, &remote);
+    }
+    behavior->init(wokeUp);
 }
 
 void loop() {
     floower.update();
-    stateMachine.update();
-
-#ifdef CALIBRATE_HARDWARE_SERIAL
-    if (!config.calibrated) {
-        calibration.calibrate();
-    }
-#endif
+    behavior->update();
 
     // save some power when there is nothing happening
-    if (stateMachine.isIdle()) {
+    if (behavior->isIdle()) {
         delay(10);
     }
 }

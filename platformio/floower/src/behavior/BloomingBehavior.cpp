@@ -18,16 +18,13 @@ static const char* LOG_TAG = "BloomingBehavior";
 #define STATE_LIGHT_PICKER 7
 #define STATE_GOING_OFF 8
 
-
-BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, Remote *remote)
-    : config(config), floower(floower), remote(remote) {
-}
-
-void BloomingBehavior::init() {
-    state = STATE_STANDBY;
+BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, Remote *remote) 
+        : StateMachine(config, floower, remote) {
 }
 
 void BloomingBehavior::update() {
+    StateMachine::update();
+
     if (state != STATE_STANDBY) {
         changeStateIfIdle(STATE_BLOOM_OPENING, STATE_BLOOMED);
         changeStateIfIdle(STATE_BLOOM_CLOSING, STATE_LIGHT);
@@ -35,24 +32,11 @@ void BloomingBehavior::update() {
     }
 }
 
-bool BloomingBehavior::isIdle() {
-    return state == STATE_STANDBY;
-}
-
-bool BloomingBehavior::isBluetoothPairingAllowed() {
-    return state == STATE_STANDBY || state == STATE_BLOOM_LIGHT;
-}
-
-void BloomingBehavior::suspend() {
-    state = STATE_STANDBY;
-}
-
-void BloomingBehavior::resume() {
-    state = STATE_STANDBY;
-}
-
 bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
-    if (event == TOUCH_DOWN) {
+    if (StateMachine::onLeafTouch(event)) {
+        return true;
+    }
+    else if (event == TOUCH_DOWN) {
         if (state == STATE_STANDBY) {
             // light up instantly on touch
             HsbColor nextColor = nextRandomColor();
@@ -125,19 +109,6 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
         }
     }
     return false;
-}
-
-void BloomingBehavior::changeStateIfIdle(state_t fromState, state_t toState) {
-    if (state == fromState && !floower->arePetalsMoving() && !floower->isChangingColor()) {
-        changeState(toState);
-    }
-}
-
-void BloomingBehavior::changeState(state_t newState) {
-    if (state != newState) {
-        state = newState;
-        ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
-    }
 }
 
 HsbColor BloomingBehavior::nextRandomColor() {

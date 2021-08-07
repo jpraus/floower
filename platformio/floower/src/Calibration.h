@@ -3,28 +3,29 @@
 #include "Arduino.h"
 #include "Config.h"
 #include "hardware/Floower.h"
+#include "behavior/Behavior.h"
 
-struct TouchCalibration {
-    uint8_t samples;
-    unsigned long nextSampleMillis;
-    unsigned int value;
-};
-
-class Calibration {
+class Calibration : public Behavior {
     public:
-        Calibration(Floower *floower, Config *config);
-        void init();
-        void update();
+        Calibration(Config *config, Floower *floower);
+        virtual void init(bool wokeUp = false);
+        virtual void update();
+        virtual bool isIdle();
 
     private:
         void calibrateTouch();
         void calibrateListenSerial();
 
-        Floower *floower;
         Config *config;
+        Floower *floower;
+
 
         uint8_t state = 0;
-        uint8_t serialCommand = 0;
+        uint8_t command = 0;
         String serialValue;
-        TouchCalibration touch;
+
+        unsigned long touchSampleMillis;
+        uint16_t touchValue;
+
+        unsigned long watchDogsTime = 0;
 };

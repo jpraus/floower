@@ -6,32 +6,40 @@
 #include "Remote.h"
 #include "behavior/Behavior.h"
 
-class StateMachine {
+#define STATE_STANDBY 0
+#define STATE_OFF 1
+#define STATE_BLUETOOTH_PAIRING 2
+#define STATE_CALIBRATION 3
+// state 128+ are reserved for child behaviors
+
+class StateMachine : public Behavior {
     public:
         StateMachine(Config *config, Floower *floower, Remote *remote);
-        void init(bool wokeUp = false);
-        void update();
+        virtual void init(bool wokeUp = false);
+        virtual void update();
+        virtual bool isIdle();
+        
+    protected:
+        virtual bool onLeafTouch(FloowerTouchEvent event);
+
+        void changeStateIfIdle(state_t fromState, state_t toState);
         void changeState(uint8_t newState);
-        bool isIdle();
-
-    private:
-        void enablePeripherals(bool wokeUp = false);
-        void disablePeripherals();
-        void onLeafTouch(FloowerTouchEvent event);
-        void powerWatchDog(bool wokeUp = false);
-        void planDeepSleep(long timeoutMs);
-        void unplanDeepSleep();
-        void enterDeepSleep();
-
-        void indicateStatus(uint8_t status, bool enable);
 
         Config *config;
         Floower *floower;
         Remote *remote;
 
-        Behavior *behavior = nullptr;
-
         uint8_t state;
+
+    private:
+        void enablePeripherals(bool wokeUp = false);
+        void disablePeripherals();        
+        void powerWatchDog(bool wokeUp = false);
+        void planDeepSleep(long timeoutMs);
+        void unplanDeepSleep();
+        void enterDeepSleep();
+        void indicateStatus(uint8_t status, bool enable);
+
         PowerState powerState;
 
         unsigned long watchDogsTime = 0;
