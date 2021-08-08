@@ -43,7 +43,7 @@ class Floower {
     public:
         Floower(Config *config);
         void init();
-        void initStepper(long currentPosition = 0);
+        void initPetals(long currentPosition = 0);
         void update();
 
         void registerOutsideTouch();

@@ -308,7 +308,7 @@ void BluetoothControl::PersonificationCharacteristicsCallbacks::onWrite(BLEChara
         
         bluetoothControl->config->setPersonification(personificationPacket.data);
         bluetoothControl->config->commit();
-        bluetoothControl->floower->reconfigureTouch();
+        //bluetoothControl->floower->reconfigureTouch();
     }
 }
 

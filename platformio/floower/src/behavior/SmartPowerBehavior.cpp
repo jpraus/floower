@@ -101,7 +101,7 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 }
 
 void SmartPowerBehavior::enablePeripherals(bool wokeUp) {
-    floower->initStepper();
+    floower->initPetals();
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
     //bluetoothControl->onTakeOver([=]() { onRemoteTookOver(); }); // bluetoothControl controller took over
     if (config->bluetoothEnabled && config->initRemoteOnStartup) {

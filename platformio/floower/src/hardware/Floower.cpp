@@ -37,6 +37,11 @@ const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
 Floower::Floower(Config *config) 
         : animations(ANIMATIONS_INDECES), config(config), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN) {
+    pinMode(CHARGE_PIN, INPUT);
+}
+
+void Floower::init() {
+    // petals instance
     if (config->hardwareRevision >= 9) {
         ESP_LOGI(LOG_TAG, "Using STEPPER");
         petals = new StepperPetals(config);
@@ -45,10 +50,7 @@ Floower::Floower(Config *config)
         ESP_LOGI(LOG_TAG, "Using SERVO");
         petals = new ServoPetals(config);
     }
-    pinMode(CHARGE_PIN, INPUT);
-}
 
-void Floower::init() {
     // LEDs
     pixelsPowerOn = true; // to make setPixelsPowerOn effective
     setPixelsPowerOn(false);
@@ -73,7 +75,7 @@ void Floower::init() {
     //analogSetSamples(1); // num of samples
 }
 
-void Floower::initStepper(long currentPosition) {
+void Floower::initPetals(long currentPosition) {
     petals->init(currentPosition);
 }
 
