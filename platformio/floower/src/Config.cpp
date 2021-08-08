@@ -41,224 +41,224 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
 
 void Config::begin() {
-  EEPROM.begin(EEPROM_SIZE);
+    EEPROM.begin(EEPROM_SIZE);
 }
 
 void Config::load() {
-  uint8_t configVersion = EEPROM.read(EEPROM_ADDRESS_CONFIG_VERSION);
+    uint8_t configVersion = EEPROM.read(EEPROM_ADDRESS_CONFIG_VERSION);
 
-  if (configVersion > 0 && configVersion < 255) {
-    servoClosed = readInt(EEPROM_ADDRESS_SERVO_CLOSED);
-    servoOpen = readInt(EEPROM_ADDRESS_SERVO_OPEN);
+    if (configVersion > 0 && configVersion < 255) {
+        servoClosed = readInt(EEPROM_ADDRESS_SERVO_CLOSED);
+        servoOpen = readInt(EEPROM_ADDRESS_SERVO_OPEN);
 
-    // backward compatibility => reset to factory settings
-    if (configVersion < 2) {
-      hardwareCalibration(servoClosed, servoOpen, 0, 0);
-      factorySettings();
+        // backward compatibility => reset to factory settings
+        if (configVersion < 2) {
+            hardwareCalibration(servoClosed, servoOpen, 0, 0);
+            factorySettings();
+        }
+
+        // backward compatibility => set calibrated ON
+        if (configVersion < 3) {
+            setCalibrated();
+        }
+
+        // backward compatibility => personification data
+        if (configVersion < 4) {
+            resetColorScheme();
+            hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
+            EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, DEFAULT_TOUCH_THRESHOLD);
+            EEPROM.write(EEPROM_ADDRESS_SPEED, DEFAULT_SPEED);
+            EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, DEFAULT_MAX_OPEN_LEVEL);
+            EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, DEFAULT_COLOR_BRIGHTNESS);
+        }
+
+        if (configVersion < CONFIG_VERSION) {
+            ESP_LOGW(LOG_TAG, "Config outdated %d -> %d", configVersion, CONFIG_VERSION);
+            EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
+            commit(); // this will commit also changes above
+        }
+
+        hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
+        serialNumber = readInt(EEPROM_ADDRESS_SERIALNUMBER);
+        touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
+        readFlags();
+        readColorScheme();
+        readName();
+        readPersonification();
+      
+        ESP_LOGI(LOG_TAG, "Config ready");
+        ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d, tt%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags, touchThreshold);
+        ESP_LOGI(LOG_TAG, "Flags: r%d, %s", initRemoteOnStartup, name.c_str());
+        ESP_LOGI(LOG_TAG, "P13n: bh%d, sp%d, mo%d, cb%d", personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
+        for (uint8_t i = 0; i < colorSchemeSize; i++) {
+            ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
+        }
     }
-
-    // backward compatibility => set calibrated ON
-    if (configVersion < 3) {
-      setCalibrated();
+    else {
+        ESP_LOGE(LOG_TAG, "Not configured");
     }
-
-    // backward compatibility => personification data
-    if (configVersion < 4) {
-      resetColorScheme();
-      hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
-      EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, DEFAULT_TOUCH_THRESHOLD);
-      EEPROM.write(EEPROM_ADDRESS_SPEED, DEFAULT_SPEED);
-      EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, DEFAULT_MAX_OPEN_LEVEL);
-      EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, DEFAULT_COLOR_BRIGHTNESS);
-    }
-
-    if (configVersion < CONFIG_VERSION) {
-      ESP_LOGW(LOG_TAG, "Config outdated %d -> %d", configVersion, CONFIG_VERSION);
-      EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
-      commit(); // this will commit also changes above
-    }
-
-    hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
-    serialNumber = readInt(EEPROM_ADDRESS_SERIALNUMBER);
-    touchThreshold = EEPROM.read(EEPROM_ADDRESS_TOUCH_THRESHOLD);
-    readFlags();
-    readColorScheme();
-    readName();
-    readPersonification();
-  
-    ESP_LOGI(LOG_TAG, "Config ready");
-    ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d, tt%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags, touchThreshold);
-    ESP_LOGI(LOG_TAG, "Flags: r%d, %s", initRemoteOnStartup, name.c_str());
-    ESP_LOGI(LOG_TAG, "P13n: bh%d, sp%d, mo%d, cb%d", personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
-    for (uint8_t i = 0; i < colorSchemeSize; i++) {
-      ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
-    }
-  }
-  else {
-    ESP_LOGE(LOG_TAG, "Not configured");
-  }
 }
 
 void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber) {
-  ESP_LOGW(LOG_TAG, "New HW config: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
-  EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
-  EEPROM.write(EEPROM_ADDRESS_LEDS_MODEL, 0); // 0 - WS2812b, 1 - SK6812 not used any longer
-  writeInt(EEPROM_ADDRESS_SERVO_CLOSED, servoClosed);
-  writeInt(EEPROM_ADDRESS_SERVO_OPEN, servoOpen);
-  EEPROM.write(EEPROM_ADDRESS_REVISION, hardwareRevision);
-  writeInt(EEPROM_ADDRESS_SERIALNUMBER, serialNumber);
-  EEPROM.write(EEPROM_ADDRESS_FLAGS, 0);
+    ESP_LOGW(LOG_TAG, "New HW config: %d -> %d, R%d, SN%d", servoClosed, servoOpen, hardwareRevision, serialNumber);
+    EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
+    EEPROM.write(EEPROM_ADDRESS_LEDS_MODEL, 0); // 0 - WS2812b, 1 - SK6812 not used any longer
+    writeInt(EEPROM_ADDRESS_SERVO_CLOSED, servoClosed);
+    writeInt(EEPROM_ADDRESS_SERVO_OPEN, servoOpen);
+    EEPROM.write(EEPROM_ADDRESS_REVISION, hardwareRevision);
+    writeInt(EEPROM_ADDRESS_SERIALNUMBER, serialNumber);
+    EEPROM.write(EEPROM_ADDRESS_FLAGS, 0);
 
-  this->servoClosed = servoClosed;
-  this->servoOpen = servoOpen;
-  this->hardwareRevision = hardwareRevision;
-  this->serialNumber = serialNumber;
+    this->servoClosed = servoClosed;
+    this->servoOpen = servoOpen;
+    this->hardwareRevision = hardwareRevision;
+    this->serialNumber = serialNumber;
 }
 
 void Config::factorySettings() {
-  ESP_LOGI(LOG_TAG, "Factory reset");
-  setName("Floower");
-  setRemoteOnStartup(false);
-  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
-  setPersonification(personification);
-  resetColorScheme();
+    ESP_LOGI(LOG_TAG, "Factory reset");
+    setName("Floower");
+    setRemoteOnStartup(false);
+    Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
+    setPersonification(personification);
+    resetColorScheme();
 }
 
 void Config::resetColorScheme() {
-  colorScheme[0] = colorWhite;
-  colorScheme[1] = colorYellow;
-  colorScheme[2] = colorOrange;
-  colorScheme[3] = colorRed;
-  colorScheme[4] = colorPink;
-  colorScheme[5] = colorPurple;
-  colorScheme[6] = colorBlue;
-  colorScheme[7] = colorGreen;
-  colorSchemeSize = 8;
-  writeColorScheme();
+    colorScheme[0] = colorWhite;
+    colorScheme[1] = colorYellow;
+    colorScheme[2] = colorOrange;
+    colorScheme[3] = colorRed;
+    colorScheme[4] = colorPink;
+    colorScheme[5] = colorPurple;
+    colorScheme[6] = colorBlue;
+    colorScheme[7] = colorGreen;
+    colorSchemeSize = 8;
+    writeColorScheme();
 }
 
 void Config::readFlags() {
-  flags = EEPROM.read(EEPROM_ADDRESS_FLAGS);
-  calibrated = CHECK_BIT(flags, FLAG_BIT_CALIBRATED);
-  initRemoteOnStartup = CHECK_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+    flags = EEPROM.read(EEPROM_ADDRESS_FLAGS);
+    calibrated = CHECK_BIT(flags, FLAG_BIT_CALIBRATED);
+    initRemoteOnStartup = CHECK_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
 }
 
 void Config::setCalibrated() {
-  flags = SET_BIT(flags, FLAG_BIT_CALIBRATED);
-  EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
-  this->calibrated = true;
+    flags = SET_BIT(flags, FLAG_BIT_CALIBRATED);
+    EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
+    this->calibrated = true;
 }
 
 void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
-  flags = initRemoteOnStartup ? SET_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP) : CLEAR_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
-  EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
-  this->initRemoteOnStartup = initRemoteOnStartup;
+    flags = initRemoteOnStartup ? SET_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP) : CLEAR_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+    EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
+    this->initRemoteOnStartup = initRemoteOnStartup;
 }
 
 void Config::setColorScheme(HsbColor* colors, uint8_t size) {
-  this->colorSchemeSize = size;
-  for (uint8_t i = 0; i < size; i++) {
-    this->colorScheme[i] = colors[i];
-  }
-  writeColorScheme();
+    this->colorSchemeSize = size;
+    for (uint8_t i = 0; i < size; i++) {
+        this->colorScheme[i] = colors[i];
+    }
+    writeColorScheme();
 }
 
 void Config::setTouchThreshold(uint8_t touchThreshold) {
-  EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, touchThreshold);
-  this->touchThreshold = touchThreshold;
+    EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, touchThreshold);
+    this->touchThreshold = touchThreshold;
 }
 
 void Config::setPersonification(Personification personification) {
-  this->personification = personification;
-  this->speedMillis = personification.speed * 100;
-  this->colorBrightness = (double) personification.colorBrightness / 100.0;
-  EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, personification.behavior);
-  EEPROM.write(EEPROM_ADDRESS_SPEED, personification.speed);
-  EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, personification.maxOpenLevel);
-  EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, personification.colorBrightness);
+    this->personification = personification;
+    this->speedMillis = personification.speed * 100;
+    this->colorBrightness = (double) personification.colorBrightness / 100.0;
+    EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, personification.behavior);
+    EEPROM.write(EEPROM_ADDRESS_SPEED, personification.speed);
+    EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, personification.maxOpenLevel);
+    EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, personification.colorBrightness);
 }
 
 void Config::readPersonification() {
-  personification.behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
-  personification.speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
-  if (personification.speed < 5) {
-    personification.speed = 5;
-  }
-  speedMillis = this->personification.speed * 100;
-  personification.maxOpenLevel = EEPROM.read(EEPROM_ADDRESS_MAX_OPEN_LEVEL);
-  if (personification.maxOpenLevel > 100) {
-    personification.maxOpenLevel = 100;
-  }
-  personification.colorBrightness = EEPROM.read(EEPROM_ADDRESS_COLOR_BRIGHTNESS);
-  if (personification.colorBrightness > 100) {
-    personification.colorBrightness = 100;
-  }
-  colorBrightness = (double) personification.colorBrightness / 100.0;
+    personification.behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
+    personification.speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
+    if (personification.speed < 5) {
+        personification.speed = 5;
+    }
+    speedMillis = this->personification.speed * 100;
+    personification.maxOpenLevel = EEPROM.read(EEPROM_ADDRESS_MAX_OPEN_LEVEL);
+    if (personification.maxOpenLevel > 100) {
+        personification.maxOpenLevel = 100;
+    }
+    personification.colorBrightness = EEPROM.read(EEPROM_ADDRESS_COLOR_BRIGHTNESS);
+    if (personification.colorBrightness > 100) {
+        personification.colorBrightness = 100;
+    }
+    colorBrightness = (double) personification.colorBrightness / 100.0;
 }
 
 void Config::writeColorScheme() {
-  for (uint8_t i = 0; i < colorSchemeSize && i < COLOR_SCHEME_MAX_LENGTH; i++) {
-    writeInt(EEPROM_ADDRESS_COLOR_SCHEME + i * 2, encodeHSColor(colorScheme[i].H, colorScheme[i].S));
-  }
-  EEPROM.write(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH, colorSchemeSize);
+    for (uint8_t i = 0; i < colorSchemeSize && i < COLOR_SCHEME_MAX_LENGTH; i++) {
+        writeInt(EEPROM_ADDRESS_COLOR_SCHEME + i * 2, encodeHSColor(colorScheme[i].H, colorScheme[i].S));
+    }
+    EEPROM.write(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH, colorSchemeSize);
 }
 
 void Config::readColorScheme() {
-  colorSchemeSize = min(EEPROM.read(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH), (uint8_t) COLOR_SCHEME_MAX_LENGTH);
-  for(uint8_t i = 0; i < colorSchemeSize; i++) {
-    colorScheme[i] = decodeHSColor(readInt(EEPROM_ADDRESS_COLOR_SCHEME + i * 2));
-  }
+    colorSchemeSize = min(EEPROM.read(EEPROM_ADDRESS_COLOR_SCHEME_LENGTH), (uint8_t) COLOR_SCHEME_MAX_LENGTH);
+    for(uint8_t i = 0; i < colorSchemeSize; i++) {
+        colorScheme[i] = decodeHSColor(readInt(EEPROM_ADDRESS_COLOR_SCHEME + i * 2));
+    }
 }
 
 uint16_t Config::encodeHSColor(double hue, double saturation) {
-  uint16_t valueH = hue * 360;
-  uint8_t valueS = saturation * 100;
-  return (valueH << 7) | (valueS & 0x7F);
+    uint16_t valueH = hue * 360;
+    uint8_t valueS = saturation * 100;
+    return (valueH << 7) | (valueS & 0x7F);
 }
 
 HsbColor Config::decodeHSColor(uint16_t valueHS) {
-  double saturation = valueHS & 0x7F;
-  saturation = saturation / 100.0;
-  double hue = valueHS >> 7;
-  hue = hue / 360.0;
-  return HsbColor(hue, saturation, 1.0);
+    double saturation = valueHS & 0x7F;
+    saturation = saturation / 100.0;
+    double hue = valueHS >> 7;
+    hue = hue / 360.0;
+    return HsbColor(hue, saturation, 1.0);
 }
 
 void Config::setName(String name) {
-  this->name = name;
-  uint8_t length = min((uint8_t) name.length(), (uint8_t) NAME_MAX_LENGTH);
-  for (uint8_t i = 0; i < length; i++) {
-    EEPROM.write(EEPROM_ADDRESS_NAME + i, name[i]);
-  }
-  EEPROM.write(EEPROM_ADDRESS_NAME_LENGTH, length);
+    this->name = name;
+    uint8_t length = min((uint8_t) name.length(), (uint8_t) NAME_MAX_LENGTH);
+    for (uint8_t i = 0; i < length; i++) {
+        EEPROM.write(EEPROM_ADDRESS_NAME + i, name[i]);
+    }
+    EEPROM.write(EEPROM_ADDRESS_NAME_LENGTH, length);
 }
 
 void Config::readName() {
-  uint8_t length = min(EEPROM.read(EEPROM_ADDRESS_NAME_LENGTH), (uint8_t) NAME_MAX_LENGTH);
-  char data[length + 1];
+    uint8_t length = min(EEPROM.read(EEPROM_ADDRESS_NAME_LENGTH), (uint8_t) NAME_MAX_LENGTH);
+    char data[length + 1];
 
-  for(uint8_t i = 0; i < length; i++) {
-    data[i] = EEPROM.read(EEPROM_ADDRESS_NAME + i);
-  }
-  data[length] = '\0';
-  name = String(data);
+    for(uint8_t i = 0; i < length; i++) {
+        data[i] = EEPROM.read(EEPROM_ADDRESS_NAME + i);
+    }
+    data[length] = '\0';
+    name = String(data);
 }
 
 void Config::writeInt(uint16_t address, uint16_t value) {
-  uint8_t two = (value & 0xFF);
-  uint8_t one = ((value >> 8) & 0xFF);
-  
-  EEPROM.write(address, two);
-  EEPROM.write(address + 1, one);
+    uint8_t two = (value & 0xFF);
+    uint8_t one = ((value >> 8) & 0xFF);
+    
+    EEPROM.write(address, two);
+    EEPROM.write(address + 1, one);
 }
 
 uint16_t Config::readInt(uint16_t address) {
-  uint8_t two = EEPROM.read(address);
-  uint16_t one = EEPROM.read(address + 1);
- 
-  return (two & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
+    uint8_t two = EEPROM.read(address);
+    uint16_t one = EEPROM.read(address + 1);
+  
+    return (two & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
 }
 
 void Config::commit() {
-  EEPROM.commit();
+    EEPROM.commit();
 }

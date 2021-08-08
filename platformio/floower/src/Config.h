@@ -29,67 +29,67 @@ const HsbColor colorPink(0.93, 1.0, 1.0);
 const HsbColor colorBlack(0.0, 1.0, 0.0);
 
 typedef struct Personification {
-  uint8_t touchThreshold; // read-only, TODO: not used, kept for backward compatibility
-  uint8_t behavior; // read-write
-  uint8_t speed; // in 0.1s, read-write
-  uint8_t maxOpenLevel; // 0-100, read-write
-  uint8_t colorBrightness; // 0-100, read-write
+    uint8_t touchThreshold; // read-only, TODO: not used, kept for backward compatibility
+    uint8_t behavior; // read-write
+    uint8_t speed; // in 0.1s, read-write
+    uint8_t maxOpenLevel; // 0-100, read-write
+    uint8_t colorBrightness; // 0-100, read-write
 } Personification;
 
 class Config {
-  public:
-    Config(uint8_t firmwareVersion) : firmwareVersion(firmwareVersion) {}
-    void begin();
-    void load();
-    void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
-    void factorySettings();
-    void resetColorScheme();
-    void setColorScheme(HsbColor* colors, uint8_t size);
-    void setTouchThreshold(uint8_t touchThreshold);
-    void setName(String name);
-    void setRemoteOnStartup(bool initRemoteOnStartup);
-    void setCalibrated();
-    void setPersonification(Personification personification);
-    void commit();
+    public:
+        Config(uint8_t firmwareVersion) : firmwareVersion(firmwareVersion) {}
+        void begin();
+        void load();
+        void hardwareCalibration(unsigned int servoClosed, unsigned int servoOpen, uint8_t hardwareRevision, unsigned int serialNumber);
+        void factorySettings();
+        void resetColorScheme();
+        void setColorScheme(HsbColor* colors, uint8_t size);
+        void setTouchThreshold(uint8_t touchThreshold);
+        void setName(String name);
+        void setRemoteOnStartup(bool initRemoteOnStartup);
+        void setCalibrated();
+        void setPersonification(Personification personification);
+        void commit();
 
-    static uint16_t encodeHSColor(double hue, double saturation);
-    static HsbColor decodeHSColor(uint16_t valueHS);
+        static uint16_t encodeHSColor(double hue, double saturation);
+        static HsbColor decodeHSColor(uint16_t valueHS);
 
-    // calibration
-    unsigned int servoClosed = 1000; // default safe values
-    unsigned int servoOpen = 1000;
-    uint8_t hardwareRevision = 0;
-    uint8_t firmwareVersion = 0;
-    unsigned int serialNumber = 0;
+        // calibration
+        unsigned int servoClosed = 1000; // default safe values
+        unsigned int servoOpen = 1000;
+        uint8_t hardwareRevision = 0;
+        uint8_t firmwareVersion = 0;
+        unsigned int serialNumber = 0;
 
-    // extracted flags
-    bool initRemoteOnStartup = false;
-    bool calibrated = false;
+        // extracted flags
+        bool initRemoteOnStartup = false;
+        bool calibrated = false;
 
-    // feature flags
-    bool deepSleepEnabled = false;
-    bool bluetoothEnabled = false;
-    bool colorPickerEnabled = false;
+        // feature flags
+        bool deepSleepEnabled = false;
+        bool bluetoothEnabled = false;
+        bool colorPickerEnabled = false;
 
-    // configration
-    uint8_t colorSchemeSize = 0;
-    HsbColor colorScheme[10]; // max 10 colors
-    uint8_t touchThreshold; // read-only
-    String name;
-    Personification personification;
-    uint16_t speedMillis; // read-only, precalculated speed in ms
-    double colorBrightness; // read-only, precalcuated color brightness (0.0-1.0)
+        // configration
+        uint8_t colorSchemeSize = 0;
+        HsbColor colorScheme[10]; // max 10 colors
+        uint8_t touchThreshold; // read-only
+        String name;
+        Personification personification;
+        uint16_t speedMillis; // read-only, precalculated speed in ms
+        double colorBrightness; // read-only, precalcuated color brightness (0.0-1.0)
 
-  private:
-    void readFlags();
-    void writeColorScheme();
-    void readColorScheme();
-    void readName();
-    void readPersonification();
+    private:
+        void readFlags();
+        void writeColorScheme();
+        void readColorScheme();
+        void readName();
+        void readPersonification();
 
-    void writeInt(uint16_t address, uint16_t value);
-    uint16_t readInt(uint16_t address);
+        void writeInt(uint16_t address, uint16_t value);
+        uint16_t readInt(uint16_t address);
 
-    uint8_t flags = 0;
+        uint8_t flags = 0;
 
 };

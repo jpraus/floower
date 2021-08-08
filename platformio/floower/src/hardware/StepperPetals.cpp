@@ -19,93 +19,93 @@ static const char* LOG_TAG = "StepperPetals";
 #define TMC_OPEN_STEPS 30000
 
 StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN) {
-  Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
+    Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
 }
 
 void StepperPetals::init(long currentPosition) {
-  petalsOpenLevel = 0; // 0-100%
+    petalsOpenLevel = 0; // 0-100%
 
-  // stepper
-  enabled = false; // to make setStepperPowerOn effective
-  setEnabled(true);
-  pinMode(TMC_EN_PIN, OUTPUT);
+    // stepper
+    enabled = false; // to make setStepperPowerOn effective
+    setEnabled(true);
+    pinMode(TMC_EN_PIN, OUTPUT);
 
-  // verify stepper is available
-  if (stepperDriver.testConnection()) {
-    ESP_LOGE(LOG_TAG, "TMC2300 comm failed");
-  }
+    // verify stepper is available
+    if (stepperDriver.testConnection()) {
+        ESP_LOGE(LOG_TAG, "TMC2300 comm failed");
+    }
 
-  REG_IOIN iont = stepperDriver.readIontReg();
-  Serial.print("IOIN=");
-  Serial.println(iont.sr, BIN);
-  Serial.print("Version=");
-  Serial.println(iont.version);
+    REG_IOIN iont = stepperDriver.readIontReg();
+    Serial.print("IOIN=");
+    Serial.println(iont.sr, BIN);
+    Serial.print("Version=");
+    Serial.println(iont.version);
 
-  REG_CHOPCONF chopconf = stepperDriver.readChopconf();
-  Serial.print("Microsteps=");
-  Serial.println(chopconf.getMicrosteps());
-  chopconf.setMicrosteps(TMC_MICROSTEPS);
-  stepperDriver.writeChopconfReg(chopconf);
+    REG_CHOPCONF chopconf = stepperDriver.readChopconf();
+    Serial.print("Microsteps=");
+    Serial.println(chopconf.getMicrosteps());
+    chopconf.setMicrosteps(TMC_MICROSTEPS);
+    stepperDriver.writeChopconfReg(chopconf);
 
-  stepperMotion.setPinsInverted(true, false, false);
-  stepperMotion.setMaxSpeed(4000);
-  stepperMotion.setAcceleration(4000);
-  stepperMotion.setCurrentPosition(currentPosition); // closed (-> positive is open)
-  stepperMotion.moveTo(0);
+    stepperMotion.setPinsInverted(true, false, false);
+    stepperMotion.setMaxSpeed(4000);
+    stepperMotion.setAcceleration(4000);
+    stepperMotion.setCurrentPosition(currentPosition); // closed (-> positive is open)
+    stepperMotion.moveTo(0);
 }
 
 void StepperPetals::update() {
-  if (stepperMotion.distanceToGo() != 0) {
-    stepperMotion.run();
-  }
+    if (stepperMotion.distanceToGo() != 0) {
+        stepperMotion.run();
+    }
 }
 
 void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
-  ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
+    ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
 
-  if (level == petalsOpenLevel) {
-    return; // no change, keep doing the old movement until done
-  }
-  petalsOpenLevel = level;
+    if (level == petalsOpenLevel) {
+        return; // no change, keep doing the old movement until done
+    }
+    petalsOpenLevel = level;
 
-  if (level >= 100) {
-    stepperMotion.moveTo(TMC_OPEN_STEPS);
-  }
-  else {
-    // TODO: calculate speed according to transitionTime
-    stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
-  }
+    if (level >= 100) {
+        stepperMotion.moveTo(TMC_OPEN_STEPS);
+    }
+    else {
+        // TODO: calculate speed according to transitionTime
+        stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
+    }
 }
 
 int8_t StepperPetals::getPetalsOpenLevel() {
-  return petalsOpenLevel;
+    return petalsOpenLevel;
 }
 
 int8_t StepperPetals::getCurrentPetalsOpenLevel() {
-  if (stepperMotion.distanceToGo() != 0) {
-    float position = stepperMotion.currentPosition();
-    return (position / TMC_OPEN_STEPS) * 100;
-  }
-  // optimization, no need to calculate the actual position when movement is finished
-  return petalsOpenLevel;
+    if (stepperMotion.distanceToGo() != 0) {
+        float position = stepperMotion.currentPosition();
+        return (position / TMC_OPEN_STEPS) * 100;
+    }
+    // optimization, no need to calculate the actual position when movement is finished
+    return petalsOpenLevel;
 }
 
 bool StepperPetals::arePetalsMoving() {
-  return stepperMotion.distanceToGo() != 0;
+    return stepperMotion.distanceToGo() != 0;
 }
 
 bool StepperPetals::setEnabled(bool enabled) {
-  if (enabled && !this->enabled) {
-    this->enabled = true;
-    ESP_LOGD(LOG_TAG, "Stepper power ON");
-    digitalWrite(TMC_EN_PIN, HIGH);
-    return true;
-  }
-  if (!enabled && this->enabled) {
-    this->enabled = false;
-    ESP_LOGD(LOG_TAG, "Stepper power OFF");
-    digitalWrite(TMC_EN_PIN, LOW);
-    return true;
-  }
-  return false; // no change
+    if (enabled && !this->enabled) {
+        this->enabled = true;
+        ESP_LOGD(LOG_TAG, "Stepper power ON");
+        digitalWrite(TMC_EN_PIN, HIGH);
+        return true;
+    }
+    if (!enabled && this->enabled) {
+        this->enabled = false;
+        ESP_LOGD(LOG_TAG, "Stepper power OFF");
+        digitalWrite(TMC_EN_PIN, LOW);
+        return true;
+    }
+    return false; // no change
 }
