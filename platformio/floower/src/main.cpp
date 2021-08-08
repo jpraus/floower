@@ -22,6 +22,8 @@ const bool colorPickerEnabled = true;
 //#define CALIBRATE_HARDWARE_SERIAL 1
 //#define FACTORY_RESET 1
 //#define CALIBRATE_HARDWARE 1
+//#define SERVO_CLOSED 800 // 650
+//#define SERVO_OPEN SERVO_CLOSED + 500 // 700
 #define SERIAL_NUMBER 402
 
 #define WDT_TIMEOUT 10 // 10s for watch dog, reset with ever periodic operation
@@ -89,13 +91,14 @@ void loop() {
 void configure() {
     config.begin();
 #ifdef CALIBRATE_HARDWARE
-    config.hardwareCalibration(HARDWARE_REVISION, SERIAL_NUMBER);
+    config.hardwareCalibration(SERVO_CLOSED, SERVO_OPEN, HARDWARE_REVISION, SERIAL_NUMBER);
     config.factorySettings();
     config.setCalibrated();
     config.commit();
 #endif
 #ifdef FACTORY_RESET
     config.factorySettings();
+    config.setCalibrated();
     config.commit();
 #endif
     config.load();

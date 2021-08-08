@@ -119,7 +119,7 @@ void Config::factorySettings() {
   ESP_LOGI(LOG_TAG, "Factory reset");
   setName("Floower");
   setRemoteOnStartup(false);
-  Personification personification = {DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
+  Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
   setPersonification(personification);
   resetColorScheme();
 }
