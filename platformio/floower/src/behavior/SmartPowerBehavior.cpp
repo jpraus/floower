@@ -151,6 +151,9 @@ void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
             enablePeripherals(wokeUp);
             changeState(STATE_STANDBY);
         }
+        else if (state == STATE_STANDBY && !powerState.usbPowered && deepSleepTime == 0) {
+            planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
+        }
     }
 
     remote->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
