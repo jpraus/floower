@@ -3,7 +3,7 @@
 #include "Arduino.h"
 #include "Config.h"
 #include "hardware/Floower.h"
-#include "Remote.h"
+#include "BluetoothControl.h"
 #include "behavior/Behavior.h"
 
 #define STATE_STANDBY 0
@@ -14,7 +14,7 @@
 
 class SmartPowerBehavior : public Behavior {
     public:
-        SmartPowerBehavior(Config *config, Floower *floower, Remote *remote);
+        SmartPowerBehavior(Config *config, Floower *floower, BluetoothControl *remote);
         virtual void init(bool wokeUp = false);
         virtual void update();
         virtual bool isIdle();
@@ -29,7 +29,7 @@ class SmartPowerBehavior : public Behavior {
 
         Config *config;
         Floower *floower;
-        Remote *remote;
+        BluetoothControl *bluetoothControl;
 
         uint8_t state;
         bool preventTouchUp = false;

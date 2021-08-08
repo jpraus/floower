@@ -1,11 +1,11 @@
-#include "Remote.h"
+#include "BluetoothControl.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
 #define LOG_TAG ""
 #else
 #include "esp_log.h"
-static const char* LOG_TAG = "Remote";
+static const char* LOG_TAG = "BluetoothControl";
 #endif
 
 // See the following for generating UUIDs:
@@ -82,11 +82,11 @@ typedef union StateChangePacket {
   uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
 } StateChangePacket;
 
-Remote::Remote(Floower *floower, Config *config)
+BluetoothControl::BluetoothControl(Floower *floower, Config *config)
     : floower(floower), config(config) {
 }
 
-void Remote::init() {
+void BluetoothControl::init() {
   if (!initialized) {
     ESP_LOGI(LOG_TAG, "Initializing BLE server");
     BLECharacteristic* characteristic;
@@ -168,7 +168,7 @@ void Remote::init() {
   }
 }
 
-void Remote::startAdvertising() {
+void BluetoothControl::startAdvertising() {
   if (initialized) {
     ESP_LOGI(LOG_TAG, "Start advertising ...");
     BLEAdvertising *bleAdvertising = BLEDevice::getAdvertising();
@@ -181,7 +181,7 @@ void Remote::startAdvertising() {
   }
 }
 
-void Remote::stopAdvertising() {
+void BluetoothControl::stopAdvertising() {
   if (initialized && !deviceConnected && advertising) {
     ESP_LOGI(LOG_TAG, "Stop advertising");
     BLEDevice::getAdvertising()->stop();
@@ -189,15 +189,15 @@ void Remote::stopAdvertising() {
   }
 }
 
-bool Remote::isConnected() {
+bool BluetoothControl::isConnected() {
   return deviceConnected;
 }
 
-void Remote::onTakeOver(RemoteTakeOverCallback callback) {
+void BluetoothControl::onTakeOver(RemoteTakeOverCallback callback) {
   takeOverCallback = callback;
 }
 
-void Remote::setBatteryLevel(uint8_t level, bool charging) {
+void BluetoothControl::setBatteryLevel(uint8_t level, bool charging) {
   if (deviceConnected && batteryService != nullptr && !floower->arePetalsMoving()) {
     ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
 
@@ -212,13 +212,13 @@ void Remote::setBatteryLevel(uint8_t level, bool charging) {
   }
 }
 
-BLECharacteristic* Remote::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {
+BLECharacteristic* BluetoothControl::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {
   BLECharacteristic* characteristic = service->createCharacteristic(uuid, BLECharacteristic::PROPERTY_READ);                      
   characteristic->setValue(value);
   return characteristic;
 }
 
-void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void BluetoothControl::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
   if (bytes.length() == STATE_CHANGE_PACKET_SIZE) {
     StateChangePacket statePacket;
@@ -229,31 +229,31 @@ void Remote::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *cha
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
       // blossom color
       HsbColor color = HsbColor(statePacket.data.getColor());
-      remote->floower->transitionColor(color.H, color.S, color.B, statePacket.data.duration * 100);
+      bluetoothControl->floower->transitionColor(color.H, color.S, color.B, statePacket.data.duration * 100);
     }
     if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
       // petals open/close
-      remote->floower->setPetalsOpenLevel(statePacket.data.value, statePacket.data.duration * 100);
+      bluetoothControl->floower->setPetalsOpenLevel(statePacket.data.value, statePacket.data.duration * 100);
     }
     else if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
       // play animation (according to value)
       switch (statePacket.data.value) {
         case 1:
-          remote->floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
+          bluetoothControl->floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
           break;
         case 2:
-          remote->floower->startAnimation(FloowerColorAnimation::CANDLE);
+          bluetoothControl->floower->startAnimation(FloowerColorAnimation::CANDLE);
           break;
       }
     }
 
-    if (remote->takeOverCallback != nullptr) {
-      remote->takeOverCallback();
+    if (bluetoothControl->takeOverCallback != nullptr) {
+      bluetoothControl->takeOverCallback();
     }
   }
 }
 
-void Remote::ColorsSchemeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void BluetoothControl::ColorsSchemeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
   if (bytes.length() > 0) {
     size_t size = floor(bytes.length() / 2);
@@ -266,12 +266,12 @@ void Remote::ColorsSchemeCharacteristicsCallbacks::onWrite(BLECharacteristic *ch
       ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colors[i].H, colors[i].S);
     }
 
-    remote->config->setColorScheme(colors, size);
-    remote->config->commit();
+    bluetoothControl->config->setColorScheme(colors, size);
+    bluetoothControl->config->commit();
   }
 }
 
-void Remote::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void BluetoothControl::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
   if (bytes.length() > 0) {
     size_t length = min(bytes.length(), (unsigned int) NAME_MAX_LENGTH) + 1;
@@ -282,12 +282,12 @@ void Remote::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *characteri
     data[length] = '\0';
 
     ESP_LOGI(LOG_TAG, "New name: %s", data);
-    remote->config->setName(String(data));
-    remote->config->commit();
+    bluetoothControl->config->setName(String(data));
+    bluetoothControl->config->commit();
   }
 }
 
-void Remote::PersonificationCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+void BluetoothControl::PersonificationCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
   std::string bytes = characteristic->getValue();
   if (bytes.length() == PERSONIFICATION_PACKET_SIZE) {
     PersonificationPacket personificationPacket;
@@ -306,26 +306,26 @@ void Remote::PersonificationCharacteristicsCallbacks::onWrite(BLECharacteristic 
     }
     ESP_LOGI(LOG_TAG, "New personification: touchThreshold=%d, behavior=%d, speed=%d, maxOpenLevel=%d, colorBrightness=%d", personificationPacket.data.touchThreshold, personificationPacket.data.behavior, personificationPacket.data.speed, personificationPacket.data.maxOpenLevel, personificationPacket.data.colorBrightness);
     
-    remote->config->setPersonification(personificationPacket.data);
-    remote->config->commit();
-    remote->floower->reconfigureTouch();
+    bluetoothControl->config->setPersonification(personificationPacket.data);
+    bluetoothControl->config->commit();
+    bluetoothControl->floower->reconfigureTouch();
   }
 }
 
-void Remote::ServerCallbacks::onConnect(BLEServer* server) {
+void BluetoothControl::ServerCallbacks::onConnect(BLEServer* server) {
   ESP_LOGI(LOG_TAG, "Connected to client");
-  remote->deviceConnected = true;
-  remote->advertising = false;
+  bluetoothControl->deviceConnected = true;
+  bluetoothControl->advertising = false;
 
-  if (!remote->config->initRemoteOnStartup) {
-    remote->config->setRemoteOnStartup(true);
-    remote->config->commit();
+  if (!bluetoothControl->config->initRemoteOnStartup) {
+    bluetoothControl->config->setRemoteOnStartup(true);
+    bluetoothControl->config->commit();
   }
 };
 
-void Remote::ServerCallbacks::onDisconnect(BLEServer* server) {
+void BluetoothControl::ServerCallbacks::onDisconnect(BLEServer* server) {
   ESP_LOGI(LOG_TAG, "Disconnected, start advertising");
-  remote->deviceConnected = false;
+  bluetoothControl->deviceConnected = false;
   server->startAdvertising();
-  remote->advertising = true;
+  bluetoothControl->advertising = true;
 };

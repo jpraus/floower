@@ -4,14 +4,14 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
-#include "config.h"
-#include "hardware/floower.h"
+#include "Config.h"
+#include "hardware/Floower.h"
 
 typedef std::function<void()> RemoteTakeOverCallback;
 
-class Remote {
+class BluetoothControl {
   public:
-    Remote(Floower *floower, Config *config);
+    BluetoothControl(Floower *floower, Config *config);
     void init();
     void startAdvertising();
     void stopAdvertising();
@@ -36,45 +36,45 @@ class Remote {
     // BLE state characteristics callback
     class StateChangeCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        StateChangeCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        StateChangeCharacteristicsCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
       private:
-        Remote* remote ;
+        BluetoothControl* bluetoothControl ;
         void onWrite(BLECharacteristic *characteristic);
     };
 
     // BLE name characteristics callback
     class NameCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        NameCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        NameCharacteristicsCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
       private:
-        Remote* remote ;
+        BluetoothControl* bluetoothControl ;
         void onWrite(BLECharacteristic *characteristic);
     };
 
     // BLE color scheme characteristics callback
     class ColorsSchemeCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        ColorsSchemeCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        ColorsSchemeCharacteristicsCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
       private:
-        Remote* remote ;
+        BluetoothControl* bluetoothControl ;
         void onWrite(BLECharacteristic *characteristic);
     };
 
     // BLE touch threshold characteristics callback
     class PersonificationCharacteristicsCallbacks : public BLECharacteristicCallbacks {
       public:
-        PersonificationCharacteristicsCallbacks(Remote* remote) : remote(remote) {};
+        PersonificationCharacteristicsCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
       private:
-        Remote* remote ;
+        BluetoothControl* bluetoothControl ;
         void onWrite(BLECharacteristic *characteristic);
     };
 
     // BLE server callbacks impl
     class ServerCallbacks : public BLEServerCallbacks {
       public:
-        ServerCallbacks(Remote* remote) : remote(remote) {};
+        ServerCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
       private:
-        Remote* remote ;
+        BluetoothControl* bluetoothControl ;
         void onConnect(BLEServer* server);
         void onDisconnect(BLEServer* server);
     };

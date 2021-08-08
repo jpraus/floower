@@ -24,8 +24,8 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
 
-SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, Remote *remote)
-        : config(config), floower(floower), remote(remote) {
+SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl)
+        : config(config), floower(floower), bluetoothControl(bluetoothControl) {
     state = STATE_OFF;
 }
 
@@ -55,13 +55,13 @@ void SmartPowerBehavior::update() {
         watchDogsTime = now + WATCHDOGS_INTERVAL;
         esp_task_wdt_reset(); // reset watchdog timer
         powerWatchDog();
-        indicateStatus(INDICATE_STATUS_REMOTE, remote->isConnected());
+        indicateStatus(INDICATE_STATUS_REMOTE, bluetoothControl->isConnected());
         indicateStatus(INDICATE_STATUS_ACTY, true);
     }
     if (initRemoteTime != 0 && initRemoteTime < now && !floower->arePetalsMoving()) {
         initRemoteTime = 0;
-        remote->init();
-        remote->startAdvertising();
+        bluetoothControl->init();
+        bluetoothControl->startAdvertising();
     }
     if (deepSleepTime != 0 && deepSleepTime < now) {
         deepSleepTime = 0;
@@ -74,14 +74,14 @@ void SmartPowerBehavior::update() {
 bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && canInitializeBluetooth()) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
-        remote->init();
-        remote->startAdvertising();
+        bluetoothControl->init();
+        bluetoothControl->startAdvertising();
         changeState(STATE_BLUETOOTH_PAIRING);
         return true;
     }
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
         // bluetooth pairing interrupted
-        remote->stopAdvertising();
+        bluetoothControl->stopAdvertising();
         config->setRemoteOnStartup(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
@@ -103,7 +103,7 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 void SmartPowerBehavior::enablePeripherals(bool wokeUp) {
     floower->initStepper();
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
-    //remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
+    //bluetoothControl->onTakeOver([=]() { onRemoteTookOver(); }); // bluetoothControl controller took over
     if (config->bluetoothEnabled && config->initRemoteOnStartup) {
         initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
     }
@@ -111,7 +111,7 @@ void SmartPowerBehavior::enablePeripherals(bool wokeUp) {
 
 void SmartPowerBehavior::disablePeripherals() {
     floower->disableTouch();
-    remote->stopAdvertising();
+    bluetoothControl->stopAdvertising();
     // TODO: disconnect remote
     // TODO: disable petals?
 }
@@ -156,7 +156,7 @@ void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
         }
     }
 
-    remote->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
+    bluetoothControl->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
     indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
 }
 

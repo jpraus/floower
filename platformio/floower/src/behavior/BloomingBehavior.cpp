@@ -17,8 +17,8 @@ static const char* LOG_TAG = "BloomingBehavior";
 #define STATE_LIGHT_PICKER 134
 #define STATE_GOING_OFF 135
 
-BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, Remote *remote) 
-        : SmartPowerBehavior(config, floower, remote) {
+BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl) 
+        : SmartPowerBehavior(config, floower, bluetoothControl) {
 }
 
 void BloomingBehavior::update() {

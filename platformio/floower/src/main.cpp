@@ -4,7 +4,7 @@
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include "Config.h"
-#include "Remote.h"
+#include "BluetoothControl.h"
 #include "behavior/BloomingBehavior.h"
 #include "behavior/Calibration.h"
 
@@ -30,7 +30,7 @@ const bool colorPickerEnabled = true;
 
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
-Remote remote(&floower, &config);
+BluetoothControl bluetoothControl(&floower, &config);
 Behavior *behavior;
 
 void configure();
@@ -73,7 +73,7 @@ void setup() {
         behavior = new Calibration(&config, &floower);
     }
     else {
-        behavior = new BloomingBehavior(&config, &floower, &remote);
+        behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
     }
     behavior->init(wokeUp);
 }

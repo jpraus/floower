@@ -1,15 +1,10 @@
 #pragma once
 
-#include "Arduino.h"
-#include "Config.h"
-#include "behavior/Behavior.h"
 #include "behavior/SmartPowerBehavior.h"
-#include "Remote.h"
-#include "hardware/Floower.h"
 
 class BloomingBehavior : public SmartPowerBehavior {
     public:
-        BloomingBehavior(Config *config, Floower *floower, Remote *remote);
+        BloomingBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl);
         virtual void update();
 
     protected:
