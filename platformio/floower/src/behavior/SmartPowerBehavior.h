@@ -10,11 +10,11 @@
 #define STATE_OFF 1
 #define STATE_BLUETOOTH_PAIRING 2
 #define STATE_CALIBRATION 3
-// state 128+ are reserved for child behaviors
+// states 128+ are reserved for child behaviors
 
-class StateMachine : public Behavior {
+class SmartPowerBehavior : public Behavior {
     public:
-        StateMachine(Config *config, Floower *floower, Remote *remote);
+        SmartPowerBehavior(Config *config, Floower *floower, Remote *remote);
         virtual void init(bool wokeUp = false);
         virtual void update();
         virtual bool isIdle();

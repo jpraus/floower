@@ -1,13 +1,12 @@
-#include "StateMachine.h"
+#include "behavior/SmartPowerBehavior.h"
 #include <esp_task_wdt.h>
-#include "behavior/BloomingBehavior.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
 #define LOG_TAG ""
 #else
 #include "esp_log.h"
-static const char* LOG_TAG = "StateMachine";
+static const char* LOG_TAG = "SmartPowerBehavior";
 #endif
 
 #define INDICATE_STATUS_ACTY 0
@@ -25,12 +24,12 @@ static const char* LOG_TAG = "StateMachine";
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
 
-StateMachine::StateMachine(Config *config, Floower *floower, Remote *remote)
+SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, Remote *remote)
         : config(config), floower(floower), remote(remote) {
     state = STATE_OFF;
 }
 
-void StateMachine::init(bool wokeUp) {
+void SmartPowerBehavior::init(bool wokeUp) {
     // check if there is enough power to run
     powerState = floower->readPowerState();
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
@@ -49,7 +48,7 @@ void StateMachine::init(bool wokeUp) {
     watchDogsTime = millis() + WATCHDOGS_INTERVAL; // TODO millis overflow
 }
 
-void StateMachine::update() {
+void SmartPowerBehavior::update() {
     // timers
     long now = millis();
     if (watchDogsTime < now) {
@@ -71,7 +70,7 @@ void StateMachine::update() {
     }
 }
 
-bool StateMachine::onLeafTouch(FloowerTouchEvent event) {
+bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
         remote->init();
@@ -90,7 +89,7 @@ bool StateMachine::onLeafTouch(FloowerTouchEvent event) {
     return false;
 }
 
-void StateMachine::enablePeripherals(bool wokeUp) {
+void SmartPowerBehavior::enablePeripherals(bool wokeUp) {
     floower->initStepper();
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
     //remote->onTakeOver([=]() { onRemoteTookOver(); }); // remote controller took over
@@ -99,18 +98,18 @@ void StateMachine::enablePeripherals(bool wokeUp) {
     }
 }
 
-void StateMachine::disablePeripherals() {
+void SmartPowerBehavior::disablePeripherals() {
     floower->disableTouch();
     remote->stopAdvertising();
     // TODO: disconnect remote
     // TODO: disable petals?
 }
 
-bool StateMachine::isIdle() {
+bool SmartPowerBehavior::isIdle() {
     return state == STATE_STANDBY;
 }
 
-void StateMachine::powerWatchDog(bool wokeUp) {
+void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
     powerState = floower->readPowerState();
 
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
@@ -147,13 +146,13 @@ void StateMachine::powerWatchDog(bool wokeUp) {
     indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
 }
 
-void StateMachine::changeStateIfIdle(state_t fromState, state_t toState) {
+void SmartPowerBehavior::changeStateIfIdle(state_t fromState, state_t toState) {
     if (state == fromState && !floower->arePetalsMoving() && !floower->isChangingColor()) {
         changeState(toState);
     }
 }
 
-void StateMachine::changeState(uint8_t newState) {
+void SmartPowerBehavior::changeState(uint8_t newState) {
     if (state != newState) {
         state = newState;
         ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
@@ -161,7 +160,7 @@ void StateMachine::changeState(uint8_t newState) {
     }
 }
 
-void StateMachine::indicateStatus(uint8_t status, bool enable) {
+void SmartPowerBehavior::indicateStatus(uint8_t status, bool enable) {
     if (enable) {
         if (status == INDICATE_STATUS_ACTY && indicatingStatus == INDICATE_STATUS_ACTY) {
             floower->showStatus(colorPurple, FloowerStatusAnimation::BLINK_ONCE, 50);
@@ -187,19 +186,19 @@ void StateMachine::indicateStatus(uint8_t status, bool enable) {
     }
 }
 
-void StateMachine::planDeepSleep(long timeoutMs) {
+void SmartPowerBehavior::planDeepSleep(long timeoutMs) {
     deepSleepTime = millis() + timeoutMs;
     ESP_LOGI(LOG_TAG, "Sleep in %d", timeoutMs);
 }
 
-void StateMachine::unplanDeepSleep() {
+void SmartPowerBehavior::unplanDeepSleep() {
     if (deepSleepTime > 0) {
         ESP_LOGI(LOG_TAG, "Sleep interrupted");
         deepSleepTime = 0;
     }
 }
 
-void StateMachine::enterDeepSleep() {
+void SmartPowerBehavior::enterDeepSleep() {
     ESP_LOGI(LOG_TAG, "Going to sleep now");
     esp_sleep_enable_touchpad_wakeup();
     //esp_wifi_stop();

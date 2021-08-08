@@ -8,22 +8,21 @@
 static const char* LOG_TAG = "BloomingBehavior";
 #endif
 
-#define STATE_STANDBY 0
-#define STATE_BLOOM_LIGHT 1
-#define STATE_BLOOM_OPENING 2
-#define STATE_BLOOMED 3
-#define STATE_BLOOMED_PICKER 4
-#define STATE_BLOOM_CLOSING 5
-#define STATE_LIGHT 6
-#define STATE_LIGHT_PICKER 7
-#define STATE_GOING_OFF 8
+#define STATE_BLOOM_LIGHT 128
+#define STATE_BLOOM_OPENING 129
+#define STATE_BLOOMED 130
+#define STATE_BLOOMED_PICKER 131
+#define STATE_BLOOM_CLOSING 132
+#define STATE_LIGHT 133
+#define STATE_LIGHT_PICKER 134
+#define STATE_GOING_OFF 135
 
 BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, Remote *remote) 
-        : StateMachine(config, floower, remote) {
+        : SmartPowerBehavior(config, floower, remote) {
 }
 
 void BloomingBehavior::update() {
-    StateMachine::update();
+    SmartPowerBehavior::update();
 
     if (state != STATE_STANDBY) {
         changeStateIfIdle(STATE_BLOOM_OPENING, STATE_BLOOMED);
@@ -33,10 +32,12 @@ void BloomingBehavior::update() {
 }
 
 bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
-    if (StateMachine::onLeafTouch(event)) {
+    if (SmartPowerBehavior::onLeafTouch(event)) {
         return true;
     }
     else if (event == TOUCH_DOWN) {
+        Serial.println(state);
+        Serial.println(STATE_STANDBY);
         if (state == STATE_STANDBY) {
             // light up instantly on touch
             HsbColor nextColor = nextRandomColor();
