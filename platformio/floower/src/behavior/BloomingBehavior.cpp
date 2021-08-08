@@ -61,36 +61,31 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
         }
     }
     else if (event == TOUCH_UP) {
-        if (preventTouchUp) {
-            preventTouchUp = false;
+        if (state == STATE_STANDBY) {
+            // light + open
+            HsbColor nextColor = nextRandomColor();
+            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
+            floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
+            changeState(STATE_BLOOM_OPENING);
+            return true;
         }
-        else {
-            if (state == STATE_STANDBY) {
-                // light + open
-                HsbColor nextColor = nextRandomColor();
-                floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
-                floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-                changeState(STATE_BLOOM_OPENING);
-                return true;
-            }
-            else if (state == STATE_BLOOM_LIGHT) {
-                // open
-                floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-                changeState(STATE_BLOOM_OPENING);
-                return true;
-            }
-            else if (state == STATE_BLOOMED) {
-                // close
-                floower->setPetalsOpenLevel(0, config->speedMillis);
-                changeState(STATE_BLOOM_CLOSING);
-                return true;
-            }
-            else if (state == STATE_LIGHT) {
-                // shutdown
-                floower->transitionColorBrightness(0, config->speedMillis / 2);
-                changeState(STATE_GOING_OFF);
-                return true;
-            }
+        else if (state == STATE_BLOOM_LIGHT) {
+            // open
+            floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
+            changeState(STATE_BLOOM_OPENING);
+            return true;
+        }
+        else if (state == STATE_BLOOMED) {
+            // close
+            floower->setPetalsOpenLevel(0, config->speedMillis);
+            changeState(STATE_BLOOM_CLOSING);
+            return true;
+        }
+        else if (state == STATE_LIGHT) {
+            // shutdown
+            floower->transitionColorBrightness(0, config->speedMillis / 2);
+            changeState(STATE_GOING_OFF);
+            return true;
         }
     }
     else if (event == TOUCH_LONG) {
@@ -110,6 +105,10 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
         }
     }
     return false;
+}
+
+bool BloomingBehavior::canInitializeBluetooth() {
+    return SmartPowerBehavior::canInitializeBluetooth() || state == STATE_LIGHT_PICKER || state == STATE_BLOOM_LIGHT;
 }
 
 HsbColor BloomingBehavior::nextRandomColor() {

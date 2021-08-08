@@ -70,7 +70,7 @@ class Config {
     bool deepSleepEnabled = false;
     bool bluetoothEnabled = false;
     bool colorPickerEnabled = false;
-    bool touchEnabled = false;
+
     // configration
     uint8_t colorSchemeSize = 0;
     HsbColor colorScheme[10]; // max 10 colors

@@ -14,7 +14,6 @@
 const bool deepSleepEnabled = true;
 const bool bluetoothEnabled = true;
 const bool colorPickerEnabled = true;
-const bool touchEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
@@ -50,7 +49,6 @@ void setup() {
     config.deepSleepEnabled = deepSleepEnabled;
     config.bluetoothEnabled = bluetoothEnabled;
     config.colorPickerEnabled = colorPickerEnabled;
-    config.touchEnabled = touchEnabled;
 
     // after wake up setup
     bool wokeUp = false;

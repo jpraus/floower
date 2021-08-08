@@ -64,14 +64,15 @@ void SmartPowerBehavior::update() {
         remote->startAdvertising();
     }
     if (deepSleepTime != 0 && deepSleepTime < now) {
-    // TODO: if (deepSleepTime != 0 && deepSleepTime < now && !floower->arePetalsMoving()) {
         deepSleepTime = 0;
-        enterDeepSleep();
+        if (!powerState.usbPowered) {
+            enterDeepSleep();
+        }
     }
 }
 
 bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
-    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && state == STATE_STANDBY) {
+    if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && canInitializeBluetooth()) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
         remote->init();
         remote->startAdvertising();
@@ -84,9 +85,19 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
         config->setRemoteOnStartup(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
+        preventTouchUp = true;
         return true;
     }
+    else if (preventTouchUp && event == TOUCH_UP) {
+        preventTouchUp = false;
+        return true;
+    };
+
     return false;
+}
+
+bool SmartPowerBehavior::canInitializeBluetooth() {
+    return state == STATE_STANDBY;
 }
 
 void SmartPowerBehavior::enablePeripherals(bool wokeUp) {
@@ -156,7 +167,14 @@ void SmartPowerBehavior::changeState(uint8_t newState) {
     if (state != newState) {
         state = newState;
         ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
-        unplanDeepSleep();
+
+        if (!powerState.usbPowered && state == STATE_STANDBY) {
+            planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
+        }
+        else if (deepSleepTime > 0) {
+            ESP_LOGI(LOG_TAG, "Sleep interrupted");
+            deepSleepTime = 0;
+        }
     }
 }
 
@@ -187,14 +205,9 @@ void SmartPowerBehavior::indicateStatus(uint8_t status, bool enable) {
 }
 
 void SmartPowerBehavior::planDeepSleep(long timeoutMs) {
-    deepSleepTime = millis() + timeoutMs;
-    ESP_LOGI(LOG_TAG, "Sleep in %d", timeoutMs);
-}
-
-void SmartPowerBehavior::unplanDeepSleep() {
-    if (deepSleepTime > 0) {
-        ESP_LOGI(LOG_TAG, "Sleep interrupted");
-        deepSleepTime = 0;
+    if (config->deepSleepEnabled) {
+        deepSleepTime = millis() + timeoutMs;
+        ESP_LOGI(LOG_TAG, "Sleep in %d", timeoutMs);
     }
 }
 

@@ -14,11 +14,10 @@ class BloomingBehavior : public SmartPowerBehavior {
 
     protected:
         virtual bool onLeafTouch(FloowerTouchEvent event);
+        virtual bool canInitializeBluetooth();
 
     private:
         HsbColor nextRandomColor();
-
         unsigned long colorsUsed = 0;
-        bool preventTouchUp = false;
   
 };

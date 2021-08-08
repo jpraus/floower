@@ -21,6 +21,8 @@ class SmartPowerBehavior : public Behavior {
         
     protected:
         virtual bool onLeafTouch(FloowerTouchEvent event);
+        //virtual bool onRemoteEvent();
+        virtual bool canInitializeBluetooth();
 
         void changeStateIfIdle(state_t fromState, state_t toState);
         void changeState(uint8_t newState);
@@ -30,13 +32,13 @@ class SmartPowerBehavior : public Behavior {
         Remote *remote;
 
         uint8_t state;
+        bool preventTouchUp = false;
 
     private:
         void enablePeripherals(bool wokeUp = false);
         void disablePeripherals();        
         void powerWatchDog(bool wokeUp = false);
         void planDeepSleep(long timeoutMs);
-        void unplanDeepSleep();
         void enterDeepSleep();
         void indicateStatus(uint8_t status, bool enable);
 
