@@ -1,9 +1,9 @@
 
 #include <Arduino.h>
 #include <unity.h>
-#include "StateMachine.h"
+#include "behavior/SmartPowerBehavior.h""
 
-StateMachine *stateMachine;
+SmartPowerBehavior *smartPowerBehavior;
 
 void test_example(void) {
     TEST_ASSERT_EQUAL(32, 32);
