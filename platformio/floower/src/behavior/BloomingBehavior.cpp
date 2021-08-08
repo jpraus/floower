@@ -36,8 +36,6 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
         return true;
     }
     else if (event == TOUCH_DOWN) {
-        Serial.println(state);
-        Serial.println(STATE_STANDBY);
         if (state == STATE_STANDBY) {
             // light up instantly on touch
             HsbColor nextColor = nextRandomColor();
@@ -90,13 +88,13 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
     }
     else if (event == TOUCH_LONG) {
         if (config->colorPickerEnabled) {
-            if (state == STATE_STANDBY || state == STATE_BLOOM_LIGHT || state == STATE_LIGHT) {
+            if (state == STATE_STANDBY || state == STATE_BLOOM_LIGHT || state == STATE_LIGHT || state == STATE_BLOOM_CLOSING) {
                 floower->startAnimation(FloowerColorAnimation::RAINBOW);
                 preventTouchUp = true;
                 changeState(STATE_LIGHT_PICKER);
                 return true;
             }
-            else if (state == STATE_BLOOMED) {
+            else if (state == STATE_BLOOMED || state == STATE_BLOOM_OPENING) {
                 floower->startAnimation(FloowerColorAnimation::RAINBOW);
                 preventTouchUp = true;
                 changeState(STATE_BLOOMED_PICKER);

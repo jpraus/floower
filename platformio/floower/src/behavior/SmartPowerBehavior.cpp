@@ -41,6 +41,7 @@ void SmartPowerBehavior::init(bool wokeUp) {
 
     if (state == STATE_STANDBY) {
         // normal operation
+        floower->setPetalsOpenLevel(0, 100); // reset petals position to known one (important for servo)
         ESP_LOGI(LOG_TAG, "Ready");
     }
 
