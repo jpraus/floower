@@ -53,9 +53,9 @@ class Floower {
     uint8_t readTouch();
     void onChange(FloowerChangeCallback callback);
 
-    void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
-    uint8_t getPetalsOpenLevel();
-    uint8_t getCurrentPetalsOpenLevel();
+    void setPetalsOpenLevel(int8_t level, int transitionTime = 0);
+    int8_t getPetalsOpenLevel();
+    int8_t getCurrentPetalsOpenLevel();
     void transitionColor(double hue, double saturation, double brightness, int transitionTime = 0);
     void transitionColorBrightness(double brightness, int transitionTime = 0);
     void flashColor(double hue, double saturation, int flashDuration);

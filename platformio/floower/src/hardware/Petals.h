@@ -11,9 +11,9 @@ class Petals {
     virtual void init(long currentPosition = 0) = 0;
     virtual void update() = 0;
 
-    virtual void setPetalsOpenLevel(uint8_t level, int transitionTime = 0) = 0;
-    virtual uint8_t getPetalsOpenLevel() = 0;
-    virtual uint8_t getCurrentPetalsOpenLevel() = 0;
+    virtual void setPetalsOpenLevel(int8_t level, int transitionTime = 0) = 0; // level need to be signed to compare with local signed variable
+    virtual int8_t getPetalsOpenLevel() = 0;
+    virtual int8_t getCurrentPetalsOpenLevel() = 0;
     virtual bool arePetalsMoving() = 0;
     virtual bool setEnabled(bool enabled) = 0;
 };
@@ -24,9 +24,9 @@ class StepperPetals : public Petals {
     void init(long currentPosition = 0);
     void update();
 
-    void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
-    uint8_t getPetalsOpenLevel();
-    uint8_t getCurrentPetalsOpenLevel();
+    void setPetalsOpenLevel(int8_t level, int transitionTime = 0);
+    int8_t getPetalsOpenLevel();
+    int8_t getCurrentPetalsOpenLevel();
     bool arePetalsMoving();
     bool setEnabled(bool enabled);
 
@@ -48,9 +48,9 @@ class ServoPetals : public Petals {
     void init(long currentPosition = 0);
     void update();
 
-    void setPetalsOpenLevel(uint8_t level, int transitionTime = 0);
-    uint8_t getPetalsOpenLevel();
-    uint8_t getCurrentPetalsOpenLevel();
+    void setPetalsOpenLevel(int8_t level, int transitionTime = 0);
+    int8_t getPetalsOpenLevel();
+    int8_t getCurrentPetalsOpenLevel();
     bool arePetalsMoving();
     bool setEnabled(bool enabled);
 

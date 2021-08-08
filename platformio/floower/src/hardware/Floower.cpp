@@ -174,7 +174,7 @@ void Floower::onChange(FloowerChangeCallback callback) {
   changeCallback = callback;
 }
 
-void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
+void Floower::setPetalsOpenLevel(int8_t level, int transitionTime) {
   petals->setPetalsOpenLevel(level, transitionTime);
 
   if (changeCallback != nullptr) {
@@ -182,11 +182,11 @@ void Floower::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   }
 }
 
-uint8_t Floower::getPetalsOpenLevel() {
+int8_t Floower::getPetalsOpenLevel() {
   return petals->getPetalsOpenLevel();
 }
 
-uint8_t Floower::getCurrentPetalsOpenLevel() {
+int8_t Floower::getCurrentPetalsOpenLevel() {
   return petals->getCurrentPetalsOpenLevel();
 }
 

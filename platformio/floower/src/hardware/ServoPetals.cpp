@@ -17,8 +17,8 @@ ServoPetals::ServoPetals(Config *config) : config(config) {
 
 void ServoPetals::init(long currentPosition) {
   // default servo configuration
-  servoAngle = config->servoClosed;
-  servoOriginAngle = config->servoClosed;
+  servoAngle = config->servoClosed + 1; // to allow auto-calibration on startup
+  servoOriginAngle = servoAngle;
   servoTargetAngle = config->servoClosed;
   petalsOpenLevel = -1; // 0-100% (-1 unknown)
 
@@ -41,12 +41,19 @@ void ServoPetals::update() {
   unsigned long now = millis();
 
   if (servoAngle != servoTargetAngle) {
-    float progress = 1;
     if (movementTransitionTime > 0 && movementStartTime > 0 && movementStartTime <= now) {
       // calculate the progress as the result of time function of the animation function
-      progress = (now - movementStartTime) / (float) movementTransitionTime;
+      float progress = (now - movementStartTime) / (float) movementTransitionTime;
+      if (progress >= 1) {
+        servoAngle = servoTargetAngle;
+      }
+      else {
+        servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * progress;
+      }
     }
-    servoAngle = servoOriginAngle + (servoTargetAngle - servoOriginAngle) * progress;
+    else {
+      servoAngle = servoTargetAngle;
+    }
     setEnabled(true);
     servo.write(servoAngle);
 
@@ -62,7 +69,7 @@ void ServoPetals::update() {
   }
 }
 
-void ServoPetals::setPetalsOpenLevel(uint8_t level, int transitionTime) {
+void ServoPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
   ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
 
   if (level == petalsOpenLevel) {
@@ -85,11 +92,11 @@ void ServoPetals::setPetalsOpenLevel(uint8_t level, int transitionTime) {
   servoPowerOffTime = 0;
 }
 
-uint8_t ServoPetals::getPetalsOpenLevel() {
+int8_t ServoPetals::getPetalsOpenLevel() {
   return petalsOpenLevel;
 }
 
-uint8_t ServoPetals::getCurrentPetalsOpenLevel() {
+int8_t ServoPetals::getCurrentPetalsOpenLevel() {
   if (arePetalsMoving()) {
     float range = config->servoOpen - config->servoClosed;
     float current = servoAngle - config->servoClosed;

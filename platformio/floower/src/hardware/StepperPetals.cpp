@@ -60,7 +60,7 @@ void StepperPetals::update() {
   }
 }
 
-void StepperPetals::setPetalsOpenLevel(uint8_t level, int transitionTime) {
+void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
   ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
 
   if (level == petalsOpenLevel) {
@@ -75,18 +75,13 @@ void StepperPetals::setPetalsOpenLevel(uint8_t level, int transitionTime) {
     // TODO: calculate speed according to transitionTime
     stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
   }
-
-// TODO
-//  if (changeCallback != nullptr) {
-//    changeCallback(petalsOpenLevel, pixelsTargetColor);
-//  }
 }
 
-uint8_t StepperPetals::getPetalsOpenLevel() {
+int8_t StepperPetals::getPetalsOpenLevel() {
   return petalsOpenLevel;
 }
 
-uint8_t StepperPetals::getCurrentPetalsOpenLevel() {
+int8_t StepperPetals::getCurrentPetalsOpenLevel() {
   if (stepperMotion.distanceToGo() != 0) {
     float position = stepperMotion.currentPosition();
     return (position / TMC_OPEN_STEPS) * 100;
