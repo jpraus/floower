@@ -4,9 +4,9 @@
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include "Config.h"
-#include "Calibration.h"
 #include "Remote.h"
 #include "behavior/BloomingBehavior.h"
+#include "behavior/Calibration.h"
 
 ///////////// SOFTWARE CONFIGURATION
 
