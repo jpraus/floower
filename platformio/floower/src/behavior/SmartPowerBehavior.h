@@ -15,8 +15,8 @@
 class SmartPowerBehavior : public Behavior {
     public:
         SmartPowerBehavior(Config *config, Floower *floower, BluetoothControl *remote);
-        virtual void init(bool wokeUp = false);
-        virtual void update();
+        virtual void setup(bool wokeUp = false);
+        virtual void loop();
         virtual bool isIdle();
         
     protected:

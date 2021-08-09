@@ -5,7 +5,7 @@
 class BloomingBehavior : public SmartPowerBehavior {
     public:
         BloomingBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl);
-        virtual void update();
+        virtual void loop();
 
     protected:
         virtual bool onLeafTouch(FloowerTouchEvent event);

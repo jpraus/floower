@@ -29,7 +29,7 @@ SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, Bluetoo
     state = STATE_OFF;
 }
 
-void SmartPowerBehavior::init(bool wokeUp) {
+void SmartPowerBehavior::setup(bool wokeUp) {
     // check if there is enough power to run
     powerState = floower->readPowerState();
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
@@ -48,7 +48,7 @@ void SmartPowerBehavior::init(bool wokeUp) {
     watchDogsTime = millis() + WATCHDOGS_INTERVAL; // TODO millis overflow
 }
 
-void SmartPowerBehavior::update() {
+void SmartPowerBehavior::loop() {
     // timers
     long now = millis();
     if (watchDogsTime < now) {

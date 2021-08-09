@@ -14,12 +14,12 @@ Calibration::Calibration(Config *config, Floower *floower)
         : config(config), floower(floower) {
 }
 
-void Calibration::init(bool wokeUp) {
+void Calibration::setup(bool wokeUp) {
     state = STATE_LISTENING;
     floower->flashColor(colorPurple.H, colorPurple.S, 1000);
 }
 
-void Calibration::update() {
+void Calibration::loop() {
     if (state == STATE_LISTENING) {
         calibrateListenSerial();
     }

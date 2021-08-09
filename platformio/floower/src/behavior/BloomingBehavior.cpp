@@ -21,8 +21,8 @@ BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, BluetoothCo
         : SmartPowerBehavior(config, floower, bluetoothControl) {
 }
 
-void BloomingBehavior::update() {
-    SmartPowerBehavior::update();
+void BloomingBehavior::loop() {
+    SmartPowerBehavior::loop();
 
     if (state != STATE_STANDBY) {
         changeStateIfIdle(STATE_BLOOM_OPENING, STATE_BLOOMED);

@@ -8,8 +8,8 @@
 class Calibration : public Behavior {
     public:
         Calibration(Config *config, Floower *floower);
-        virtual void init(bool wokeUp = false);
-        virtual void update();
+        virtual void setup(bool wokeUp = false);
+        virtual void loop();
         virtual bool isIdle();
 
     private:

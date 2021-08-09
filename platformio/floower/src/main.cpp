@@ -75,12 +75,12 @@ void setup() {
     else {
         behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
     }
-    behavior->init(wokeUp);
+    behavior->setup(wokeUp);
 }
 
 void loop() {
     floower.update();
-    behavior->update();
+    behavior->loop();
 
     // save some power when there is nothing happening
     if (behavior->isIdle()) {
