@@ -1,6 +1,8 @@
 # [![Floower](https://floower.io/wp-content/uploads/2020/04/floower.png)](https://floower.io)
 
-The most advanced flower in the world. Electrical & Mechanical flower lamp that blooms with all the colors of rainbow thanks to the set of RGB LEDs. Flooware is what we called Smart Art. We are aiming to create a technology with soul. That everybody will love.
+### Floower is a nature-inspired smart connected device with open-source software that blooms and shines on wish.
+
+Floower can be connected to home assistants, sensors, and other smart devices and create a very original way how to interface with humans. Smart devices don't have to be plastic, square, and ugly. They can be as beautiful and intricate as Floower. It's a smart art.
 
 [floower.io](https://floower.io)
 
