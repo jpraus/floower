@@ -6,20 +6,22 @@ Floower can be connected to home assistants, sensors, and other smart devices an
 
 Visit [floower.io](https://floower.io) to learn more.
 
-![Everblooming Flowers](https://github.com/jpraus/floower/blob/master/doc/floower.jpeg?raw=true)
+[![This is Floower](https://github.com/jpraus/floower/blob/master/doc/floower-preview.jpg?raw=true)](https://www.youtube.com/watch?v=r68Je8jlLY4)
 
 ## Features
 
-* 6 petals that open and close - operated by servo motor inside the flowerpot
-* 7 RGB LEDs in the center of the blossom
-* capacitive touch sensor in the leaf
+* 6 petals that open and close - operated by stepper motor inside the flowerpot
+* 7 individually addressable RGB LEDs in the center of the blossom
+* capacitive touch sensor in the form of leaf
 * ESP32 microcontroller
-* Arduino IDE or MicroPython support
+* RTC clock IC
 * Bluetooth & WiFi connectivity
-* USB-C interface for programming (CP2102N USB-to-UART)
+* RGB status LED in the floowerpot
 * 1600 mAh LIPO battery (TP4056 charging IC)
-* deep sleep mode to extend battery life
-* red charging and blue activity LEDs in the flowerpot
+* ultra low power mode to extend battery life
+* USB-C interface for programming (CP2102N USB-to-UART)
+* PlatformIO or MicroPython support
+* extendable with I2C sensors
 
 ## How do I Get One?
 
@@ -41,7 +43,7 @@ Visit [floower.io](https://floower.io).
 
 ## Upgrading the Flooware
 
-The Floower firmware is called Flooware. We aim to provide all the Flooware with the latest updates to get the latest features and new seasonal updates. The new age of Smart Art has just begun! [Upgrade your Floower with latest Flooware](https://floower.io/upgrading-floower/).
+The Floower firmware is called Flooware. We aim to provide all the Floowers with the latest updates to get the latest features and new seasonal updates. The new age of Smart Art has just begun! [Upgrade your Floower with latest Flooware](https://floower.io/upgrading-floower/).
 
 ## Playing With the Code
 
