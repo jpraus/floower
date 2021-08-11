@@ -49,6 +49,7 @@ void StepperPetals::init(long currentPosition) {
 
     stepperMotion.setPinsInverted(true, false, false);
     stepperMotion.setMaxSpeed(4000);
+    stepperMotion.setSpeed(4000);
     stepperMotion.setAcceleration(4000);
     stepperMotion.setCurrentPosition(currentPosition); // closed (-> positive is open)
     stepperMotion.moveTo(0);
@@ -56,6 +57,7 @@ void StepperPetals::init(long currentPosition) {
 
 void StepperPetals::update() {
     if (stepperMotion.distanceToGo() != 0) {
+        //stepperMotion.runSpeed();
         stepperMotion.run();
     }
 }

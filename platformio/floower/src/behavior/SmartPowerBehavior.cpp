@@ -117,7 +117,7 @@ void SmartPowerBehavior::disablePeripherals() {
 }
 
 bool SmartPowerBehavior::isIdle() {
-    return state == STATE_STANDBY;
+    return state == STATE_STANDBY && !powerState.usbPowered;
 }
 
 void SmartPowerBehavior::powerWatchDog(bool wokeUp) {

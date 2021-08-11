@@ -6,6 +6,7 @@
 #include "Config.h"
 #include "BluetoothControl.h"
 #include "behavior/BloomingBehavior.h"
+#include "behavior/MindfullnessBehavior.h"
 #include "behavior/Calibration.h"
 
 ///////////// SOFTWARE CONFIGURATION
@@ -74,6 +75,7 @@ void setup() {
     }
     else {
         behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
+        //behavior = new MindfullnessBehavior(&config, &floower, &bluetoothControl);
     }
     behavior->setup(wokeUp);
 }
