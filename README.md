@@ -40,53 +40,31 @@ Visit [floower.io](https://floower.io).
 * **Revision 7**
   * Serial numbers 0133 +
   * Ability to charge from quick/smart charges
+* **Revision 8**
+* **Revision 9**  
 
 ## Upgrading the Flooware
 
 The Floower firmware is called Flooware. We aim to provide all the Floowers with the latest updates to get the latest features and new seasonal updates. The new age of Smart Art has just begun! [Upgrade your Floower with latest Flooware](https://floower.io/upgrading-floower/).
 
-## Playing With the Code
+## Customizing the Floower code
 
-Flooware is written in Arduino code. It's super easy to understand and develop. If you wish to adjust your Flooware in a unique way. Feel free to clone the project and start writing the code! Any bug-fixes, improvements, or new features are welcomed! Follow up on the next steps to get your IDE setup for Flooware development.
+I would love to build a community of developers around Floower. I would love to have you write custom mods to the behavior of Floower to bring joy into everyday life. That’s my dream. After all, it’s an Opensource software and every Floower is equipped with a USB-C interface to flash it with the firmware. Just hook it up to your computer and you are good to go!
 
-### Installing Prerequisites
+Customizing the Floower is fun. I already made several mods for several occasions and faires – Halloween Floower, color mixer, blooming garden installation, simple reflex game, etc. And it nicely shows that the Floower is a very versatile device. Any bug-fixes, improvements, or new features are welcomed! Follow up on the next steps to get your IDE setup for Flooware development.
 
-Floower can be programmed using the Arduino IDE. However, the ESP32 microcontroller is not supported by default, so you need to install & configure it:
+### Prerequisites
 
-* Prerequisites: [Arduino IDE](https://www.arduino.cc/en/main/software) Installed
-* Install [CP2102 Universal Driver](https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
-  * If you already have a CP2102 driver please make sure you update to the latest version available
-* Install ESP32 Add-on in Arduino IDE:
-  * Open **File > Preferences**
-  * Enter **https://dl.espressif.com/dl/package_esp32_index.json** into the **Additional Board Manager URLs** field and click **OK** button. (If you already have other boards URL, separate the URLs with a comma)
+All you need to have is [Visual Studio Code](https://code.visualstudio.com/) and [PlatformIO plugin](https://platformio.org/). That's it! Do it.
 
-![Additional Board Manager URLs](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-preferences.png?raw=true)
-
-* Open **Tools > Boards > Boards Manager...** and search for esp32
-* Click Install button for the **ESP32 by Espressif Systems**. It should be installed after a few seconds.
-
-![Installing ESP32 by Espressif Systems](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-boards-manager.png?raw=true)
-
-* Open **Tools > Boards** and select **DOIT ESP32 DEVKIT V1**
-
-![Selecting DOIT ESP32 DEVKIT V1 board](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-board.png?raw=true)
-
-### Uploading code
+### Compiling and uploading the code
 
 * Download / Clone this code repository
 
 ![Code repository](https://github.com/jpraus/floower/blob/master/doc/github-code.png?raw=true)
 
-* Open src/flower-esp32/[flower-esp32.ino](src/flower-esp32/flower-esp32.ino) project file with Arduino IDE (it will automatically load all the project files)
-* Install following Arduino libraries to full-fill dependencies:
-  * Open **Tools > Manage Libraries**, search and install following dependencies:
-  * **ESP32Servo** (version 0.9.0 tested)
-  * **NeoPixelBus By Makuna** (version 2.6.0 tested)
-* Connect your Floower to your computer via USB-C data cable. Make sure you are using smart/data USB cable, some of the cables are power only and thus cannot transfer data at all. Select the port of your Floower **Tools > Port**. It should be the one that just appeared.
-
-![Arduino IDE Port](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-port.png?raw=true)
-
-* Run **Sketch > Upload**. You should get a sweet *'Hard resetting via RTS pin...'* message at the end of the console.
-* Now you can make your own personalized Floower.
-
-![Arduino IDE Upload](https://github.com/jpraus/floower/blob/master/doc/arduino-ide-upload.png?raw=true)
+* Open platformio/floower project with PlatformIO
+* Connect your Floower to your computer via USB-C data cable. Make sure you are using smart/data USB cable, some of the cables are power only and thus cannot transfer data at all.
+* Compile and upload the code.
+* Read a [Quickstart Guide](https://floower.io/i-wrote-a-terrible-firmware/) on Floower's blog to learn some details about the code architecture and classes.
+* Have a fun!
