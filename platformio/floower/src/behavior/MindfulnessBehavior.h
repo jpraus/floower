@@ -2,9 +2,9 @@
 
 #include "behavior/SmartPowerBehavior.h"
 
-class MindfullnessBehavior : public SmartPowerBehavior {
+class MindfulnessBehavior : public SmartPowerBehavior {
     public:
-        MindfullnessBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl);
+        MindfulnessBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl);
         virtual void setup(bool wokeUp = false);
         virtual void loop();
 

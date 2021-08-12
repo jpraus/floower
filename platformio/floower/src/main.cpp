@@ -6,14 +6,14 @@
 #include "Config.h"
 #include "BluetoothControl.h"
 #include "behavior/BloomingBehavior.h"
-#include "behavior/MindfullnessBehavior.h"
+#include "behavior/MindfulnessBehavior.h"
 #include "behavior/Calibration.h"
 
 ///////////// SOFTWARE CONFIGURATION
 
 // feature flags
 const bool deepSleepEnabled = true;
-const bool bluetoothEnabled = true;
+const bool bluetoothEnabled = false;
 const bool colorPickerEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -74,8 +74,8 @@ void setup() {
         behavior = new Calibration(&config, &floower);
     }
     else {
-        behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
-        //behavior = new MindfullnessBehavior(&config, &floower, &bluetoothControl);
+        //behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
+        behavior = new MindfulnessBehavior(&config, &floower, &bluetoothControl);
     }
     behavior->setup(wokeUp);
 }

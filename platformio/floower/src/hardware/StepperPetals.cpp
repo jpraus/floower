@@ -26,7 +26,7 @@ StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Se
     Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
 }
 
-void StepperPetals::init(long currentPosition) {
+void StepperPetals::init(unsigned long currentPosition) {
     petalsOpenLevel = 0; // 0-100%
 
     // stepper
@@ -34,14 +34,15 @@ void StepperPetals::init(long currentPosition) {
     setEnabled(true);
     pinMode(TMC_EN_PIN, OUTPUT);
 
-    currentSteps = 0;
+    currentSteps = currentPosition;
     targetSteps = 0;
+    stepInterval = 200; // default speed
     pinMode(TMC_STEP_PIN, OUTPUT);
     digitalWrite(TMC_STEP_PIN, LOW);
 
-    direction = DIRECTION_CW;
+    direction = DIRECTION_CCW; // default is closing
     pinMode(TMC_DIR_PIN, OUTPUT);
-    digitalWrite(TMC_STEP_PIN, LOW);
+    digitalWrite(TMC_DIR_PIN, HIGH);
 
     // verify stepper is available
     if (stepperDriver.testConnection()) {
@@ -89,7 +90,7 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
 
     // set direction upfront
     direction = targetSteps >= currentSteps ? DIRECTION_CW : DIRECTION_CCW;
-    digitalWrite(TMC_DIR_PIN, direction == 1 ? LOW : HIGH);
+    digitalWrite(TMC_DIR_PIN, direction == DIRECTION_CW ? LOW : HIGH);
 }
 
 int8_t StepperPetals::getPetalsOpenLevel() {
