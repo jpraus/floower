@@ -43,11 +43,18 @@ bool MindfulnessBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (SmartPowerBehavior::onLeafTouch(event)) {
         return true;
     }
-    else if (event == TOUCH_DOWN && state == STATE_STANDBY) {
-        floower->transitionColor(colorPurple.H, colorPurple.S, 0.1, 2000);
-        floower->setPetalsOpenLevel(20, 2000);
-        eventTime = millis() + 5000;
-        state = STATE_INHALE;
+    else if (event == TOUCH_DOWN) {
+        if (state == STATE_STANDBY) {
+            floower->transitionColor(colorPurple.H, colorPurple.S, 0.1, 2000);
+            floower->setPetalsOpenLevel(20, 2000);
+            eventTime = millis() + 5000;
+            changeState(STATE_INHALE);
+        }
+        else {
+            floower->transitionColorBrightness(0, 5000);
+            floower->setPetalsOpenLevel(0, 5000);
+            changeState(STATE_STANDBY);
+        }
     }
     return false;
 }
