@@ -16,7 +16,7 @@ static const char* LOG_TAG = "StepperPetals";
 #define TMC_DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
 #define TMC_R_SENSE 0.13f       // Match to your driver Rsense
 #define TMC_MICROSTEPS 32
-#define TMC_OPEN_STEPS 15000
+#define TMC_OPEN_STEPS 30000
 
 #define TMC_MIN_PULSE_WIDTH 1
 #define DIRECTION_CW 1
