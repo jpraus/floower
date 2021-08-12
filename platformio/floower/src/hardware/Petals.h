@@ -3,7 +3,6 @@
 #include "Arduino.h"
 #include "Config.h"
 #include <tmc2300.h>
-#include <AccelStepper.h>
 #include <ESP32Servo.h>
 
 class Petals {
@@ -31,15 +30,22 @@ class StepperPetals : public Petals {
         bool setEnabled(bool enabled);
 
     private:
+        bool runStepper();
+
         Config *config;
 
         // stepper config
         TMC2300 stepperDriver;
-        AccelStepper stepperMotion;
 
         // stepper state
         int8_t petalsOpenLevel; // 0-100% (target angle in percentage)
+        int8_t direction; // 1 CW, -1 CCW
+        long targetSteps;
+        long currentSteps;
+        unsigned long lastStepTime;
+        unsigned long stepInterval;
         bool enabled;
+        unsigned long timer = 0;
 };
 
 class ServoPetals : public Petals {

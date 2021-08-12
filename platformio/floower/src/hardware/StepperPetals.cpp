@@ -16,9 +16,13 @@ static const char* LOG_TAG = "StepperPetals";
 #define TMC_DRIVER_ADDRESS 0b00 // TMC2209 Driver address according to MS1 and MS2
 #define TMC_R_SENSE 0.13f       // Match to your driver Rsense
 #define TMC_MICROSTEPS 32
-#define TMC_OPEN_STEPS 30000
+#define TMC_OPEN_STEPS 15000
 
-StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS), stepperMotion(AccelStepper::DRIVER, TMC_STEP_PIN, TMC_DIR_PIN) {
+#define TMC_MIN_PULSE_WIDTH 1
+#define DIRECTION_CW 1
+#define DIRECTION_CCW -1
+
+StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS) {
     Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
 }
 
@@ -29,6 +33,15 @@ void StepperPetals::init(long currentPosition) {
     enabled = false; // to make setStepperPowerOn effective
     setEnabled(true);
     pinMode(TMC_EN_PIN, OUTPUT);
+
+    currentSteps = 0;
+    targetSteps = 0;
+    pinMode(TMC_STEP_PIN, OUTPUT);
+    digitalWrite(TMC_STEP_PIN, LOW);
+
+    direction = DIRECTION_CW;
+    pinMode(TMC_DIR_PIN, OUTPUT);
+    digitalWrite(TMC_STEP_PIN, LOW);
 
     // verify stepper is available
     if (stepperDriver.testConnection()) {
@@ -46,19 +59,11 @@ void StepperPetals::init(long currentPosition) {
     Serial.println(chopconf.getMicrosteps());
     chopconf.setMicrosteps(TMC_MICROSTEPS);
     stepperDriver.writeChopconfReg(chopconf);
-
-    stepperMotion.setPinsInverted(true, false, false);
-    stepperMotion.setMaxSpeed(4000);
-    stepperMotion.setSpeed(4000);
-    stepperMotion.setAcceleration(4000);
-    stepperMotion.setCurrentPosition(currentPosition); // closed (-> positive is open)
-    stepperMotion.moveTo(0);
 }
 
 void StepperPetals::update() {
-    if (stepperMotion.distanceToGo() != 0) {
-        //stepperMotion.runSpeed();
-        stepperMotion.run();
+    if (currentSteps != targetSteps) {
+        runStepper();
     }
 }
 
@@ -71,12 +76,20 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     petalsOpenLevel = level;
 
     if (level >= 100) {
-        stepperMotion.moveTo(TMC_OPEN_STEPS);
+        targetSteps = TMC_OPEN_STEPS;
     }
     else {
-        // TODO: calculate speed according to transitionTime
-        stepperMotion.moveTo(level * TMC_OPEN_STEPS / 100);
+        targetSteps = level * TMC_OPEN_STEPS / 100;
     }
+
+    // calculate the speed
+    float stepsToTake = abs(targetSteps - currentSteps);
+    float stepsPerMs = stepsToTake / transitionTime;
+    stepInterval = fabs(1000.0 / stepsPerMs);
+
+    // set direction upfront
+    direction = targetSteps >= currentSteps ? DIRECTION_CW : DIRECTION_CCW;
+    digitalWrite(TMC_DIR_PIN, direction == 1 ? LOW : HIGH);
 }
 
 int8_t StepperPetals::getPetalsOpenLevel() {
@@ -84,16 +97,15 @@ int8_t StepperPetals::getPetalsOpenLevel() {
 }
 
 int8_t StepperPetals::getCurrentPetalsOpenLevel() {
-    if (stepperMotion.distanceToGo() != 0) {
-        float position = stepperMotion.currentPosition();
-        return (position / TMC_OPEN_STEPS) * 100;
+    if (currentSteps != targetSteps) {
+        return (currentSteps / TMC_OPEN_STEPS) * 100;
     }
     // optimization, no need to calculate the actual position when movement is finished
     return petalsOpenLevel;
 }
 
 bool StepperPetals::arePetalsMoving() {
-    return stepperMotion.distanceToGo() != 0;
+    return currentSteps != targetSteps;
 }
 
 bool StepperPetals::setEnabled(bool enabled) {
@@ -110,4 +122,26 @@ bool StepperPetals::setEnabled(bool enabled) {
         return true;
     }
     return false; // no change
+}
+
+bool StepperPetals::runStepper() {
+    if (!stepInterval) {
+	    return false;
+    }
+
+    unsigned long time = micros();   
+    if (time - lastStepTime >= stepInterval) {
+        currentSteps += direction;
+
+        // step
+        digitalWrite(TMC_STEP_PIN, HIGH);
+        // Caution 200ns setup time 
+        // Delay the minimum allowed pulse width
+        delayMicroseconds(TMC_MIN_PULSE_WIDTH);
+        digitalWrite(TMC_STEP_PIN, LOW);
+
+	    lastStepTime = time; // Caution: does not account for costs in step()
+	    return true;
+    }
+	return false;
 }
