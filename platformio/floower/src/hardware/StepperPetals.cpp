@@ -24,10 +24,14 @@ static const char* LOG_TAG = "StepperPetals";
 
 StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS) {
     Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
+    initialized = false;
+    petalsOpenLevel = 0; // 0-100%
 }
 
 void StepperPetals::init(unsigned long currentPosition) {
-    petalsOpenLevel = 0; // 0-100%
+    if (initialized) {
+        return;
+    }
 
     // stepper
     enabled = false; // to make setStepperPowerOn effective

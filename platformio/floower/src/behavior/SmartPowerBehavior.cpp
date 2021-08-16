@@ -125,12 +125,12 @@ void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
 
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
         // not powered by USB (switch must be ON) and low battery (* -> OFF)
-        if (state != STATE_OFF) {
+        if (state != STATE_LOW_BATTERY) {
             ESP_LOGW(LOG_TAG, "Shutting down, battery low voltage (%dV)", powerState.batteryVoltage);
             floower->flashColor(colorRed.H, colorRed.S, 1000);
             floower->setPetalsOpenLevel(0, 2500);
             disablePeripherals();
-            changeState(STATE_OFF);
+            changeState(STATE_LOW_BATTERY);
             planDeepSleep(LOW_BATTERY_WARNING_DURATION);
         }
     }
@@ -146,7 +146,7 @@ void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
     }
     else {
         // powered by USB or battery and switch is ON
-        if (state == STATE_OFF) {
+        if (state == STATE_OFF || (state == STATE_LOW_BATTERY && powerState.usbPowered)) {
             ESP_LOGI(LOG_TAG, "Power restored");
             enablePeripherals(wokeUp);
             changeState(STATE_STANDBY);
@@ -216,6 +216,7 @@ void SmartPowerBehavior::planDeepSleep(long timeoutMs) {
 
 void SmartPowerBehavior::enterDeepSleep() {
     ESP_LOGI(LOG_TAG, "Going to sleep now");
+    floower->beforeDeepSleep();
     esp_sleep_enable_touchpad_wakeup();
     //esp_wifi_stop();
     btStop();

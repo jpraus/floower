@@ -72,6 +72,7 @@ class Floower {
 
         PowerState readPowerState();
         bool isUsbPowered();
+        void beforeDeepSleep();
 
     private:
         bool setStepperPowerOn(bool powerOn);

@@ -66,6 +66,7 @@ void setup() {
     //esp_wifi_stop();
     btStop();
     floower.init();
+    floower.enableTouch([=](FloowerTouchEvent event){});
     floower.readPowerState(); // calibrate the ADC
     delay(50); // wait to warm-up
 
@@ -74,8 +75,8 @@ void setup() {
         behavior = new Calibration(&config, &floower);
     }
     else {
-        //behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
-        behavior = new MindfulnessBehavior(&config, &floower, &bluetoothControl);
+        behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
+        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothControl);
     }
     behavior->setup(wokeUp);
 }

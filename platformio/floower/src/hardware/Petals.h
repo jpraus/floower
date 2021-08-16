@@ -46,6 +46,7 @@ class StepperPetals : public Petals {
         unsigned long stepInterval;
         bool enabled;
         unsigned long timer = 0;
+        bool initialized;
 };
 
 class ServoPetals : public Petals {

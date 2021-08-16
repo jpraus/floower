@@ -456,3 +456,12 @@ PowerState Floower::readPowerState() {
 bool Floower::isUsbPowered() {
     return powerState.usbPowered;
 }
+
+void Floower::beforeDeepSleep() {
+    pixels.ClearTo(colorBlack);
+    pixels.Show();
+    statusPixel.ClearTo(colorBlack);
+    statusPixel.Show();
+    petals->setEnabled(false);
+    setPixelsPowerOn(false);
+}
