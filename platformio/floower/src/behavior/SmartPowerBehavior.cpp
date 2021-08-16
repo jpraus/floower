@@ -148,6 +148,7 @@ void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
         // powered by USB or battery and switch is ON
         if (state == STATE_OFF || (state == STATE_LOW_BATTERY && powerState.usbPowered)) {
             ESP_LOGI(LOG_TAG, "Power restored");
+            floower->stopAnimation(false); // in case of low battery blinking
             enablePeripherals(wokeUp);
             changeState(STATE_STANDBY);
         }
