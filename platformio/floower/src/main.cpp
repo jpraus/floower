@@ -66,7 +66,7 @@ void setup() {
     //esp_wifi_stop();
     btStop();
     floower.init();
-    floower.enableTouch([=](FloowerTouchEvent event){});
+    floower.enableTouch([=](FloowerTouchEvent event){}, !wokeUp); // enable NOP touch to enable deep sleep wake up function
     floower.readPowerState(); // calibrate the ADC
     delay(50); // wait to warm-up
 
