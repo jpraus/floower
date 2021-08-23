@@ -117,7 +117,7 @@ void SmartPowerBehavior::disablePeripherals() {
 }
 
 bool SmartPowerBehavior::isIdle() {
-    return state == STATE_STANDBY && !powerState.usbPowered;
+    return state == STATE_STANDBY && !powerState.usbPowered && !floower->arePetalsMoving(); // HOTFIX: arePetalsMoving is here to allow initial calibration of petals
 }
 
 void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
@@ -185,7 +185,9 @@ void SmartPowerBehavior::changeState(uint8_t newState) {
 void SmartPowerBehavior::indicateStatus(uint8_t status, bool enable) {
     if (enable) {
         if (status == INDICATE_STATUS_ACTY && indicatingStatus == INDICATE_STATUS_ACTY) {
-            floower->showStatus(colorPurple, FloowerStatusAnimation::BLINK_ONCE, 50);
+            HsbColor purple = colorPurple;
+            purple.B = 0.1;
+            floower->showStatus(purple, FloowerStatusAnimation::BLINK_ONCE, 50);
         }
         else if (indicatingStatus != status) {
             switch (status) {

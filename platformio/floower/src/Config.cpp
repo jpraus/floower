@@ -16,6 +16,7 @@ static const char* LOG_TAG = "Config";
 
 #define FLAG_BIT_CALIBRATED 0
 #define FLAG_BIT_INIT_REMOTE_ON_STARTUP 1
+#define FLAG_BIT_TOUCH_CALIBRATED 2
 
 // DO NOT CHANGE MEMORY ADDRESSES!
 // Hardware constants (reserved 0-19)
@@ -141,6 +142,7 @@ void Config::readFlags() {
     flags = EEPROM.read(EEPROM_ADDRESS_FLAGS);
     calibrated = CHECK_BIT(flags, FLAG_BIT_CALIBRATED);
     initRemoteOnStartup = CHECK_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+    touchCalibrated = CHECK_BIT(flags, FLAG_BIT_TOUCH_CALIBRATED);
 }
 
 void Config::setCalibrated() {
@@ -153,6 +155,12 @@ void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
     flags = initRemoteOnStartup ? SET_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP) : CLEAR_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
     EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
     this->initRemoteOnStartup = initRemoteOnStartup;
+}
+
+void Config::setTouchCalibrated(bool touchCalibrated) {
+    flags = touchCalibrated ? SET_BIT(flags, FLAG_BIT_TOUCH_CALIBRATED) : CLEAR_BIT(flags, FLAG_BIT_TOUCH_CALIBRATED);
+    EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
+    this->touchCalibrated = touchCalibrated;
 }
 
 void Config::setColorScheme(HsbColor* colors, uint8_t size) {

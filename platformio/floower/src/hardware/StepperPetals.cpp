@@ -37,12 +37,13 @@ void StepperPetals::init(bool initial, bool wokeUp) {
     currentSteps = 0;
     targetSteps = 0;
     stepInterval = 200; // default speed
+    lastStepTime = 0;
     pinMode(TMC_STEP_PIN, OUTPUT);
     digitalWrite(TMC_STEP_PIN, LOW);
 
     if (initial && !wokeUp) {
         // make sure the Floower is closed for the first time it's turned on
-        currentSteps = TMC_OPEN_STEPS; // TODO
+        currentSteps = 0; // TODO
     }
 
     direction = DIRECTION_CCW; // default is closing
@@ -87,6 +88,9 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
 
     if (level >= 100) {
         targetSteps = TMC_OPEN_STEPS;
+    }
+    else if (level <= 0) {
+        targetSteps = 0;
     }
     else {
         targetSteps = level * TMC_OPEN_STEPS / 100;
@@ -135,13 +139,14 @@ bool StepperPetals::setEnabled(bool enabled) {
 }
 
 bool StepperPetals::runStepper() {
-    if (!stepInterval) {
+    if (stepInterval <= 0) {
 	    return false;
     }
 
-    unsigned long time = micros();   
+    unsigned long time = micros();
     if (time - lastStepTime >= stepInterval) {
         currentSteps += direction;
+        //Serial.println(currentSteps);
 
         // step
         digitalWrite(TMC_STEP_PIN, HIGH);

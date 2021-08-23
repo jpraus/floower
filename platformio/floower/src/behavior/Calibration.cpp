@@ -7,16 +7,18 @@
 
 // TIMINGS
 
-#define TOUCH_SAMPLING_INTERVAL 500 // 0.5S
+#define TOUCH_INITIAL_TIMEOUT 2000 // 2s
+#define TOUCH_SAMPLING_INTERVAL 500 // 0.5s
 #define WATCHDOGS_INTERVAL 1000
 
-Calibration::Calibration(Config *config, Floower *floower)
-        : config(config), floower(floower) {
+Calibration::Calibration(Config *config, Floower *floower, bool autoCalibrateTouch)
+        : config(config), floower(floower), autoCalibrateTouch(autoCalibrateTouch) {
 }
 
 void Calibration::setup(bool wokeUp) {
-    state = STATE_LISTENING;
+    state = autoCalibrateTouch ? STATE_CALIBRATE_TOUCH_FIRST_SAMPLE : STATE_LISTENING;
     floower->flashColor(colorPurple.H, colorPurple.S, 1000);
+    floower->initPetals(true, wokeUp);
 }
 
 void Calibration::loop() {
@@ -96,7 +98,7 @@ void Calibration::calibrateTouch() {
     if (state == STATE_CALIBRATE_TOUCH_FIRST_SAMPLE) {
         floower->readTouch(); // warm up
         touchValue = 0;
-        touchSampleMillis = now + TOUCH_SAMPLING_INTERVAL;
+        touchSampleMillis = now + TOUCH_INITIAL_TIMEOUT;
         state++;
         floower->flashColor(colorGreen.H, colorGreen.S, 1000);
     }
@@ -112,7 +114,13 @@ void Calibration::calibrateTouch() {
     else { // calibratin done, write value
         uint8_t touchThreshold = touchValue / 10;
         config->setTouchThreshold(touchThreshold - 5);
+        config->setTouchCalibrated(true);
         ESP_LOGI(LOG_TAG, "Touch calibration: value=%d, threshold=%d", touchValue, config->touchThreshold);
+        if (autoCalibrateTouch) {
+            config->commit();
+            ESP_LOGI(LOG_TAG, "Calibration done");
+            ESP.restart(); // restart now
+        }
         state = STATE_LISTENING;
         floower->flashColor(colorPurple.H, colorPurple.S, 1000);
     }

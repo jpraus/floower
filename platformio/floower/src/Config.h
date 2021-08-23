@@ -49,6 +49,7 @@ class Config {
         void setName(String name);
         void setRemoteOnStartup(bool initRemoteOnStartup);
         void setCalibrated();
+        void setTouchCalibrated(bool touchCalibrated);
         void setPersonification(Personification personification);
         void commit();
 
@@ -65,6 +66,7 @@ class Config {
         // extracted flags
         bool initRemoteOnStartup = false;
         bool calibrated = false;
+        bool touchCalibrated = false;
 
         // feature flags
         bool deepSleepEnabled = false;

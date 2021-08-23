@@ -42,7 +42,7 @@ Floower::Floower(Config *config)
 
 void Floower::init() {
     // petals instance
-    if (config->hardwareRevision >= 9) {
+    if (config->hardwareRevision >= 9 || !config->calibrated) {
         ESP_LOGI(LOG_TAG, "Using STEPPER");
         petals = new StepperPetals(config);
     }

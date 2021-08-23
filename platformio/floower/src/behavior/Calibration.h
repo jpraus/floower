@@ -7,7 +7,7 @@
 
 class Calibration : public Behavior {
     public:
-        Calibration(Config *config, Floower *floower);
+        Calibration(Config *config, Floower *floower, bool autoCalibrateTouch);
         virtual void setup(bool wokeUp = false);
         virtual void loop();
         virtual bool isIdle();
@@ -19,7 +19,7 @@ class Calibration : public Behavior {
         Config *config;
         Floower *floower;
 
-
+        bool autoCalibrateTouch = false;
         uint8_t state = 0;
         uint8_t command = 0;
         String serialValue;

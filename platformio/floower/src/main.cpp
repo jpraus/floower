@@ -13,7 +13,7 @@
 
 // feature flags
 const bool deepSleepEnabled = true;
-const bool bluetoothEnabled = false;
+const bool bluetoothEnabled = true;
 const bool colorPickerEnabled = true;
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
@@ -25,7 +25,7 @@ const bool colorPickerEnabled = true;
 //#define CALIBRATE_HARDWARE 1
 //#define SERVO_CLOSED 800 // 650
 //#define SERVO_OPEN SERVO_CLOSED + 500 // 700
-#define SERIAL_NUMBER 402
+//#define SERIAL_NUMBER 402
 
 #define WDT_TIMEOUT 10 // 10s for watch dog, reset with ever periodic operation
 
@@ -71,8 +71,8 @@ void setup() {
     delay(50); // wait to warm-up
 
     // init state machine, this is core logic
-    if (!config.calibrated) {
-        behavior = new Calibration(&config, &floower);
+    if (!config.calibrated || !config.touchCalibrated) {
+        behavior = new Calibration(&config, &floower, config.calibrated && !config.touchCalibrated);
     }
     else {
         behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
