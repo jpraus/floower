@@ -76,4 +76,5 @@ class ServoPetals : public Petals {
         uint16_t movementTransitionTime;
         bool enabled;
         unsigned long servoPowerOffTime; // time when servo should power off (after animation is finished)
+        bool initialized;
 };

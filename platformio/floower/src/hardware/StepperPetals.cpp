@@ -29,10 +29,6 @@ StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Se
 }
 
 void StepperPetals::init(bool initial, bool wokeUp) {
-    if (initialized) {
-        return;
-    }
-
     // stepper
     enabled = false; // to make setStepperPowerOn effective
     setEnabled(true);
@@ -44,6 +40,11 @@ void StepperPetals::init(bool initial, bool wokeUp) {
     pinMode(TMC_STEP_PIN, OUTPUT);
     digitalWrite(TMC_STEP_PIN, LOW);
 
+    if (initial && !wokeUp) {
+        // make sure the Floower is closed for the first time it's turned on
+        currentSteps = TMC_OPEN_STEPS; // TODO
+    }
+
     direction = DIRECTION_CCW; // default is closing
     pinMode(TMC_DIR_PIN, OUTPUT);
     digitalWrite(TMC_DIR_PIN, HIGH);
@@ -53,17 +54,21 @@ void StepperPetals::init(bool initial, bool wokeUp) {
         ESP_LOGE(LOG_TAG, "TMC2300 comm failed");
     }
 
-    REG_IOIN iont = stepperDriver.readIontReg();
-    Serial.print("IOIN=");
-    Serial.println(iont.sr, BIN);
-    Serial.print("Version=");
-    Serial.println(iont.version);
+    if (!initialized) {
+        REG_IOIN iont = stepperDriver.readIontReg();
+        Serial.print("IOIN=");
+        Serial.println(iont.sr, BIN);
+        Serial.print("Version=");
+        Serial.println(iont.version);
 
-    REG_CHOPCONF chopconf = stepperDriver.readChopconf();
-    Serial.print("Microsteps=");
-    Serial.println(chopconf.getMicrosteps());
-    chopconf.setMicrosteps(TMC_MICROSTEPS);
-    stepperDriver.writeChopconfReg(chopconf);
+        REG_CHOPCONF chopconf = stepperDriver.readChopconf();
+        Serial.print("Microsteps=");
+        Serial.println(chopconf.getMicrosteps());
+        chopconf.setMicrosteps(TMC_MICROSTEPS);
+        stepperDriver.writeChopconfReg(chopconf);
+
+        initialized = true;
+    }
 }
 
 void StepperPetals::update() {

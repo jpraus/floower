@@ -13,6 +13,7 @@ static const char* LOG_TAG = "ServoPetals";
 #define SERVO_POWER_OFF_DELAY 500
 
 ServoPetals::ServoPetals(Config *config) : config(config) {
+    initialized = false;
 }
 
 void ServoPetals::init(bool initial, bool wokeUp) {
@@ -27,12 +28,15 @@ void ServoPetals::init(bool initial, bool wokeUp) {
     setEnabled(false);
     pinMode(SERVO_PWR_PIN, OUTPUT);
 
-    servo.setPeriodHertz(50); // standard 50 Hz servo
-    if (config->calibrated) {
-        servo.attach(SERVO_PIN, config->servoClosed, config->servoOpen);
-    }
-    else {
-        servo.attach(SERVO_PIN); // DANGER! no boundaries to allow calibration
+    if (!initialized) {
+        servo.setPeriodHertz(50); // standard 50 Hz servo
+        if (config->calibrated) {
+            servo.attach(SERVO_PIN, config->servoClosed, config->servoOpen);
+        }
+        else {
+            servo.attach(SERVO_PIN); // DANGER! no boundaries to allow calibration
+        }
+        initialized = true;
     }
     servo.write(servoAngle);
 }
