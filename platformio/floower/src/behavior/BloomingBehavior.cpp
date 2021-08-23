@@ -105,6 +105,37 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
     return false;
 }
 
+bool BloomingBehavior::onRemoteChange(StateChangePacketData data) {
+    if (SmartPowerBehavior::onRemoteChange(data)) {
+        return true;
+    }
+
+    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
+        // blossom color
+        HsbColor color = HsbColor(data.getColor());
+        floower->transitionColor(color.H, color.S, color.B, data.duration * 100);
+        return true;
+    }
+    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
+        // petals open/close
+        floower->setPetalsOpenLevel(data.value, data.duration * 100);
+        return true;
+    }
+    else if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
+        // play animation (according to value)
+        switch (data.value) {
+            case 1:
+                floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
+                return true;
+            case 2:
+                floower->startAnimation(FloowerColorAnimation::CANDLE);
+                return true;
+        }
+    }
+
+    return false;
+}
+
 bool BloomingBehavior::canInitializeBluetooth() {
     return SmartPowerBehavior::canInitializeBluetooth() || state == STATE_LIGHT_PICKER || state == STATE_BLOOM_LIGHT;
 }

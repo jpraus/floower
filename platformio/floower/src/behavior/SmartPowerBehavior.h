@@ -22,7 +22,7 @@ class SmartPowerBehavior : public Behavior {
         
     protected:
         virtual bool onLeafTouch(FloowerTouchEvent event);
-        //virtual bool onRemoteEvent();
+        virtual bool onRemoteChange(StateChangePacketData data);
         virtual bool canInitializeBluetooth();
 
         void changeStateIfIdle(state_t fromState, state_t toState);

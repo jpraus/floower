@@ -59,29 +59,6 @@ typedef union StatePacket {
     uint8_t bytes[STATE_PACKET_SIZE];
 } StatePacket;
 
-#define STATE_TRANSITION_MODE_BIT_COLOR 0
-#define STATE_TRANSITION_MODE_BIT_PETALS 1 // when this bit is set, the VALUE parameter means open level of petals (0-100%)
-#define STATE_TRANSITION_MODE_BIT_ANIMATION 2 // when this bit is set, the VALUE parameter means ID of animation
-
-typedef struct StateChangePacketData {
-    uint8_t value;
-    uint8_t R; // 0-255, read-write
-    uint8_t G; // 0-255, read-write
-    uint8_t B; // 0-255, read-write
-    uint8_t duration; // 100 of milliseconds
-    uint8_t mode; // 8 flags, see defines above
-
-    HsbColor getColor() {
-        return HsbColor(RgbColor(R, G, B));
-    }
-} StateChangePacketData;
-
-#define STATE_CHANGE_PACKET_SIZE 6
-typedef union StateChangePacket {
-    StateChangePacketData data;
-    uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
-} StateChangePacket;
-
 BluetoothControl::BluetoothControl(Floower *floower, Config *config)
     : floower(floower), config(config) {
 }
@@ -193,8 +170,8 @@ bool BluetoothControl::isConnected() {
     return deviceConnected;
 }
 
-void BluetoothControl::onTakeOver(RemoteTakeOverCallback callback) {
-    takeOverCallback = callback;
+void BluetoothControl::onRemoteChange(BluetoothControlRemoteChangeCallback callback) {
+    remoteChangeCallback = callback;
 }
 
 void BluetoothControl::setBatteryLevel(uint8_t level, bool charging) {
@@ -225,31 +202,9 @@ void BluetoothControl::StateChangeCharacteristicsCallbacks::onWrite(BLECharacter
         for (int i = 0; i < STATE_CHANGE_PACKET_SIZE; i ++) {
             statePacket.bytes[i] = bytes[i]; 
         }
-
-        if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
-            // blossom color
-            HsbColor color = HsbColor(statePacket.data.getColor());
-            bluetoothControl->floower->transitionColor(color.H, color.S, color.B, statePacket.data.duration * 100);
+        if (bluetoothControl->remoteChangeCallback != nullptr) {
+            bluetoothControl->remoteChangeCallback(statePacket.data);
         }
-        if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
-            // petals open/close
-            bluetoothControl->floower->setPetalsOpenLevel(statePacket.data.value, statePacket.data.duration * 100);
-        }
-        else if (CHECK_BIT(statePacket.data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
-            // play animation (according to value)
-            switch (statePacket.data.value) {
-                case 1:
-                    bluetoothControl->floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
-                    break;
-                case 2:
-                    bluetoothControl->floower->startAnimation(FloowerColorAnimation::CANDLE);
-                    break;
-          }
-      }
-
-      if (bluetoothControl->takeOverCallback != nullptr) {
-          bluetoothControl->takeOverCallback();
-      }
     }
 }
 

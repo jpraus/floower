@@ -96,6 +96,10 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     return false;
 }
 
+bool SmartPowerBehavior::onRemoteChange(StateChangePacketData data) {
+    return false;
+}
+
 bool SmartPowerBehavior::canInitializeBluetooth() {
     return state == STATE_STANDBY;
 }
@@ -103,7 +107,7 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
-    //bluetoothControl->onTakeOver([=]() { onRemoteTookOver(); }); // bluetoothControl controller took over
+    bluetoothControl->onRemoteChange([=](StateChangePacketData data) { onRemoteChange(data); });
     if (config->bluetoothEnabled && config->initRemoteOnStartup) {
         initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
     }

@@ -9,6 +9,7 @@ class BloomingBehavior : public SmartPowerBehavior {
 
     protected:
         virtual bool onLeafTouch(FloowerTouchEvent event);
+        virtual bool onRemoteChange(StateChangePacketData data);
         virtual bool canInitializeBluetooth();
 
     private:
