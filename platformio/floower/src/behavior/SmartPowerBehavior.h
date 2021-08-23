@@ -36,9 +36,9 @@ class SmartPowerBehavior : public Behavior {
         bool preventTouchUp = false;
 
     private:
-        void enablePeripherals(bool wokeUp = false);
+        void enablePeripherals(bool initial, bool wokeUp);
         void disablePeripherals();        
-        void powerWatchDog(bool wokeUp = false);
+        void powerWatchDog(bool initial = false, bool wokeUp = false);
         void planDeepSleep(long timeoutMs);
         void enterDeepSleep();
         void indicateStatus(uint8_t status, bool enable);

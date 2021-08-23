@@ -75,8 +75,8 @@ void Floower::init() {
     //analogSetSamples(1); // num of samples
 }
 
-void Floower::initPetals(unsigned long currentPosition) {
-    petals->init(currentPosition);
+void Floower::initPetals(bool initial, bool wokeUp) {
+    petals->init(initial, wokeUp);
 }
 
 void Floower::update() {

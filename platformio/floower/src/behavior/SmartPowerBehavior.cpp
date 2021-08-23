@@ -37,7 +37,7 @@ void SmartPowerBehavior::setup(bool wokeUp) {
     }
 
     // run power watchdog to initialize state according to power
-    powerWatchDog(wokeUp);
+    powerWatchDog(true, wokeUp);
 
     if (state == STATE_STANDBY) {
         // normal operation
@@ -100,8 +100,8 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
     return state == STATE_STANDBY;
 }
 
-void SmartPowerBehavior::enablePeripherals(bool wokeUp) {
-    floower->initPetals();
+void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
+    floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
     //bluetoothControl->onTakeOver([=]() { onRemoteTookOver(); }); // bluetoothControl controller took over
     if (config->bluetoothEnabled && config->initRemoteOnStartup) {
@@ -120,7 +120,7 @@ bool SmartPowerBehavior::isIdle() {
     return state == STATE_STANDBY && !powerState.usbPowered;
 }
 
-void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
+void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
     powerState = floower->readPowerState();
 
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
@@ -149,7 +149,7 @@ void SmartPowerBehavior::powerWatchDog(bool wokeUp) {
         if (state == STATE_OFF || (state == STATE_LOW_BATTERY && powerState.usbPowered)) {
             ESP_LOGI(LOG_TAG, "Power restored");
             floower->stopAnimation(false); // in case of low battery blinking
-            enablePeripherals(wokeUp);
+            enablePeripherals(initial, wokeUp);
             changeState(STATE_STANDBY);
         }
         else if (state == STATE_STANDBY && !powerState.usbPowered && deepSleepTime == 0) {

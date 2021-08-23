@@ -28,7 +28,7 @@ StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Se
     petalsOpenLevel = 0; // 0-100%
 }
 
-void StepperPetals::init(unsigned long currentPosition) {
+void StepperPetals::init(bool initial, bool wokeUp) {
     if (initialized) {
         return;
     }
@@ -38,7 +38,7 @@ void StepperPetals::init(unsigned long currentPosition) {
     setEnabled(true);
     pinMode(TMC_EN_PIN, OUTPUT);
 
-    currentSteps = currentPosition;
+    currentSteps = 0;
     targetSteps = 0;
     stepInterval = 200; // default speed
     pinMode(TMC_STEP_PIN, OUTPUT);

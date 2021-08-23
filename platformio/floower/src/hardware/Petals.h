@@ -7,7 +7,7 @@
 
 class Petals {
     public:
-        virtual void init(unsigned long currentPosition = 0) = 0;
+        virtual void init(bool initial, bool wokeUp) = 0;
         virtual void update() = 0;
 
         virtual void setPetalsOpenLevel(int8_t level, int transitionTime = 0) = 0; // level need to be signed to compare with local signed variable
@@ -20,7 +20,7 @@ class Petals {
 class StepperPetals : public Petals {
     public:
         StepperPetals(Config *config);
-        void init(unsigned long currentPosition = 0);
+        void init(bool initial, bool wokeUp);
         void update();
 
         void setPetalsOpenLevel(int8_t level, int transitionTime = 0);
@@ -52,7 +52,7 @@ class StepperPetals : public Petals {
 class ServoPetals : public Petals {
     public:
         ServoPetals(Config *config);
-        void init(unsigned long currentPosition = 0);
+        void init(bool initial, bool wokeUp);
         void update();
 
         void setPetalsOpenLevel(int8_t level, int transitionTime = 0);

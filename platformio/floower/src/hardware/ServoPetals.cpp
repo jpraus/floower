@@ -15,7 +15,7 @@ static const char* LOG_TAG = "ServoPetals";
 ServoPetals::ServoPetals(Config *config) : config(config) {
 }
 
-void ServoPetals::init(unsigned long currentPosition) {
+void ServoPetals::init(bool initial, bool wokeUp) {
     // default servo configuration
     servoAngle = config->servoClosed + 1; // to allow auto-calibration on startup
     servoOriginAngle = servoAngle;
