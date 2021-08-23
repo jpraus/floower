@@ -55,12 +55,17 @@ void setup() {
 
     // after wake up setup
     bool wokeUp = false;
-    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-    if (config.deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeup_reason) {
-        ESP_LOGI(LOG_TAG, "Waking up after Deep Sleep");
+    esp_sleep_wakeup_cause_t wakeupReason = esp_sleep_get_wakeup_cause();
+    if (config.deepSleepEnabled && ESP_SLEEP_WAKEUP_TOUCHPAD == wakeupReason) {
+        ESP_LOGI(LOG_TAG, "Waking up (touch)");
         floower.registerOutsideTouch();
         wokeUp = true;
     }
+    else if (ESP_SLEEP_WAKEUP_EXT0 == wakeupReason) {
+        ESP_LOGI(LOG_TAG, "Waking up (GPIO)");
+        wokeUp = true;
+    }
+
 
     // init hardware
     //esp_wifi_stop();

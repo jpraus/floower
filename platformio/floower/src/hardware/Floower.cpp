@@ -8,22 +8,22 @@
 static const char* LOG_TAG = "Floower";
 #endif
 
-#define NEOPIXEL_PIN 27 // 27
-#define NEOPIXEL_PWR_PIN 25
+#define NEOPIXEL_PIN GPIO_NUM_27
+#define NEOPIXEL_PWR_PIN GPIO_NUM_25
 
-#define BATTERY_ANALOG_PIN 36 // VP
-#define USB_ANALOG_PIN 39 // VN
-#define CHARGE_PIN 35
+#define BATTERY_ANALOG_PIN GPIO_NUM_36 // VP
+#define USB_ANALOG_PIN GPIO_NUM_39 // VN
+#define CHARGE_PIN GPIO_NUM_35
 
-#define STATUS_NEOPIXEL_PIN 32
-#define ACTY_LED_PIN 2
+#define STATUS_NEOPIXEL_PIN GPIO_NUM_32
+#define ACTY_LED_PIN GPIO_NUM_2
 #define ACTY_BLINK_TIME 50
 
 #define ANIMATIONS_INDECES 3
 #define ANIMATION_INDEX_LEDS 1
 #define ANIMATION_INDEX_STATUS 2
 
-#define TOUCH_SENSOR_PIN 4
+#define TOUCH_SENSOR_PIN GPIO_NUM_4
 #define TOUCH_FADE_TIME 75 // 50
 #define TOUCH_LONG_TIME_THRESHOLD 2000 // 2s to recognize long touch
 #define TOUCH_HOLD_TIME_THRESHOLD 5000 // 5s to recognize hold touch
@@ -37,7 +37,6 @@ const HsbColor candleColor(0.042, 1.0, 1.0); // candle orange color
 
 Floower::Floower(Config *config) 
         : animations(ANIMATIONS_INDECES), config(config), pixels(7, NEOPIXEL_PIN), statusPixel(2, STATUS_NEOPIXEL_PIN) {
-    pinMode(CHARGE_PIN, INPUT);
 }
 
 void Floower::init() {
@@ -73,6 +72,10 @@ void Floower::init() {
     analogSetAttenuation(ADC_11db); // set AREF to be 3.6V
     //analogSetCycles(8); // num of cycles per sample, 8 is default optimal
     //analogSetSamples(1); // num of samples
+
+    // wake up when USB is connected
+    pinMode(CHARGE_PIN, INPUT);
+    esp_sleep_enable_ext1_wakeup(0x800000000, ESP_EXT1_WAKEUP_ALL_LOW);
 }
 
 void Floower::initPetals(bool initial, bool wokeUp) {
