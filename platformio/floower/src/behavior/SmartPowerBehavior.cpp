@@ -50,7 +50,7 @@ void SmartPowerBehavior::setup(bool wokeUp) {
 
 void SmartPowerBehavior::loop() {
     // reset remote control state in case the floower is idle
-    if (state == STATE_REMOTE_CONTROL && !floower->isLit() && floower->getCurrentPetalsOpenLevel() == 0) {
+    if (state == STATE_REMOTE_CONTROL && !floower->isLit() && !floower->isAnimating() && floower->getCurrentPetalsOpenLevel() == 0) {
         changeState(STATE_STANDBY);
     }
 
@@ -206,7 +206,7 @@ void SmartPowerBehavior::changeStateIfIdle(state_t fromState, state_t toState) {
 void SmartPowerBehavior::changeState(uint8_t newState) {
     if (state != newState) {
         state = newState;
-        ESP_LOGD(LOG_TAG, "Changed state to %d", newState);
+        ESP_LOGI(LOG_TAG, "Changed state to %d", newState);
 
         if (!powerState.usbPowered && state == STATE_STANDBY) {
             planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);

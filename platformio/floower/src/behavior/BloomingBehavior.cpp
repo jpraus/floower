@@ -43,6 +43,19 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
             changeState(STATE_BLOOM_LIGHT);
             return true;
         }
+        else if (state == STATE_REMOTE_CONTROL) {
+            // floower is controlled by remote control, emulate this behavior state to react correctly
+            if (floower->getPetalsOpenLevel() > 0) {
+                if (!floower->isLit()) {
+                    HsbColor nextColor = nextRandomColor();
+                    floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
+                }
+                changeState(STATE_BLOOM);
+            }
+            else if (floower->isLit()) {
+                changeState(STATE_LIGHT);
+            }
+        }
         else if (state == STATE_BLOOM_PICKER) {
             // stop color picker animation
             floower->stopAnimation(true);
