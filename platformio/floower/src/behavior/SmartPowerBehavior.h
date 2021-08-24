@@ -10,7 +10,7 @@
 #define STATE_OFF 1
 #define STATE_LOW_BATTERY 2
 #define STATE_BLUETOOTH_PAIRING 3
-#define STATE_CALIBRATION 4
+#define STATE_REMOTE_CONTROL 4
 // states 128+ are reserved for child behaviors
 
 class SmartPowerBehavior : public Behavior {

@@ -9,13 +9,13 @@ static const char* LOG_TAG = "BloomingBehavior";
 #endif
 
 #define STATE_BLOOM_LIGHT 128
-#define STATE_BLOOM_OPENING 129
-#define STATE_BLOOMED 130
-#define STATE_BLOOMED_PICKER 131
-#define STATE_BLOOM_CLOSING 132
+#define STATE_BLOOM_OPEN 129
+#define STATE_BLOOM 130
+#define STATE_BLOOM_PICKER 131
+#define STATE_BLOOM_CLOSE 132
 #define STATE_LIGHT 133
 #define STATE_LIGHT_PICKER 134
-#define STATE_GOING_OFF 135
+#define STATE_FADE 135
 
 BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl) 
         : SmartPowerBehavior(config, floower, bluetoothControl) {
@@ -25,9 +25,9 @@ void BloomingBehavior::loop() {
     SmartPowerBehavior::loop();
 
     if (state != STATE_STANDBY) {
-        changeStateIfIdle(STATE_BLOOM_OPENING, STATE_BLOOMED);
-        changeStateIfIdle(STATE_BLOOM_CLOSING, STATE_LIGHT);
-        changeStateIfIdle(STATE_GOING_OFF, STATE_STANDBY);
+        changeStateIfIdle(STATE_BLOOM_OPEN, STATE_BLOOM);
+        changeStateIfIdle(STATE_BLOOM_CLOSE, STATE_LIGHT);
+        changeStateIfIdle(STATE_FADE, STATE_STANDBY);
     }
 }
 
@@ -43,11 +43,11 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
             changeState(STATE_BLOOM_LIGHT);
             return true;
         }
-        else if (state == STATE_BLOOMED_PICKER) {
+        else if (state == STATE_BLOOM_PICKER) {
             // stop color picker animation
             floower->stopAnimation(true);
             preventTouchUp = true;
-            changeState(STATE_BLOOMED);
+            changeState(STATE_BLOOM);
             return true;
         }
         else if (state == STATE_LIGHT_PICKER) {
@@ -64,75 +64,44 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
             HsbColor nextColor = nextRandomColor();
             floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
             floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-            changeState(STATE_BLOOM_OPENING);
+            changeState(STATE_BLOOM_OPEN);
             return true;
         }
         else if (state == STATE_BLOOM_LIGHT) {
             // open
             floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
-            changeState(STATE_BLOOM_OPENING);
+            changeState(STATE_BLOOM_OPEN);
             return true;
         }
-        else if (state == STATE_BLOOMED) {
+        else if (state == STATE_BLOOM) {
             // close
             floower->setPetalsOpenLevel(0, config->speedMillis);
-            changeState(STATE_BLOOM_CLOSING);
+            changeState(STATE_BLOOM_CLOSE);
             return true;
         }
         else if (state == STATE_LIGHT) {
             // shutdown
             floower->transitionColorBrightness(0, config->speedMillis / 2);
-            changeState(STATE_GOING_OFF);
+            changeState(STATE_FADE);
             return true;
         }
     }
     else if (event == TOUCH_LONG) {
         if (config->colorPickerEnabled) {
-            if (state == STATE_STANDBY || state == STATE_BLOOM_LIGHT || state == STATE_LIGHT || state == STATE_BLOOM_CLOSING) {
+            if (state == STATE_STANDBY || state == STATE_BLOOM_LIGHT || state == STATE_LIGHT) {
                 floower->startAnimation(FloowerColorAnimation::RAINBOW);
                 preventTouchUp = true;
                 changeState(STATE_LIGHT_PICKER);
                 return true;
             }
-            else if (state == STATE_BLOOMED || state == STATE_BLOOM_OPENING) {
+            else if (state == STATE_BLOOM) {
                 floower->startAnimation(FloowerColorAnimation::RAINBOW);
                 preventTouchUp = true;
-                changeState(STATE_BLOOMED_PICKER);
+                changeState(STATE_BLOOM_PICKER);
                 return true;
             }
         }
     }
-    return false;
-}
-
-bool BloomingBehavior::onRemoteChange(StateChangePacketData data) {
-    if (SmartPowerBehavior::onRemoteChange(data)) {
-        return true;
-    }
-
-    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
-        // blossom color
-        HsbColor color = HsbColor(data.getColor());
-        floower->transitionColor(color.H, color.S, color.B, data.duration * 100);
-        return true;
-    }
-    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
-        // petals open/close
-        floower->setPetalsOpenLevel(data.value, data.duration * 100);
-        return true;
-    }
-    else if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
-        // play animation (according to value)
-        switch (data.value) {
-            case 1:
-                floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
-                return true;
-            case 2:
-                floower->startAnimation(FloowerColorAnimation::CANDLE);
-                return true;
-        }
-    }
-
     return false;
 }
 

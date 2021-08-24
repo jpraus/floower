@@ -49,6 +49,11 @@ void SmartPowerBehavior::setup(bool wokeUp) {
 }
 
 void SmartPowerBehavior::loop() {
+    // reset remote control state in case the floower is idle
+    if (state == STATE_REMOTE_CONTROL && !floower->isLit() && floower->getCurrentPetalsOpenLevel() == 0) {
+        changeState(STATE_STANDBY);
+    }
+
     // timers
     long now = millis();
     if (watchDogsTime < now) {
@@ -97,6 +102,33 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
 }
 
 bool SmartPowerBehavior::onRemoteChange(StateChangePacketData data) {
+    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
+        // blossom color
+        HsbColor color = HsbColor(data.getColor());
+        floower->transitionColor(color.H, color.S, color.B, data.duration * 100);
+        changeState(STATE_REMOTE_CONTROL);
+        return true;
+    }
+    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
+        // petals open/close
+        floower->setPetalsOpenLevel(data.value, data.duration * 100);
+        changeState(STATE_REMOTE_CONTROL);
+        return true;
+    }
+    else if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
+        // play animation (according to value)
+        switch (data.value) {
+            case 1:
+                floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
+                changeState(STATE_REMOTE_CONTROL);
+                return true;
+            case 2:
+                floower->startAnimation(FloowerColorAnimation::CANDLE);
+                changeState(STATE_REMOTE_CONTROL);
+                return true;
+        }
+    }
+
     return false;
 }
 
@@ -121,7 +153,7 @@ void SmartPowerBehavior::disablePeripherals() {
 }
 
 bool SmartPowerBehavior::isIdle() {
-    return state == STATE_STANDBY && !powerState.usbPowered && !floower->arePetalsMoving(); // HOTFIX: arePetalsMoving is here to allow initial calibration of petals
+    return !floower->arePetalsMoving() && !floower->isChangingColor();
 }
 
 void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
