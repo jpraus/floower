@@ -66,7 +66,6 @@ void setup() {
         wokeUp = true;
     }
 
-
     // init hardware
     //esp_wifi_stop();
     btStop();

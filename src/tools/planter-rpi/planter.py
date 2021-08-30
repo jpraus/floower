@@ -7,7 +7,7 @@ import serial.tools.list_ports as prtlst
 import os
 from time import sleep
 
-VERSION = 11
+VERSION = 12
 
 # Raspberry Pi pin configuration:
 lcd_rs        = 7  # Note this might need to be changed to 21 for older revision Pi's.
@@ -57,7 +57,7 @@ SCREEN_DISCONNECT = 8
 SCREEN_FLASH = 9
 
 serial_number = 0
-hw_revision = 8
+hw_revision = 9
 close_value = 0
 open_value = 0
 screen = 0
