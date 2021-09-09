@@ -47,7 +47,7 @@ typedef union PersonificationPacket {
 } PersonificationPacket;
 
 typedef struct StatePacketData {
-    uint8_t petalsOpenLevel; // normally petals open level 0-100%, read-write
+    int8_t petalsOpenLevel; // normally petals open level 0-100%, read-write
     uint8_t R; // 0-255, read-write
     uint8_t G; // 0-255, read-write
     uint8_t B; // 0-255, read-write
@@ -132,7 +132,7 @@ void BluetoothControl::init() {
         floowerService->start();
       
         // listen to floower state change
-        floower->onChange([=](uint8_t petalsOpenLevel, HsbColor hsbColor) {
+        floower->onChange([=](int8_t petalsOpenLevel, HsbColor hsbColor) {
             RgbColor color = RgbColor(hsbColor);
             ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
             StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};

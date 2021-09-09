@@ -15,10 +15,6 @@ MindfulnessBehavior::MindfulnessBehavior(Config *config, Floower *floower, Bluet
         : SmartPowerBehavior(config, floower, bluetoothControl) {
 }
 
-void MindfulnessBehavior::setup(bool wokeUp) {
-    SmartPowerBehavior::setup(wokeUp);
-}
-
 void MindfulnessBehavior::loop() {
     SmartPowerBehavior::loop();
 
@@ -26,13 +22,13 @@ void MindfulnessBehavior::loop() {
     if (eventTime <= now) {
         if (state == STATE_INHALE) {
             floower->transitionColorBrightness(1, 3000);
-            floower->setPetalsOpenLevel(70, 3000);
+            floower->setPetalsOpenLevel(70, 2800);
             eventTime = now + 3000;
             changeState(STATE_EXHALE);
         }
         else if (state == STATE_EXHALE) {
             floower->transitionColorBrightness(0.2, 5000);
-            floower->setPetalsOpenLevel(20, 5000);
+            floower->setPetalsOpenLevel(20, 4800);
             eventTime = now + 5000;
             changeState(STATE_INHALE);
         }
@@ -45,7 +41,7 @@ bool MindfulnessBehavior::onLeafTouch(FloowerTouchEvent event) {
     }
     else if (event == TOUCH_DOWN) {
         if (state == STATE_STANDBY) {
-            floower->transitionColor(colorPurple.H, colorPurple.S, 0.1, 2000);
+            floower->transitionColor(colorYellow.H, colorYellow.S, 0.1, 2000);
             floower->setPetalsOpenLevel(20, 2000);
             eventTime = millis() + 5000;
             changeState(STATE_INHALE);
