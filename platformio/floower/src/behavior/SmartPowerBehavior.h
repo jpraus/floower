@@ -27,6 +27,7 @@ class SmartPowerBehavior : public Behavior {
 
         void changeStateIfIdle(state_t fromState, state_t toState);
         void changeState(uint8_t newState);
+        HsbColor nextRandomColor();
 
         Config *config;
         Floower *floower;
@@ -44,6 +45,7 @@ class SmartPowerBehavior : public Behavior {
         void indicateStatus(uint8_t status, bool enable);
 
         PowerState powerState;
+        unsigned long colorsUsed = 0; // used by nextRandomColor
 
         unsigned long watchDogsTime = 0;
         unsigned long initRemoteTime = 0;

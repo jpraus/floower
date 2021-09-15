@@ -122,24 +122,3 @@ bool BloomingBehavior::canInitializeBluetooth() {
     return SmartPowerBehavior::canInitializeBluetooth() || state == STATE_LIGHT_PICKER || state == STATE_BLOOM_LIGHT;
 }
 
-HsbColor BloomingBehavior::nextRandomColor() {
-    if (colorsUsed > 0) {
-        unsigned long maxColors = pow(2, config->colorSchemeSize) - 1;
-        if (maxColors == colorsUsed) {
-            colorsUsed = 0; // all colors used, reset
-        }
-    }
-
-    uint8_t colorIndex;
-    long colorCode;
-    int maxIterations = config->colorSchemeSize * 3;
-
-    do {
-        colorIndex = random(0, config->colorSchemeSize);
-        colorCode = 1 << colorIndex;
-        maxIterations--;
-    } while ((colorsUsed & colorCode) > 0 && maxIterations > 0); // already used before all the rest colors
-
-    colorsUsed += colorCode;
-    return config->colorScheme[colorIndex];
-}
