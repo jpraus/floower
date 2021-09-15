@@ -9,6 +9,9 @@ class TMC2300 {
     TMC2300(Stream *serialPort, float RSense, uint8_t addr);
     uint8_t testConnection();
 
+    REG_GCONF readGConfReg();
+    REG_GSTAT readGStat();
+
     REG_IOIN readIontReg();
     void writeIontReg(REG_IOIN ioin);
 

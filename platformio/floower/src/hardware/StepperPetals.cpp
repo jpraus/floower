@@ -66,6 +66,8 @@ void StepperPetals::init(bool initial, bool wokeUp) {
         Serial.print("Microsteps=");
         Serial.println(chopconf.getMicrosteps());
         chopconf.setMicrosteps(TMC_MICROSTEPS);
+        chopconf.diss2vs = true;
+        chopconf.diss2g = true;
         stepperDriver.writeChopconfReg(chopconf);
 
         initialized = true;
@@ -80,7 +82,39 @@ void StepperPetals::update() {
 
 void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
+/*
+    REG_IOIN iont = stepperDriver.readIontReg();
+    Serial.print("IOIN=");
+    Serial.println(iont.sr, BIN);
+    Serial.print("Version=");
+    Serial.println(iont.version);
 
+    REG_CHOPCONF chopconf = stepperDriver.readChopconf();
+    Serial.print("CHOPCONF=");
+    Serial.println(iont.sr, BIN);
+
+    REG_GCONF gconf = stepperDriver.readGConfReg();
+    Serial.print("GCONF=");
+    Serial.println(gconf.sr, BIN);
+
+    REG_GSTAT gstat = stepperDriver.readGStat();
+    Serial.print("GSTAT=");
+    Serial.println(gstat.sr, BIN);
+
+    REG_DRV_STATUS drvStatus = stepperDriver.readDrvStatusReg();
+    Serial.print("DRV_STATUS=");
+    Serial.println(drvStatus.sr, BIN);
+    Serial.print("s2vsa=");
+    Serial.println(drvStatus.s2vsa);
+    Serial.print("s2vsb=");
+    Serial.println(drvStatus.s2vsb);
+    Serial.print("s2ga=");
+    Serial.println(drvStatus.s2ga);
+    Serial.print("s2gb=");
+    Serial.println(drvStatus.s2gb);
+    Serial.print("ot=");
+    Serial.println(drvStatus.ot);
+*/
     if (level == petalsOpenLevel) {
         return; // no change, keep doing the old movement until done
     }

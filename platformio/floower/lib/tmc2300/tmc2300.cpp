@@ -14,6 +14,18 @@ uint8_t TMC2300::testConnection() {
   }
 }
 
+REG_GCONF TMC2300::readGConfReg() {
+    REG_GCONF gconf;
+    gconf.sr = read(REG_GCONF::address);
+    return gconf;
+}
+
+REG_GSTAT TMC2300::readGStat() {
+    REG_GSTAT gstat;
+    gstat.sr = read(REG_GSTAT::address);
+    return gstat;
+}
+
 REG_IOIN TMC2300::readIontReg() {
   REG_IOIN iont;
   iont.sr = read(REG_IOIN::address);
