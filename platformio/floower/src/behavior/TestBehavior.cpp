@@ -19,7 +19,7 @@ void TestBehavior::loop() {
     SmartPowerBehavior::loop();
 
     unsigned long now = millis();
-    if (eventTime <= now) {
+    if (eventTime > 0 && eventTime <= now) {
         if (state == STATE_BLOOM) {
             floower->setPetalsOpenLevel(0, 5000);
             eventTime = now + 5000;
@@ -39,9 +39,17 @@ bool TestBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (SmartPowerBehavior::onLeafTouch(event)) {
         return true;
     }
-    else if (event == TOUCH_DOWN && state == STATE_STANDBY) {
-        eventTime = millis();
-        changeState(STATE_FADE);
+    else if (event == TOUCH_DOWN) {
+        if (state == STATE_STANDBY) {
+            eventTime = millis();
+            changeState(STATE_FADE);
+        }
+        else {
+            eventTime = 0;
+            floower->transitionColorBrightness(0, 5000);
+            floower->setPetalsOpenLevel(0, 5000);
+            changeState(STATE_STANDBY);
+        }
         return true;
     }
     return false;
