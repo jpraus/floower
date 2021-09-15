@@ -15,7 +15,6 @@ class TMC2300 {
     REG_IOIN readIontReg();
     void writeIontReg(REG_IOIN ioin);
 
-    REG_IHOLD_IRUN readIholdIrunReg();
     void writeIholdIrunReg(REG_IHOLD_IRUN iholdIrun);
 
     REG_DRV_STATUS readDrvStatusReg();
@@ -23,6 +22,11 @@ class TMC2300 {
 
     REG_CHOPCONF readChopconf();
     void writeChopconfReg(REG_CHOPCONF chopconf);
+
+    void writeTCoolThrs(uint32_t tCoolThrs);
+    uint8_t readSGValue();
+    void writeSGThrs(uint32_t sgThrs);
+    //void writeCoolConf(REG_COOL_CONF coolConf);
     
   private:
     uint32_t read(uint8_t addr);

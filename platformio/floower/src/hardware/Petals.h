@@ -30,7 +30,9 @@ class StepperPetals : public Petals {
         bool setEnabled(bool enabled);
 
     private:
+        void setupStepper();
         bool runStepper();
+        void detectStall();
 
         Config *config;
 
@@ -45,8 +47,8 @@ class StepperPetals : public Petals {
         unsigned long lastStepTime;
         unsigned long stepInterval;
         bool enabled;
-        unsigned long timer = 0;
         bool initialized;
+        unsigned long sgTimer = 0;
 };
 
 class ServoPetals : public Petals {

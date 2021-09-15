@@ -60,7 +60,9 @@ struct REG_IHOLD_IRUN {
         uint32_t sr : 14;
         struct {
             uint8_t ihold : 5;
+            uint8_t: 3;
             uint8_t irun : 5;
+            uint8_t: 3;
             uint8_t iholddelay : 4;
         };
     };
@@ -138,5 +140,10 @@ struct REG_CHOPCONF {
         return 0;
     }
 };
+
+const uint8_t REG_TCOOLTHRS_ADDRESS = 0x14;
+const uint8_t REG_SGTHRS_ADDRESS = 0x40;
+const uint8_t REG_SG_VALUE_ADDRESS = 0x41;
+const uint8_t REG_COOLCONF_ADDRESS = 0x42;
 
 #pragma pack(pop)

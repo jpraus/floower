@@ -22,6 +22,8 @@ static const char* LOG_TAG = "StepperPetals";
 #define DIRECTION_CW 1
 #define DIRECTION_CCW -1
 
+#define STALLGUARD_SAMPLING_PERIOD 200
+
 StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS) {
     Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
     initialized = false;
@@ -31,7 +33,7 @@ StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Se
 void StepperPetals::init(bool initial, bool wokeUp) {
     // stepper
     enabled = false; // to make setStepperPowerOn effective
-    setEnabled(true);
+    setEnabled(true); // it will be auto-disabled in update method
     pinMode(TMC_EN_PIN, OUTPUT);
 
     currentSteps = 0;
@@ -52,23 +54,24 @@ void StepperPetals::init(bool initial, bool wokeUp) {
 
     // verify stepper is available
     if (stepperDriver.testConnection()) {
-        ESP_LOGE(LOG_TAG, "TMC2300 comm failed");
+        ESP_LOGE(LOG_TAG, "TMC2300 failed");
     }
 
     if (!initialized) {
         REG_IOIN iont = stepperDriver.readIontReg();
-        Serial.print("IOIN=");
-        Serial.println(iont.sr, BIN);
-        Serial.print("Version=");
-        Serial.println(iont.version);
+        ESP_LOGI(LOG_TAG, "TMC2300: v=%d", iont.version);
 
         REG_CHOPCONF chopconf = stepperDriver.readChopconf();
-        Serial.print("Microsteps=");
-        Serial.println(chopconf.getMicrosteps());
         chopconf.setMicrosteps(TMC_MICROSTEPS);
-        chopconf.diss2vs = true;
-        chopconf.diss2g = true;
+        chopconf.diss2vs = true; // HOTFIX
+        chopconf.diss2g = true; // HOTFIX
         stepperDriver.writeChopconfReg(chopconf);
+
+        REG_IHOLD_IRUN iholdIrun;
+        iholdIrun.irun = 31;
+        iholdIrun.ihold = 8;
+        iholdIrun.iholddelay = 1;
+        stepperDriver.writeIholdIrunReg(iholdIrun);
 
         initialized = true;
     }
@@ -77,29 +80,28 @@ void StepperPetals::init(bool initial, bool wokeUp) {
 void StepperPetals::update() {
     if (currentSteps != targetSteps) {
         runStepper();
+        detectStall();
     }
+    else if (enabled) {
+        setEnabled(false);
+        sgTimer = 0;
+    }
+}
+
+void StepperPetals::setupStepper() {
+
 }
 
 void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
-/*
-    REG_IOIN iont = stepperDriver.readIontReg();
-    Serial.print("IOIN=");
-    Serial.println(iont.sr, BIN);
-    Serial.print("Version=");
-    Serial.println(iont.version);
-
-    REG_CHOPCONF chopconf = stepperDriver.readChopconf();
-    Serial.print("CHOPCONF=");
-    Serial.println(iont.sr, BIN);
-
-    REG_GCONF gconf = stepperDriver.readGConfReg();
-    Serial.print("GCONF=");
-    Serial.println(gconf.sr, BIN);
 
     REG_GSTAT gstat = stepperDriver.readGStat();
     Serial.print("GSTAT=");
     Serial.println(gstat.sr, BIN);
+    Serial.print("reset=");
+    Serial.println(gstat.reset);
+    Serial.print("drv_err=");
+    Serial.println(gstat.drv_err);
 
     REG_DRV_STATUS drvStatus = stepperDriver.readDrvStatusReg();
     Serial.print("DRV_STATUS=");
@@ -114,7 +116,7 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     Serial.println(drvStatus.s2gb);
     Serial.print("ot=");
     Serial.println(drvStatus.ot);
-*/
+
     if (level == petalsOpenLevel) {
         return; // no change, keep doing the old movement until done
     }
@@ -138,6 +140,10 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     // set direction upfront
     direction = targetSteps >= currentSteps ? DIRECTION_CW : DIRECTION_CCW;
     digitalWrite(TMC_DIR_PIN, direction == DIRECTION_CW ? LOW : HIGH);
+    
+    // enable
+    setEnabled(true);
+    sgTimer = millis() + STALLGUARD_SAMPLING_PERIOD;
 }
 
 int8_t StepperPetals::getPetalsOpenLevel() {
@@ -159,13 +165,13 @@ bool StepperPetals::arePetalsMoving() {
 bool StepperPetals::setEnabled(bool enabled) {
     if (enabled && !this->enabled) {
         this->enabled = true;
-        ESP_LOGD(LOG_TAG, "Stepper power ON");
+        ESP_LOGI(LOG_TAG, "Stepper enabled");
         digitalWrite(TMC_EN_PIN, HIGH);
         return true;
     }
     if (!enabled && this->enabled) {
         this->enabled = false;
-        ESP_LOGD(LOG_TAG, "Stepper power OFF");
+        ESP_LOGI(LOG_TAG, "Stepper disabled");
         digitalWrite(TMC_EN_PIN, LOW);
         return true;
     }
@@ -193,4 +199,14 @@ bool StepperPetals::runStepper() {
 	    return true;
     }
 	return false;
+}
+
+void StepperPetals::detectStall() {
+    if (sgTimer > 0 && sgTimer < millis()) {
+        uint8_t sgValue = stepperDriver.readSGValue();
+        Serial.print("sgValue=");
+        Serial.println(sgValue);
+        sgTimer = millis() + STALLGUARD_SAMPLING_PERIOD;
+    }
+    // also check error conditions
 }
