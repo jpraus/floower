@@ -272,8 +272,8 @@ void BluetoothControl::ServerCallbacks::onConnect(BLEServer* server) {
     bluetoothControl->deviceConnected = true;
     bluetoothControl->advertising = false;
 
-    if (!bluetoothControl->config->initRemoteOnStartup) {
-        bluetoothControl->config->setRemoteOnStartup(true);
+    if (!bluetoothControl->config->bluetoothAlwaysOn) {
+        bluetoothControl->config->setBluetoothAlwaysOn(true);
         bluetoothControl->config->commit();
     }
 };

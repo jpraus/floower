@@ -15,7 +15,7 @@ static const char* LOG_TAG = "Config";
 #define CONFIG_VERSION 4
 
 #define FLAG_BIT_CALIBRATED 0
-#define FLAG_BIT_INIT_REMOTE_ON_STARTUP 1
+#define FLAG_BIT_BLUETOOTH_ALWAYS_ON 1
 #define FLAG_BIT_TOUCH_CALIBRATED 2
 
 // DO NOT CHANGE MEMORY ADDRESSES!
@@ -26,7 +26,7 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_SERVO_OPEN 4 // integer (2 bytes) calibrated position of servo blossom open (since version 1)
 #define EEPROM_ADDRESS_REVISION 6 // byte - revision number of the logic board to enable features (since version 2)
 #define EEPROM_ADDRESS_SERIALNUMBER 7 // integer (2 bytes) (since version 2)
-#define EEPROM_ADDRESS_FLAGS 9 // byte (8 bites) - config flags [calibrated,initRemoteOnStartup,,,,,,] (since version 3)
+#define EEPROM_ADDRESS_FLAGS 9 // byte (8 bites) - config flags [calibrated,bluetoothAlwaysOn,touchCalibrated,,,,,] (since version 3)
 
 // Customizable values (20+)
 #define EEPROM_ADDRESS_TOUCH_THRESHOLD 20 // byte (since version 2) - calibrated touch threshold value
@@ -40,6 +40,10 @@ static const char* LOG_TAG = "Config";
 //#define EEPROM_ADDRESS_TOUCH_THRESHOLD_ADJUSTMENT 27 // byte (since version 5) - adjusted touch threshold if needed by user
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (15x HS set) - array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..] (since version 4)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
+
+// TODO:
+#define EEPROM_ADDRESS_WIFI_SSIDNAME 128 // (X-Y) max 32 characters (since version 5)
+#define EEPROM_ADDRESS_WIFI_PASSWORD 160 // (X-Y) max 64 characters (since version 5)
 
 void Config::begin() {
     EEPROM.begin(EEPROM_SIZE);
@@ -89,7 +93,7 @@ void Config::load() {
       
         ESP_LOGI(LOG_TAG, "Config ready");
         ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d, tt%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags, touchThreshold);
-        ESP_LOGI(LOG_TAG, "Flags: r%d, %s", initRemoteOnStartup, name.c_str());
+        ESP_LOGI(LOG_TAG, "Flags: bt%d, %s", bluetoothAlwaysOn, name.c_str());
         ESP_LOGI(LOG_TAG, "P13n: bh%d, sp%d, mo%d, cb%d", personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
         for (uint8_t i = 0; i < colorSchemeSize; i++) {
             ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
@@ -119,7 +123,7 @@ void Config::hardwareCalibration(unsigned int servoClosed, unsigned int servoOpe
 void Config::factorySettings() {
     ESP_LOGI(LOG_TAG, "Factory reset");
     setName("Floower");
-    setRemoteOnStartup(false);
+    setBluetoothAlwaysOn(false);
     Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
     setPersonification(personification);
     resetColorScheme();
@@ -141,7 +145,7 @@ void Config::resetColorScheme() {
 void Config::readFlags() {
     flags = EEPROM.read(EEPROM_ADDRESS_FLAGS);
     calibrated = CHECK_BIT(flags, FLAG_BIT_CALIBRATED);
-    initRemoteOnStartup = CHECK_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+    bluetoothAlwaysOn = CHECK_BIT(flags, FLAG_BIT_BLUETOOTH_ALWAYS_ON);
     touchCalibrated = CHECK_BIT(flags, FLAG_BIT_TOUCH_CALIBRATED);
 }
 
@@ -151,10 +155,10 @@ void Config::setCalibrated() {
     this->calibrated = true;
 }
 
-void Config::setRemoteOnStartup(bool initRemoteOnStartup) {
-    flags = initRemoteOnStartup ? SET_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP) : CLEAR_BIT(flags, FLAG_BIT_INIT_REMOTE_ON_STARTUP);
+void Config::setBluetoothAlwaysOn(bool bluetoothAlwaysOn) {
+    flags = bluetoothAlwaysOn ? SET_BIT(flags, FLAG_BIT_BLUETOOTH_ALWAYS_ON) : CLEAR_BIT(flags, FLAG_BIT_BLUETOOTH_ALWAYS_ON);
     EEPROM.write(EEPROM_ADDRESS_FLAGS, flags);
-    this->initRemoteOnStartup = initRemoteOnStartup;
+    this->bluetoothAlwaysOn = bluetoothAlwaysOn;
 }
 
 void Config::setTouchCalibrated(bool touchCalibrated) {

@@ -19,7 +19,7 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 
 // TIMINGS
 
-#define REMOTE_INIT_TIMEOUT 2000 // delay init of BLE to lower the power surge on startup
+#define BLUETOOTH_START_DELAY 2000 // delay init of BLE to lower the power surge on startup
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
@@ -63,8 +63,8 @@ void SmartPowerBehavior::loop() {
         indicateStatus(INDICATE_STATUS_REMOTE, bluetoothControl->isConnected());
         indicateStatus(INDICATE_STATUS_ACTY, true);
     }
-    if (initRemoteTime != 0 && initRemoteTime < now && !floower->arePetalsMoving()) {
-        initRemoteTime = 0;
+    if (bluetoothStartTime != 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
+        bluetoothStartTime = 0;
         bluetoothControl->init();
         bluetoothControl->startAdvertising();
     }
@@ -87,7 +87,7 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
         // bluetooth pairing interrupted
         bluetoothControl->stopAdvertising();
-        config->setRemoteOnStartup(false);
+        config->setBluetoothAlwaysOn(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
         preventTouchUp = true;
@@ -140,8 +140,8 @@ void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
     bluetoothControl->onRemoteChange([=](StateChangePacketData data) { onRemoteChange(data); });
-    if (config->bluetoothEnabled && config->initRemoteOnStartup) {
-        initRemoteTime = millis() + REMOTE_INIT_TIMEOUT; // defer init of BLE by 5 seconds
+    if (config->bluetoothEnabled && config->bluetoothAlwaysOn) {
+        bluetoothStartTime = millis() + BLUETOOTH_START_DELAY; // defer init of BLE by 5 seconds
     }
 }
 

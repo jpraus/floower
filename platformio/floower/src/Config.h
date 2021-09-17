@@ -47,7 +47,7 @@ class Config {
         void setColorScheme(HsbColor* colors, uint8_t size);
         void setTouchThreshold(uint8_t touchThreshold);
         void setName(String name);
-        void setRemoteOnStartup(bool initRemoteOnStartup);
+        void setBluetoothAlwaysOn(bool bluetoothAlwaysOn);
         void setCalibrated();
         void setTouchCalibrated(bool touchCalibrated);
         void setPersonification(Personification personification);
@@ -64,7 +64,7 @@ class Config {
         unsigned int serialNumber = 0;
 
         // extracted flags
-        bool initRemoteOnStartup = false;
+        bool bluetoothAlwaysOn = false;
         bool calibrated = false;
         bool touchCalibrated = false;
 
