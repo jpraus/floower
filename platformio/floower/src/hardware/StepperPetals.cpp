@@ -205,11 +205,13 @@ bool StepperPetals::runStepper() {
 }
 
 void StepperPetals::detectStall() {
+#ifdef STALLGUARD_SAMPLING_PERIOD
     if (sgTimer > 0 && sgTimer < millis()) {
         uint8_t sgValue = stepperDriver.readSGValue();
         Serial.print("sgValue=");
         Serial.println(sgValue);
         sgTimer = millis() + STALLGUARD_SAMPLING_PERIOD;
     }
+#endif
     // also check error conditions
 }
