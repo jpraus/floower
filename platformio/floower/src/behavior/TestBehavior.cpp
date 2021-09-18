@@ -11,6 +11,8 @@ static const char* LOG_TAG = "TestBehavior";
 #define STATE_BLOOM 128
 #define STATE_FADE 129
 
+#define SPEED_MS 5000
+
 TestBehavior::TestBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl) 
         : SmartPowerBehavior(config, floower, bluetoothControl) {
 }
@@ -21,15 +23,15 @@ void TestBehavior::loop() {
     unsigned long now = millis();
     if (eventTime > 0 && eventTime <= now) {
         if (state == STATE_BLOOM) {
-            floower->setPetalsOpenLevel(0, 5000);
-            eventTime = now + 5000;
+            floower->setPetalsOpenLevel(0, SPEED_MS);
+            eventTime = now + SPEED_MS;
             changeState(STATE_FADE);
         }
         else if (state == STATE_FADE) {
             HsbColor nextColor = nextRandomColor();
-            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, 5000);
-            floower->setPetalsOpenLevel(100, 5000);
-            eventTime = now + 5000;
+            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, SPEED_MS);
+            floower->setPetalsOpenLevel(100, SPEED_MS);
+            eventTime = now + SPEED_MS;
             changeState(STATE_BLOOM);
         }
     }

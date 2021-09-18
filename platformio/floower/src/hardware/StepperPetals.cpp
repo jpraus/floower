@@ -22,7 +22,7 @@ static const char* LOG_TAG = "StepperPetals";
 #define DIRECTION_CW 1
 #define DIRECTION_CCW -1
 
-#define STALLGUARD_SAMPLING_PERIOD 200
+//#define STALLGUARD_SAMPLING_PERIOD 50
 
 StepperPetals::StepperPetals(Config *config) : config(config), stepperDriver(&Serial1, TMC_R_SENSE, TMC_DRIVER_ADDRESS) {
     Serial1.begin(500000, SERIAL_8N1, TMC_UART_RX_PIN, TMC_UART_TX_PIN);
@@ -68,8 +68,8 @@ void StepperPetals::init(bool initial, bool wokeUp) {
         stepperDriver.writeChopconfReg(chopconf);
 
         REG_IHOLD_IRUN iholdIrun;
-        iholdIrun.irun = 31;
-        iholdIrun.ihold = 8;
+        iholdIrun.irun = 16;
+        iholdIrun.ihold = 1;
         iholdIrun.iholddelay = 1;
         stepperDriver.writeIholdIrunReg(iholdIrun);
 
@@ -126,6 +126,7 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
         targetSteps = TMC_OPEN_STEPS;
     }
     else if (level <= 0) {
+        currentSteps += 1000; // TODO: make sure the petals will close completelly
         targetSteps = 0;
     }
     else {
@@ -143,7 +144,9 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     
     // enable
     setEnabled(true);
+#ifdef STALLGUARD_SAMPLING_PERIOD
     sgTimer = millis() + STALLGUARD_SAMPLING_PERIOD;
+#endif
 }
 
 int8_t StepperPetals::getPetalsOpenLevel() {
