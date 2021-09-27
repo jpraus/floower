@@ -78,7 +78,7 @@ void setup() {
 
     // init state machine, this is core logic
     if (!config.calibrated || !config.touchCalibrated) {
-        behavior = new Calibration(&config, &floower, config.calibrated && !config.touchCalibrated);
+        behavior = new Calibration(&config, &floower, &bluetoothControl, config.calibrated && !config.touchCalibrated);
     }
     else {
         behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);

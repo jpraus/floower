@@ -3,11 +3,12 @@
 #include "Arduino.h"
 #include "Config.h"
 #include "hardware/Floower.h"
+#include "BluetoothControl.h"
 #include "behavior/Behavior.h"
 
 class Calibration : public Behavior {
     public:
-        Calibration(Config *config, Floower *floower, bool autoCalibrateTouch);
+        Calibration(Config *config, Floower *floower, BluetoothControl *bluetoothControl, bool autoCalibrateTouch);
         virtual void setup(bool wokeUp = false);
         virtual void loop();
         virtual bool isIdle();
@@ -18,6 +19,7 @@ class Calibration : public Behavior {
 
         Config *config;
         Floower *floower;
+        BluetoothControl *bluetoothControl;
 
         bool autoCalibrateTouch = false;
         uint8_t state = 0;
