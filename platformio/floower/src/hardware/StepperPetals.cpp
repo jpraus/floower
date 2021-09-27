@@ -80,7 +80,7 @@ void StepperPetals::init(bool initial, bool wokeUp) {
 void StepperPetals::update() {
     if (currentSteps != targetSteps) {
         runStepper();
-        detectStall();
+        //detectStall();
     }
     else if (enabled) {
         setEnabled(false);
@@ -94,7 +94,7 @@ void StepperPetals::setupStepper() {
 
 void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
-
+/*
     REG_GSTAT gstat = stepperDriver.readGStat();
     Serial.print("GSTAT=");
     Serial.println(gstat.sr, BIN);
@@ -116,7 +116,7 @@ void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     Serial.println(drvStatus.s2gb);
     Serial.print("ot=");
     Serial.println(drvStatus.ot);
-
+*/
     if (level == petalsOpenLevel) {
         return; // no change, keep doing the old movement until done
     }
