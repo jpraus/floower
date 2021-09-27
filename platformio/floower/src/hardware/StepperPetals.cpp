@@ -68,7 +68,7 @@ void StepperPetals::init(bool initial, bool wokeUp) {
         stepperDriver.writeChopconfReg(chopconf);
 
         REG_IHOLD_IRUN iholdIrun;
-        iholdIrun.irun = 16;
+        iholdIrun.irun = 31;
         iholdIrun.ihold = 1;
         iholdIrun.iholddelay = 1;
         stepperDriver.writeIholdIrunReg(iholdIrun);
