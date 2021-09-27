@@ -83,6 +83,7 @@ void setup() {
     else {
         behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
         //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothControl);
+        //behavior = new TestBehavior(&config, &floower, &bluetoothControl);
     }
     behavior->setup(wokeUp);
 

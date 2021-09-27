@@ -30,7 +30,6 @@ class StepperPetals : public Petals {
         bool setEnabled(bool enabled);
 
     private:
-        void setupStepper();
         bool runStepper();
         void detectStall();
 

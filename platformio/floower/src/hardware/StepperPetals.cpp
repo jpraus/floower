@@ -88,10 +88,6 @@ void StepperPetals::update() {
     }
 }
 
-void StepperPetals::setupStepper() {
-
-}
-
 void StepperPetals::setPetalsOpenLevel(int8_t level, int transitionTime) {
     ESP_LOGI(LOG_TAG, "Petals %d%%->%d%%", petalsOpenLevel, level);
 /*
