@@ -59,6 +59,7 @@ void StepperPetals::init(bool initial, bool wokeUp) {
 
     if (!initialized) {
         REG_IOIN iont = stepperDriver.readIontReg();
+        (void)iont; // to disable unused variable warning
         ESP_LOGI(LOG_TAG, "TMC2300: v=%d", iont.version);
 
         REG_CHOPCONF chopconf = stepperDriver.readChopconf();
