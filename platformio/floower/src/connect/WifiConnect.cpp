@@ -24,54 +24,65 @@ void WifiConnect::setup() {
     connect();
 }
 
+void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info){
+    Serial.println("Connected to AP successfully!");
+}
+
+void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
+    Serial.println("WiFi connected");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+}
+
+void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
+    Serial.println("Disconnected from WiFi access point");
+    Serial.print("WiFi lost connection. Reason: ");
+    Serial.println(info.disconnected.reason);
+    Serial.println("Trying to Reconnect");
+    WiFi.begin("floowerlab", "tadyRostouKytky");
+}
+
 void WifiConnect::connect() {
     WiFi.mode(WIFI_STA);
-    WiFi.begin("", "");
-    Serial.print("Connecting ");
-    
-    uint8_t i = 0;
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print('.');
-        delay(500);
-    
-        if ((++i % 16) == 0) {
-            Serial.println(F(" still trying to connect"));
-        }
-    }
 
-    Serial.print(F("Connected. My IP address is: "));
-    Serial.println(WiFi.localIP());
+    WiFi.onEvent(WiFiStationConnected, SYSTEM_EVENT_STA_CONNECTED);
+    WiFi.onEvent(WiFiGotIP, SYSTEM_EVENT_STA_GOT_IP);
+    WiFi.onEvent(WiFiStationDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
+
+    WiFi.begin("", "");
+    Serial.print("Connecting to Wifi");
 
     //runOTAUpdate();
 }
 
 void WifiConnect::loop() {
-    // reconnect and send authorization packet
-    if (client.connected()) {
-        if (client.available() > 0) {
-            readMessage();
+    if (WiFi.status() == WL_CONNECTED) {
+        if (client.connected()) {
+            if (client.available() > 0) {
+                readMessage();
+            }
         }
-    }
-    else if (connected) {
-        Serial.println("Connection closed");
-        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
-        connected = false;
-    }
-    else if (reconnectTime <= millis()) {
-        Serial.println("Connecting to Floud");
-
-        if (client.connect(FLOUD_HOST, FLOUD_PORT) == 1) {
-            String payload = "nejbezpecnejsi";
-            WifiMessageHeader header = {MESSAGE_TYPE_AUTH, 1, (uint16_t) payload.length()};
-            payload.toCharArray((char *)payloadBuffer, payload.length() + 1); // add +1 to accomodate for 0 terminate string
-
-            sendMessage(header, payloadBuffer, payload.length());
-
-            connected = true;
-        }
-        else {
-            Serial.println("Failed to connect");
+        else if (connected) {
+            Serial.println("Connection closed");
             reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+            connected = false;
+        }
+        else if (reconnectTime <= millis()) {
+            Serial.println("Connecting to Floud");
+
+            if (client.connect(FLOUD_HOST, FLOUD_PORT) == 1) {
+                String payload = "nejbezpecnejsi";
+                WifiMessageHeader header = {MESSAGE_TYPE_AUTH, 1, (uint16_t) payload.length()};
+                payload.toCharArray((char *)payloadBuffer, payload.length() + 1); // add +1 to accomodate for 0 terminate string
+
+                sendMessage(header, payloadBuffer, payload.length());
+
+                connected = true;
+            }
+            else {
+                Serial.println("Failed to connect");
+                reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+            }
         }
     }
 }
