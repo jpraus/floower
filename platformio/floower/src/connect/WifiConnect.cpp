@@ -11,17 +11,22 @@
 #define MESSAGE_TYPE_PETALS 20
 #define MESSAGE_TYPE_COLOR 21
 
+#define RECONNECT_INTERVAL_MS 5000
+
+#define FLOUD_HOST "192.168.8.102"
+#define FLOUD_PORT 3000
+
 WifiConnect::WifiConnect(Config *config) 
         : config(config) {
 }
 
-void WifiConnect::init() {
+void WifiConnect::setup() {
     connect();
 }
 
 void WifiConnect::connect() {
     WiFi.mode(WIFI_STA);
-    WiFi.begin("puchovi", "12EA34EA56");
+    WiFi.begin("", "");
     Serial.print("Connecting ");
     
     uint8_t i = 0;
@@ -37,57 +42,37 @@ void WifiConnect::connect() {
     Serial.print(F("Connected. My IP address is: "));
     Serial.println(WiFi.localIP());
 
-    client.connect("floowergarden-dev.eu-west-1.elasticbeanstalk.com", 80);
-
     //runOTAUpdate();
 }
-/*
-void WifiConnect::request() {
-    //Check WiFi connection status
-    if (WiFi.status()== WL_CONNECTED) {
-        String serverPath = "http://api.floower.io/";
-        
-        // Your Domain name with URL path or IP address with path
-        http.begin(serverPath.c_str());
-        
-        // Send HTTP GET request
-        int httpResponseCode = http.GET();
-        
-        if (httpResponseCode > 0) {
-            Serial.print("HTTP Response code: ");
-            Serial.println(httpResponseCode);
-            String payload = http.getString();
-            Serial.println(payload);
-        }
-        else {
-            Serial.print("Error code: ");
-            Serial.println(httpResponseCode);
-        }
-        // Free resources
-        http.end();
-    }
-    else {
-        Serial.println("WiFi Disconnected");
-    }
-}
-*/
-void WifiConnect::receive() {
+
+void WifiConnect::loop() {
+    // reconnect and send authorization packet
     if (client.connected()) {
-        while (client.available() > 0) {
+        if (client.available() > 0) {
             readMessage();
         }
     }
+    else if (connected) {
+        Serial.println("Connection closed");
+        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+        connected = false;
+    }
+    else if (reconnectTime <= millis()) {
+        Serial.println("Connecting to Floud");
 
-    // authorize
-    if (client.connected()) {
-        Serial.println("Sending auth packet");
+        if (client.connect(FLOUD_HOST, FLOUD_PORT) == 1) {
+            String payload = "nejbezpecnejsi";
+            WifiMessageHeader header = {MESSAGE_TYPE_AUTH, 1, (uint16_t) payload.length()};
+            payload.toCharArray((char *)payloadBuffer, payload.length() + 1); // add +1 to accomodate for 0 terminate string
 
-        String payload = "nejbezpecnejsi";
-        WifiMessageHeader header = {MESSAGE_TYPE_AUTH, 1, (uint16_t) payload.length()};
-        payload.toCharArray((char *)payloadBuffer, payload.length() + 1); // add +1 to accomodate for 0 terminate string
+            sendMessage(header, payloadBuffer, payload.length());
 
-        sendMessage(header, payloadBuffer);
-        delay(1000);
+            connected = true;
+        }
+        else {
+            Serial.println("Failed to connect");
+            reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+        }
     }
 }
 
@@ -138,18 +123,18 @@ int8_t WifiConnect::readMessageHeader(WifiMessageHeader& header) {
     return rlen;
 }
 
-void WifiConnect::sendMessage(WifiMessageHeader& header, const uint8_t* payload) {
+void WifiConnect::sendMessage(WifiMessageHeader& header, const uint8_t* payload, const size_t payloadSize) {
     header.type = htons(header.type);
     header.id = htons(header.id);
     header.length = htons(header.length);
 
     // TODO: check payload size?
     client.write((uint8_t*)&header, sizeof(header));
-    client.write(payload, header.length);
+    client.write(payload, payloadSize);
 }
 
 // OTA
-/*
+
 inline String getHeaderValue(String header, String headerName) {
     return header.substring(strlen(headerName.c_str()));
 }
@@ -252,4 +237,3 @@ void WifiConnect::runOTAUpdate() {
         client.flush();
     }
 }
-*/

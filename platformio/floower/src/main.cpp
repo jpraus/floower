@@ -5,7 +5,7 @@
 #include <esp_task_wdt.h>
 #include "Config.h"
 #include "BluetoothControl.h"
-//#include "connect/WifiConnect.h"
+#include "connect/WifiConnect.h"
 #include "behavior/BloomingBehavior.h"
 #include "behavior/MindfulnessBehavior.h"
 #include "behavior/Calibration.h"
@@ -33,7 +33,7 @@ const bool colorPickerEnabled = true;
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
 BluetoothControl bluetoothControl(&floower, &config);
-//WifiConnect wifiConnect(&config);
+WifiConnect wifiConnect(&config);
 Behavior *behavior;
 
 void configure();
@@ -87,12 +87,13 @@ void setup() {
     }
     behavior->setup(wokeUp);
 
-    //wifiConnect.init();
+    wifiConnect.setup();
 }
 
 void loop() {
     floower.update();
     behavior->loop();
+    wifiConnect.loop();
 
     // save some power when there is nothing happening
     if (behavior->isIdle()) {

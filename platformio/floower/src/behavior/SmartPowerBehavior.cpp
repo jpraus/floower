@@ -104,7 +104,7 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
 bool SmartPowerBehavior::onRemoteChange(StateChangePacketData data) {
     if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
         // blossom color
-        HsbColor color = HsbColor(data.getColor());
+        HsbColor color = data.getColor();
         floower->transitionColor(color.H, color.S, color.B, data.duration * 100);
         changeState(STATE_REMOTE_CONTROL);
         return true;
