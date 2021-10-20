@@ -51,6 +51,8 @@ class Config {
         void setCalibrated();
         void setTouchCalibrated(bool touchCalibrated);
         void setPersonification(Personification personification);
+        void setWifi(String ssid, String password);
+        void setFloud(String token);
         void commit();
 
         static uint16_t encodeHSColor(double hue, double saturation);
@@ -76,11 +78,14 @@ class Config {
         // configration
         uint8_t colorSchemeSize = 0;
         HsbColor colorScheme[10]; // max 10 colors
-        uint8_t touchThreshold; // read-only
+        uint8_t touchThreshold; // read-only, calibrated at the beginning
         String name;
         Personification personification;
         uint16_t speedMillis; // read-only, precalculated speed in ms
         double colorBrightness; // read-only, precalcuated color brightness (0.0-1.0)
+        String wifiSsid;
+        String wifiPassword;
+        String floudToken;
 
     private:
         void readFlags();

@@ -1,6 +1,15 @@
 #include "WifiConnect.h"
 #include <Update.h>
 #include <esp_task_wdt.h>
+#include <esp_wifi.h>
+
+#if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
+#include "esp32-hal-log.h"
+#define LOG_TAG ""
+#else
+#include "esp_log.h"
+static const char* LOG_TAG = "WifiConnect";
+#endif
 
 #define OTA_RESPONSE_TIMEOUT_MS 5000
 
@@ -11,82 +20,87 @@
 #define MESSAGE_TYPE_PETALS 20
 #define MESSAGE_TYPE_COLOR 21
 
+#define STATE_FLOUD_DISCONNECTED 0
+#define STATE_FLOUD_CONNECTING 1
+#define STATE_FLOUD_ESTABLISHED 2
+#define STATE_FLOUD_AUTHORIZING 3
+#define STATE_FLOUD_AUTHORIZED 4
+
 #define RECONNECT_INTERVAL_MS 5000
 
-#define FLOUD_HOST "192.168.8.102"
+#define FLOUD_HOST "192.168.0.103"
 #define FLOUD_PORT 3000
 
 WifiConnect::WifiConnect(Config *config) 
         : config(config) {
+    state = STATE_FLOUD_DISCONNECTED;
+    client = NULL;
 }
 
 void WifiConnect::setup() {
-    connect();
 }
 
-void WiFiStationConnected(WiFiEvent_t event, WiFiEventInfo_t info){
-    Serial.println("Connected to AP successfully!");
-}
+void WifiConnect::start() {
+    if (config->wifiSsid.isEmpty()) {
+        return;
+    }
 
-void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info){
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-}
-
-void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info){
-    Serial.println("Disconnected from WiFi access point");
-    Serial.print("WiFi lost connection. Reason: ");
-    Serial.println(info.disconnected.reason);
-    Serial.println("Trying to Reconnect");
-    WiFi.begin("floowerlab", "tadyRostouKytky");
-}
-
-void WifiConnect::connect() {
     WiFi.mode(WIFI_STA);
 
-    WiFi.onEvent(WiFiStationConnected, SYSTEM_EVENT_STA_CONNECTED);
-    WiFi.onEvent(WiFiGotIP, SYSTEM_EVENT_STA_GOT_IP);
-    WiFi.onEvent(WiFiStationDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
+    WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, SYSTEM_EVENT_STA_CONNECTED);
+    WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, SYSTEM_EVENT_STA_GOT_IP);
+    WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
 
-    WiFi.begin("", "");
-    Serial.print("Connecting to Wifi");
+    WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
+    ESP_LOGI(LOG_TAG, "Starting WiFi: %s", config->wifiSsid);
+}
 
-    //runOTAUpdate();
+void WifiConnect::stop() {
+    // TODO: disconnect the socket
+    WiFi.disconnect(true); // turn off wifi
+    WiFi.removeEvent(SYSTEM_EVENT_STA_CONNECTED);
+    WiFi.removeEvent(SYSTEM_EVENT_STA_GOT_IP);
+    WiFi.removeEvent(SYSTEM_EVENT_STA_DISCONNECTED);
+    esp_wifi_stop();
+
+    ESP_LOGI(LOG_TAG, "Wifi stopped");
 }
 
 void WifiConnect::loop() {
     if (WiFi.status() == WL_CONNECTED) {
-        if (client.connected()) {
-            if (client.available() > 0) {
-                readMessage();
-            }
-        }
-        else if (connected) {
-            Serial.println("Connection closed");
-            reconnectTime = millis() + RECONNECT_INTERVAL_MS;
-            connected = false;
-        }
-        else if (reconnectTime <= millis()) {
-            Serial.println("Connecting to Floud");
-
-            if (client.connect(FLOUD_HOST, FLOUD_PORT) == 1) {
-                String payload = "nejbezpecnejsi";
-                WifiMessageHeader header = {MESSAGE_TYPE_AUTH, 1, (uint16_t) payload.length()};
-                payload.toCharArray((char *)payloadBuffer, payload.length() + 1); // add +1 to accomodate for 0 terminate string
-
-                sendMessage(header, payloadBuffer, payload.length());
-
-                connected = true;
-            }
-            else {
-                Serial.println("Failed to connect");
-                reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+        if (config->floudToken) {
+            switch (state) {
+                case STATE_FLOUD_DISCONNECTED:
+                    if (reconnectTime <= millis()) {
+                        ESP_LOGI(LOG_TAG, "Connecting to Floud");
+                        if (client == NULL) {
+                            client = new AsyncClient(NULL);
+                            client->onData([=](void* arg, AsyncClient* client, void *data, size_t len){ onSocketData((char *)data, len); });
+                            client->onConnect([=](void* arg, AsyncClient* client){ onSocketConnected(); });
+                            client->onDisconnect([=](void* arg, AsyncClient* client){ onSocketDisconnected(); });
+                        }
+                        client->connect(FLOUD_HOST, FLOUD_PORT);
+                        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+                        state = STATE_FLOUD_CONNECTING;
+                    }
+                    break;
+                case STATE_FLOUD_ESTABLISHED:
+                    sendAuthorization();
+                    state = STATE_FLOUD_AUTHORIZING;
+                    break;
             }
         }
     }
 }
 
+void WifiConnect::sendAuthorization() {
+    ESP_LOGI(LOG_TAG, "Authorizing to Floud");
+    String &token = config->floudToken;
+    token.toCharArray(payloadBuffer, token.length() + 1); // add +1 to accomodate for 0 terminate char
+    authorizationMessageId = sendMessage(MESSAGE_TYPE_AUTH, payloadBuffer, token.length()); // dont send the 0 terminate char
+}
+
+/*
 bool WifiConnect::readMessage() {
     WifiMessageHeader header;
     const int ret = readMessageHeader(header);
@@ -133,15 +147,48 @@ int8_t WifiConnect::readMessageHeader(WifiMessageHeader& header) {
 
     return rlen;
 }
-
-void WifiConnect::sendMessage(WifiMessageHeader& header, const uint8_t* payload, const size_t payloadSize) {
-    header.type = htons(header.type);
-    header.id = htons(header.id);
-    header.length = htons(header.length);
+*/
+uint16_t WifiConnect::sendMessage(const uint16_t type, const char* payload, const size_t payloadSize) {
+    uint16_t messageId = messageIdCounter++;
+    WifiMessageHeader header = {
+        htons(type), htons(messageId), htons(payloadSize)
+    };
 
     // TODO: check payload size?
-    client.write((uint8_t*)&header, sizeof(header));
-    client.write(payload, payloadSize);
+    client->write((char*) &header, sizeof(header));
+    client->write(payload, payloadSize);
+
+    return messageId;
+}
+
+void WifiConnect::onSocketData(char *data, size_t len) {
+    Serial.printf("Data received from %s\n", client->remoteIP().toString().c_str());
+    Serial.println(len);
+}
+
+void WifiConnect::onSocketConnected() {
+    ESP_LOGI(LOG_TAG, "Connected to Floud");
+    state = STATE_FLOUD_ESTABLISHED;
+}
+
+void WifiConnect::onSocketDisconnected() {
+    ESP_LOGI(LOG_TAG, "Disconnected from Floud");
+    state = STATE_FLOUD_DISCONNECTED;
+    reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+}
+
+// WIFI
+
+void WifiConnect::onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+    ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
+}
+
+void WifiConnect::onWifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+    ESP_LOGI(LOG_TAG, "Wifi connected");
+}
+
+void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
+    ESP_LOGI(LOG_TAG, "Wifi got IP");
 }
 
 // OTA

@@ -3,6 +3,7 @@
 #include "Arduino.h"
 #include "Config.h"
 #include "WiFi.h"
+#include "AsyncTCP.h"
 
 #define WIFI_MAX_PAYLOAD_BYTES 255
 
@@ -17,6 +18,8 @@ class WifiConnect {
         WifiConnect(Config *config);
         void setup();
         void loop();
+        void start();
+        void stop();
         void runOTAUpdate();
 
     private:
@@ -26,12 +29,23 @@ class WifiConnect {
         bool readMessage();
         int8_t readMessageHeader(WifiMessageHeader& header);
 
-        void sendMessage(WifiMessageHeader& header, const uint8_t* payload, const size_t payloadSize);
+        void sendAuthorization();
+        uint16_t sendMessage(const uint16_t type, const char* payload, const size_t payloadSize);
+
+        void onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
+        void onWifiConnected(WiFiEvent_t event, WiFiEventInfo_t info);
+        void onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info);
+
+        void onSocketData(char *data, size_t len);
+        void onSocketConnected();
+        void onSocketDisconnected();
 
         Config *config;
-        WiFiClient client;
+        AsyncClient *client;
 
         unsigned long reconnectTime = 0;
-        bool connected = false;
-        uint8_t payloadBuffer[WIFI_MAX_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
+        uint16_t messageIdCounter = 1;
+        uint8_t state;
+        uint16_t authorizationMessageId;
+        char payloadBuffer[WIFI_MAX_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
 };

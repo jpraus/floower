@@ -87,7 +87,10 @@ void setup() {
     }
     behavior->setup(wokeUp);
 
+    config.setWifi("", "");
+    config.setFloud("");
     wifiConnect.setup();
+    wifiConnect.start();
 }
 
 void loop() {

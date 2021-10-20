@@ -256,6 +256,17 @@ void Config::readName() {
     name = String(data);
 }
 
+void Config::setWifi(String ssid, String password) {
+    this->wifiSsid = ssid;
+    this->wifiPassword = password;
+    // TODO: persist
+}
+
+void Config::setFloud(String token) {
+    this->floudToken = token;
+    // TODO: persist
+}
+
 void Config::writeInt(uint16_t address, uint16_t value) {
     uint8_t two = (value & 0xFF);
     uint8_t one = ((value >> 8) & 0xFF);
