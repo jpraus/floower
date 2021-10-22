@@ -19,7 +19,7 @@ static const char* LOG_TAG = "BluetoothControl";
 //#define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // DEPRECATED: array of 3 bytes per pre-defined color [(R + G + B), (R + G + B), ..], COLOR_SCHEME_MAX_LENGTH see config.h
 #define FLOOWER_COLORS_SCHEME_UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b" // array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..], COLOR_SCHEME_MAX_LENGTH see config.h
 #define FLOOWER_PERSONIFICATION_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // see PersonificationPacketData (previously touch threshold)
-//#define FLOOWER__UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528"
+#define FLOOWER_COMMAND_UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528" // command interface to replace all other
 
 // https://docs.springcard.com/books/SpringCore/Host_interfaces/Physical_and_Transport/Bluetooth/Standard_Services
 // Device Information profile

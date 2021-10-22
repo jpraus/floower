@@ -33,7 +33,7 @@ const bool colorPickerEnabled = true;
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
 BluetoothControl bluetoothControl(&floower, &config);
-WifiConnect wifiConnect(&config);
+WifiConnect wifiConnect(&config, &floower);
 Behavior *behavior;
 
 void configure();
@@ -87,8 +87,8 @@ void setup() {
     }
     behavior->setup(wokeUp);
 
-    config.setWifi("", "");
-    config.setFloud("");
+    config.setWifi("puchovi", "12EA34EA56");
+    config.setFloud("nejbezpecnejsi");
     wifiConnect.setup();
     wifiConnect.start();
 }

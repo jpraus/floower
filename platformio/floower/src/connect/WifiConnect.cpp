@@ -12,27 +12,22 @@ static const char* LOG_TAG = "WifiConnect";
 #endif
 
 #define OTA_RESPONSE_TIMEOUT_MS 5000
-
-#define MESSAGE_TYPE_STATUS_OK 0
-#define MESSAGE_TYPE_STATUS_ERROR 1
-#define MESSAGE_TYPE_STATUS_UNAUTHORIZED 2
-#define MESSAGE_TYPE_AUTH 10
-#define MESSAGE_TYPE_PETALS 20
-#define MESSAGE_TYPE_COLOR 21
+#define SOCKET_RESPONSE_TIMEOUT_MS 2000
 
 #define STATE_FLOUD_DISCONNECTED 0
 #define STATE_FLOUD_CONNECTING 1
 #define STATE_FLOUD_ESTABLISHED 2
 #define STATE_FLOUD_AUTHORIZING 3
 #define STATE_FLOUD_AUTHORIZED 4
+#define STATE_FLOUD_UNAUTHORIZED 5
 
 #define RECONNECT_INTERVAL_MS 5000
 
 #define FLOUD_HOST "192.168.0.103"
 #define FLOUD_PORT 3000
 
-WifiConnect::WifiConnect(Config *config) 
-        : config(config) {
+WifiConnect::WifiConnect(Config *config, Floower *floower) 
+        : config(config), floower(floower) {
     state = STATE_FLOUD_DISCONNECTED;
     client = NULL;
 }
@@ -53,6 +48,7 @@ void WifiConnect::start() {
 
     WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
     ESP_LOGI(LOG_TAG, "Starting WiFi: %s", config->wifiSsid);
+    enabled = true;
 }
 
 void WifiConnect::stop() {
@@ -64,9 +60,14 @@ void WifiConnect::stop() {
     esp_wifi_stop();
 
     ESP_LOGI(LOG_TAG, "Wifi stopped");
+    enabled = false;
 }
 
 void WifiConnect::loop() {
+    if (!enabled) {
+        return;
+    }
+
     if (WiFi.status() == WL_CONNECTED) {
         if (config->floudToken) {
             switch (state) {
@@ -91,63 +92,79 @@ void WifiConnect::loop() {
             }
         }
     }
+
+    if (received) {
+        // got message to process   
+        handleReceivedMessage();
+        received = false;
+    }
+    else if (receiveTime > 0 && receiveTime <= millis()) {
+        // did not received resposne
+        ESP_LOGW(LOG_TAG, "Floud response timeout");
+        socketReconnect();
+    }
+}
+
+void WifiConnect::handleReceivedMessage() {
+    ESP_LOGI(LOG_TAG, "Got message: %d/%d/%d", receivedMessage.type, receivedMessage.id, receivedMessage.length);
+    // check for response codes
+    if (receivedMessage.type == MessageType::STATUS_ERROR) {
+        socketReconnect(); // reset on error
+    }
+    else if (receivedMessage.type == MessageType::STATUS_OK) {
+        if (state == STATE_FLOUD_AUTHORIZING && receivedMessage.id == authorizationMessageId) {
+            ESP_LOGI(LOG_TAG, "Authorized");
+            state = STATE_FLOUD_AUTHORIZED;
+        }
+    }
+    else if (receivedMessage.type == MessageType::STATUS_UNAUTHORIZED) {
+        state = STATE_FLOUD_UNAUTHORIZED; // TODO: force authorization again
+    }
+    // handle commands
+    else if (state == STATE_FLOUD_AUTHORIZED) {
+        // TODO interpret commands
+        if (receivedMessage.length > 0) {
+            payloadUnpacker.feed((const uint8_t *) receiveBuffer, receivedMessage.length);
+            if (!payloadUnpacker.deserialize(jsonPayload)) {
+                ESP_LOGE(LOG_TAG, "Invalid Payload");
+                return;
+            }
+            if (receivedMessage.type == MessageType::CMD_WRITE_COLOR) {
+                // { r: <red>, g: <green>, b: <blue>, t: <time >}
+                HsbColor color = HsbColor(RgbColor(jsonPayload["r"], jsonPayload["g"], jsonPayload["b"]));
+                //uint16_t time = jsonPayload["t"];
+                floower->transitionColor(color.H, color.S, color.B, 5000); // TODO: time
+            }
+            else if (receivedMessage.type == MessageType::CMD_WRITE_PETALS) {
+                // { l: <level>, t: <time >}
+                uint8_t level = jsonPayload["l"];
+                //uint16_t time = jsonPayload["t"];
+                floower->setPetalsOpenLevel(level, 5000);
+            }
+            else if (receivedMessage.type == MessageType::PROTOCOL_WRITE_WIFI) {
+                Serial.println("Setup WiFi");
+                String ssid = jsonPayload["ssid"];
+                String ssid = jsonPayload["pwd"];
+            }
+        }
+    }
+}
+
+void WifiConnect::socketReconnect() {
+    receiveTime = 0;
+    received = false;
+    if (client != NULL) {
+        client->stop();
+    }
 }
 
 void WifiConnect::sendAuthorization() {
     ESP_LOGI(LOG_TAG, "Authorizing to Floud");
     String &token = config->floudToken;
-    token.toCharArray(payloadBuffer, token.length() + 1); // add +1 to accomodate for 0 terminate char
-    authorizationMessageId = sendMessage(MESSAGE_TYPE_AUTH, payloadBuffer, token.length()); // dont send the 0 terminate char
+    token.toCharArray(sendBuffer, token.length() + 1); // add +1 to accomodate for 0 terminate char
+    authorizationMessageId = sendMessage(MessageType::PROTOCOL_AUTH, sendBuffer, token.length()); // dont send the 0 terminate char
 }
 
-/*
-bool WifiConnect::readMessage() {
-    WifiMessageHeader header;
-    const int ret = readMessageHeader(header);
-
-    if (ret == 0) {
-        // no data ??
-        return true;
-    }
-
-    if (header.length > WIFI_MAX_PAYLOAD_BYTES) {
-        // too big
-        return true;
-    }
-
-    if (header.length != client.read(payloadBuffer, header.length)) {
-        // failed to read data
-        return false;
-    }
-    payloadBuffer[header.length] = '\0';
-
-    return true;
-}
-
-int8_t WifiConnect::readMessageHeader(WifiMessageHeader& header) {
-    size_t rlen = client.read((uint8_t*)&header, sizeof(header));
-    if (rlen == 0) {
-        return 0;
-    }
-
-    if (sizeof(header) != rlen) {
-        return -1;
-    }
-
-    //BLYNK_DBG_DUMP(">", &header, sizeof(WifiMessageHeader));
-
-    header.type = ntohs(header.type);
-    header.id = ntohs(header.id);
-    header.length = ntohs(header.length);
-
-    Serial.println("Got message");
-    Serial.println(header.type);
-    Serial.println(header.id);
-    Serial.println(header.length);
-
-    return rlen;
-}
-*/
 uint16_t WifiConnect::sendMessage(const uint16_t type, const char* payload, const size_t payloadSize) {
     uint16_t messageId = messageIdCounter++;
     WifiMessageHeader header = {
@@ -158,12 +175,47 @@ uint16_t WifiConnect::sendMessage(const uint16_t type, const char* payload, cons
     client->write((char*) &header, sizeof(header));
     client->write(payload, payloadSize);
 
+    receiveTime = millis() + SOCKET_RESPONSE_TIMEOUT_MS;
     return messageId;
 }
 
+void WifiConnect::receiveMessage(char *data, size_t len) {
+    if (received) {
+        return; // cannot receive another message yet
+    }
+
+    size_t headerSize = sizeof(receivedMessage);
+    if (len < headerSize) {
+        return; // cannot receive
+    }
+    
+    memcpy(&receivedMessage, data, headerSize);
+    receivedMessage.type = ntohs(receivedMessage.type);
+    receivedMessage.id = ntohs(receivedMessage.id);
+    receivedMessage.length = ntohs(receivedMessage.length);
+
+    if (receivedMessage.length > 0) {
+        size_t available = len - headerSize;
+        if (available > MAX_MESSAGE_PAYLOAD_BYTES) {
+            // invalid package, reset
+            socketReconnect();
+        }
+        else if (available >= receivedMessage.length) {
+            // receive payload
+            memcpy(receiveBuffer, data + headerSize, receivedMessage.length);
+            received = true;
+            receiveTime = 0;
+        }
+        // else invalid packet, payload incomplete or missing
+    }
+    else {
+        received = true;
+        receiveTime = 0;
+    }
+}
+
 void WifiConnect::onSocketData(char *data, size_t len) {
-    Serial.printf("Data received from %s\n", client->remoteIP().toString().c_str());
-    Serial.println(len);
+    receiveMessage(data, len);
 }
 
 void WifiConnect::onSocketConnected() {
