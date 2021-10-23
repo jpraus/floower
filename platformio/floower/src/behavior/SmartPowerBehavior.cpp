@@ -101,7 +101,7 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     return false;
 }
 
-bool SmartPowerBehavior::onRemoteChange(StateChangePacketData data) {
+bool SmartPowerBehavior::onRemoteChange(StateChangeCommand data) {
     if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
         // blossom color
         HsbColor color = data.getColor();
@@ -139,7 +139,7 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
-    bluetoothControl->onRemoteChange([=](StateChangePacketData data) { onRemoteChange(data); });
+    bluetoothControl->onRemoteChange([=](StateChangeCommand data) { onRemoteChange(data); });
     if (config->bluetoothEnabled && config->bluetoothAlwaysOn) {
         bluetoothStartTime = millis() + BLUETOOTH_START_DELAY; // defer init of BLE by 5 seconds
     }

@@ -7,7 +7,7 @@
 #include "Config.h"
 #include "hardware/Floower.h"
 
-typedef struct StateChangePacketData {
+typedef struct StateChangeCommand {
     uint8_t value;
     uint8_t R; // 0-255, read-write
     uint8_t G; // 0-255, read-write
@@ -18,19 +18,13 @@ typedef struct StateChangePacketData {
     HsbColor getColor() {
         return HsbColor(RgbColor(R, G, B));
     }
-} StateChangePacketData;
+} StateChangeCommand;
 
 #define STATE_TRANSITION_MODE_BIT_COLOR 0
 #define STATE_TRANSITION_MODE_BIT_PETALS 1 // when this bit is set, the VALUE parameter means open level of petals (0-100%)
 #define STATE_TRANSITION_MODE_BIT_ANIMATION 2 // when this bit is set, the VALUE parameter means ID of animation
 
-#define STATE_CHANGE_PACKET_SIZE 6
-typedef union StateChangePacket {
-    StateChangePacketData data;
-    uint8_t bytes[STATE_CHANGE_PACKET_SIZE];
-} StateChangePacket;
-
-typedef std::function<void(StateChangePacketData data)> BluetoothControlRemoteChangeCallback;
+typedef std::function<void(StateChangeCommand data)> BluetoothControlRemoteChangeCallback;
 
 class BluetoothControl {
     public:
@@ -87,6 +81,15 @@ class BluetoothControl {
         class PersonificationCharacteristicsCallbacks : public BLECharacteristicCallbacks {
             public:
                 PersonificationCharacteristicsCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
+            private:
+                BluetoothControl* bluetoothControl ;
+                void onWrite(BLECharacteristic *characteristic);
+        };
+
+        // BLE server->client command interface
+        class CommandCharacteristicsCallbacks : public BLECharacteristicCallbacks {
+            public:
+                CommandCharacteristicsCallbacks(BluetoothControl* bluetoothControl) : bluetoothControl(bluetoothControl) {};
             private:
                 BluetoothControl* bluetoothControl ;
                 void onWrite(BLECharacteristic *characteristic);

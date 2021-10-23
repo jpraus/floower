@@ -39,25 +39,12 @@ static const char* LOG_TAG = "BluetoothControl";
 #define BATTERY_POWER_STATE_CHARGING B00111011
 #define BATTERY_POWER_STATE_DISCHARGING B00101111
 
-// BLE data packets
-#define PERSONIFICATION_PACKET_SIZE 5
-typedef union PersonificationPacket {
-    Personification data; // see config.h
-    uint8_t bytes[PERSONIFICATION_PACKET_SIZE];
-} PersonificationPacket;
-
-typedef struct StatePacketData {
+typedef struct StateData {
     int8_t petalsOpenLevel; // normally petals open level 0-100%, read-write
     uint8_t R; // 0-255, read-write
     uint8_t G; // 0-255, read-write
     uint8_t B; // 0-255, read-write
-} StatePacketData;
-
-#define STATE_PACKET_SIZE 4
-typedef union StatePacket {
-    StatePacketData data;
-    uint8_t bytes[STATE_PACKET_SIZE];
-} StatePacket;
+} StateData;
 
 BluetoothControl::BluetoothControl(Floower *floower, Config *config)
     : floower(floower), config(config) {
@@ -102,15 +89,18 @@ void BluetoothControl::init() {
       
         // personification characteristics
         characteristic = floowerService->createCharacteristic(FLOOWER_PERSONIFICATION_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-        PersonificationPacket personificationPacket = {{config->personification}};
-        characteristic->setValue(personificationPacket.bytes, PERSONIFICATION_PACKET_SIZE);
+        characteristic->setValue((uint8_t *) &config->personification, sizeof(config->personification));
         characteristic->setCallbacks(new PersonificationCharacteristicsCallbacks(this));
+
+        // command characteristics
+        characteristic = floowerService->createCharacteristic(FLOOWER_COMMAND_UUID, BLECharacteristic::PROPERTY_WRITE);
+        characteristic->setCallbacks(new CommandCharacteristicsCallbacks(this));
       
         // state read characteristics
         characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
         RgbColor color = RgbColor(floower->getColor());
-        StatePacket statePacket = {{floower->getPetalsOpenLevel(), color.R, color.G, color.B}};
-        characteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+        StateData stateData = {floower->getPetalsOpenLevel(), color.R, color.G, color.B};
+        characteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
         characteristic->addDescriptor(new BLE2902());
 
         // state write/change characteristics
@@ -135,9 +125,9 @@ void BluetoothControl::init() {
         floower->onChange([=](int8_t petalsOpenLevel, HsbColor hsbColor) {
             RgbColor color = RgbColor(hsbColor);
             ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
-            StatePacket statePacket = {{petalsOpenLevel, color.R, color.G, color.B}};
+            StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
             BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
-            stateCharacteristic->setValue(statePacket.bytes, STATE_PACKET_SIZE);
+            stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
             stateCharacteristic->notify();
         });
 
@@ -197,13 +187,11 @@ BLECharacteristic* BluetoothControl::createROCharacteristics(BLEService *service
 
 void BluetoothControl::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
     std::string bytes = characteristic->getValue();
-    if (bytes.length() == STATE_CHANGE_PACKET_SIZE) {
-        StateChangePacket statePacket;
-        for (int i = 0; i < STATE_CHANGE_PACKET_SIZE; i ++) {
-            statePacket.bytes[i] = bytes[i]; 
-        }
+    if (bytes.length() == sizeof(StateChangeCommand)) {
         if (bluetoothControl->remoteChangeCallback != nullptr) {
-            bluetoothControl->remoteChangeCallback(statePacket.data);
+            StateChangeCommand stateChangeCommand;
+            memcpy(&stateChangeCommand, bytes.data(), bytes.length());
+            bluetoothControl->remoteChangeCallback(stateChangeCommand);
         }
     }
 }
@@ -231,9 +219,7 @@ void BluetoothControl::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *
     if (bytes.length() > 0) {
         size_t length = min(bytes.length(), (unsigned int) NAME_MAX_LENGTH) + 1;
         char data[length];
-        for (int i = 0; i < length; i ++) {
-            data[i] = bytes[i]; 
-        }
+        memcpy(&data, bytes.data(), length);
         data[length] = '\0';
 
         ESP_LOGI(LOG_TAG, "New name: %s", data);
@@ -244,27 +230,30 @@ void BluetoothControl::NameCharacteristicsCallbacks::onWrite(BLECharacteristic *
 
 void BluetoothControl::PersonificationCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
     std::string bytes = characteristic->getValue();
-    if (bytes.length() == PERSONIFICATION_PACKET_SIZE) {
-        PersonificationPacket personificationPacket;
-        for (int i = 0; i < PERSONIFICATION_PACKET_SIZE; i ++) {
-            personificationPacket.bytes[i] = bytes[i]; 
-        }
+    if (bytes.length() == sizeof(Personification)) {
+        Personification personification;
+        memcpy(&personification, bytes.data(), bytes.length());
 
-        if (personificationPacket.data.speed < 5) {
-            personificationPacket.data.speed = 5;
+        if (personification.speed < 5) {
+            personification.speed = 5;
         }
-        if (personificationPacket.data.maxOpenLevel > 100) {
-            personificationPacket.data.maxOpenLevel = 100;
+        if (personification.maxOpenLevel > 100) {
+            personification.maxOpenLevel = 100;
         }
-        if (personificationPacket.data.colorBrightness > 100) {
-            personificationPacket.data.colorBrightness = 100;
+        if (personification.colorBrightness > 100) {
+            personification.colorBrightness = 100;
         }
-        ESP_LOGI(LOG_TAG, "New personification: touchThreshold=%d, behavior=%d, speed=%d, maxOpenLevel=%d, colorBrightness=%d", personificationPacket.data.touchThreshold, personificationPacket.data.behavior, personificationPacket.data.speed, personificationPacket.data.maxOpenLevel, personificationPacket.data.colorBrightness);
+        ESP_LOGI(LOG_TAG, "New personification: touchThreshold=%d, behavior=%d, speed=%d, maxOpenLevel=%d, colorBrightness=%d", personification.touchThreshold, personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
         
-        bluetoothControl->config->setPersonification(personificationPacket.data);
+        bluetoothControl->config->setPersonification(personification);
         bluetoothControl->config->commit();
         //bluetoothControl->floower->reconfigureTouch();
     }
+}
+
+void BluetoothControl::CommandCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
+    std::string bytes = characteristic->getValue();
+    ESP_LOGI(LOG_TAG, "Command received: %", bytes);
 }
 
 void BluetoothControl::ServerCallbacks::onConnect(BLEServer* server) {

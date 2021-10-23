@@ -144,7 +144,7 @@ void WifiConnect::handleReceivedMessage() {
             else if (receivedMessage.type == MessageType::PROTOCOL_WRITE_WIFI) {
                 Serial.println("Setup WiFi");
                 String ssid = jsonPayload["ssid"];
-                String ssid = jsonPayload["pwd"];
+                String pwd = jsonPayload["pwd"];
             }
         }
     }
