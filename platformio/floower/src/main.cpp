@@ -89,8 +89,9 @@ void setup() {
     }
     behavior->setup(wokeUp);
 
-    config.setWifi("puchovi", "12EA34EA56");
-    config.setFloud("nejbezpecnejsi");
+    //config.setWifi("", "");
+    //config.setFloud("nejbezpecnejsi");
+    //config.commit();
     wifiConnect.setup();
     wifiConnect.start();
 }

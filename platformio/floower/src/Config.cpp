@@ -11,8 +11,8 @@ static const char* LOG_TAG = "Config";
 
 // max 512B of EEPROM
 
-#define EEPROM_SIZE 128
-#define CONFIG_VERSION 4
+#define EEPROM_SIZE 256
+#define CONFIG_VERSION 5
 
 #define FLAG_BIT_CALIBRATED 0
 #define FLAG_BIT_BLUETOOTH_ALWAYS_ON 1
@@ -38,12 +38,19 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_COLOR_BRIGHTNESS 26 // byte - intensity of LEDs in percents (0-100), informative - should be already applied to color scheme (since version 4)
 // TODO: touch threshold adjustment not used at the moment
 //#define EEPROM_ADDRESS_TOUCH_THRESHOLD_ADJUSTMENT 27 // byte (since version 5) - adjusted touch threshold if needed by user
+// 28 available
+// 29 available
 #define EEPROM_ADDRESS_COLOR_SCHEME 30 // (30-59) 30 bytes (15x HS set) - array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..] (since version 4)
 #define EEPROM_ADDRESS_NAME 60 // (60-99) max 25 (40 reserved) chars (since version 2)
 
-// TODO:
-#define EEPROM_ADDRESS_WIFI_SSIDNAME 128 // (X-Y) max 32 characters (since version 5)
-#define EEPROM_ADDRESS_WIFI_PASSWORD 160 // (X-Y) max 64 characters (since version 5)
+// wifi
+#define EEPROM_ADDRESS_WIFI_SSID_LENGTH 100 // byte - length of data stored in EEPROM_ADDRESS_WIFI_SSID (since version 5)
+#define EEPROM_ADDRESS_WIFI_SSID 101 // (101-132) max 32 characters (since version 5)
+#define EEPROM_ADDRESS_WIFI_PWD_LENGTH 133 // byte - length of data stored in EEPROM_ADDRESS_WIFI_PWD (since version 5)
+#define EEPROM_ADDRESS_WIFI_PWD 134 // (134-197) max 64 characters (since version 5)
+#define EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH 198 // byte - length of data stored in EEPROM_ADDRESS_FLOUD_TOKEN (since version 5)
+#define EEPROM_ADDRESS_FLOUD_TOKEN 199 // (199-238) max 40 characters (since version 5)
+// next available is 239
 
 void Config::begin() {
     EEPROM.begin(EEPROM_SIZE);
@@ -77,6 +84,12 @@ void Config::load() {
             EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, DEFAULT_COLOR_BRIGHTNESS);
         }
 
+        // backward compatibility => wifi settings
+        if (configVersion < 5) {
+            setWifi("", "");
+            setFloud("");
+        }
+
         if (configVersion < CONFIG_VERSION) {
             ESP_LOGW(LOG_TAG, "Config outdated %d -> %d", configVersion, CONFIG_VERSION);
             EEPROM.write(EEPROM_ADDRESS_CONFIG_VERSION, CONFIG_VERSION);
@@ -90,6 +103,7 @@ void Config::load() {
         readColorScheme();
         readName();
         readPersonification();
+        readWifiAndFloud();
       
         ESP_LOGI(LOG_TAG, "Config ready");
         ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d, tt%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags, touchThreshold);
@@ -98,6 +112,7 @@ void Config::load() {
         for (uint8_t i = 0; i < colorSchemeSize; i++) {
             ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
         }
+        ESP_LOGI(LOG_TAG, "WiFi: %s, p%d, t%d", wifiSsid, !wifiPassword.isEmpty(), !floudToken.isEmpty());
     }
     else {
         ESP_LOGE(LOG_TAG, "Not configured");
@@ -238,33 +253,29 @@ HsbColor Config::decodeHSColor(uint16_t valueHS) {
 
 void Config::setName(String name) {
     this->name = name;
-    uint8_t length = min((uint8_t) name.length(), (uint8_t) NAME_MAX_LENGTH);
-    for (uint8_t i = 0; i < length; i++) {
-        EEPROM.write(EEPROM_ADDRESS_NAME + i, name[i]);
-    }
-    EEPROM.write(EEPROM_ADDRESS_NAME_LENGTH, length);
+    writeString(EEPROM_ADDRESS_NAME, name, EEPROM_ADDRESS_NAME_LENGTH, NAME_MAX_LENGTH);
 }
 
 void Config::readName() {
-    uint8_t length = min(EEPROM.read(EEPROM_ADDRESS_NAME_LENGTH), (uint8_t) NAME_MAX_LENGTH);
-    char data[length + 1];
-
-    for(uint8_t i = 0; i < length; i++) {
-        data[i] = EEPROM.read(EEPROM_ADDRESS_NAME + i);
-    }
-    data[length] = '\0';
-    name = String(data);
+    name = readString(EEPROM_ADDRESS_NAME, EEPROM_ADDRESS_NAME_LENGTH, NAME_MAX_LENGTH);
 }
 
 void Config::setWifi(String ssid, String password) {
     this->wifiSsid = ssid;
     this->wifiPassword = password;
-    // TODO: persist
+    writeString(EEPROM_ADDRESS_WIFI_SSID, ssid, EEPROM_ADDRESS_WIFI_SSID_LENGTH, WIFI_SSID_MAX_LENGTH);
+    writeString(EEPROM_ADDRESS_WIFI_PWD, password, EEPROM_ADDRESS_WIFI_PWD_LENGTH, WIFI_PWD_MAX_LENGTH);
 }
 
 void Config::setFloud(String token) {
     this->floudToken = token;
-    // TODO: persist
+    writeString(EEPROM_ADDRESS_FLOUD_TOKEN, token, EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH, FLOUD_TOKEN_MAX_LENGTH);
+}
+
+void Config::readWifiAndFloud() {
+    wifiSsid = readString(EEPROM_ADDRESS_WIFI_SSID, EEPROM_ADDRESS_WIFI_SSID_LENGTH, WIFI_SSID_MAX_LENGTH);
+    wifiPassword = readString(EEPROM_ADDRESS_WIFI_PWD, EEPROM_ADDRESS_WIFI_PWD_LENGTH, WIFI_PWD_MAX_LENGTH);
+    floudToken = readString(EEPROM_ADDRESS_FLOUD_TOKEN, EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH, FLOUD_TOKEN_MAX_LENGTH);
 }
 
 void Config::writeInt(uint16_t address, uint16_t value) {
@@ -280,6 +291,25 @@ uint16_t Config::readInt(uint16_t address) {
     uint16_t one = EEPROM.read(address + 1);
   
     return (two & 0xFFFFFF) + ((one << 8) & 0xFFFFFFFF);
+}
+
+void Config::writeString(uint16_t address, String value, uint16_t sizeAddress, uint8_t maxLength) {
+    uint8_t length = min((uint8_t) value.length(), (uint8_t) maxLength);
+    for (uint8_t i = 0; i < length; i++) {
+        EEPROM.write(address + i, value[i]);
+    }
+    EEPROM.write(sizeAddress, length);
+}
+
+String Config::readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLength) {
+    uint8_t length = min(EEPROM.read(sizeAddress), (uint8_t) maxLength);
+    char data[length + 1];
+
+    for(uint8_t i = 0; i < length; i++) {
+        data[i] = EEPROM.read(address + i);
+    }
+    data[length] = '\0';
+    return String(data);
 }
 
 void Config::commit() {

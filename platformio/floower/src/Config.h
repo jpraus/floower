@@ -10,6 +10,9 @@
 
 #define COLOR_SCHEME_MAX_LENGTH 10
 #define NAME_MAX_LENGTH 25 // BLE name limit
+#define WIFI_SSID_MAX_LENGTH 32
+#define WIFI_PWD_MAX_LENGTH 64
+#define FLOUD_TOKEN_MAX_LENGTH 40
 
 // default values
 #define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
@@ -92,10 +95,14 @@ class Config {
         void writeColorScheme();
         void readColorScheme();
         void readName();
+        void readWifiAndFloud();
         void readPersonification();
 
         void writeInt(uint16_t address, uint16_t value);
         uint16_t readInt(uint16_t address);
+
+        void writeString(uint16_t address, String value, uint16_t sizeAddress, uint8_t maxLength);
+        String readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLength);
 
         uint8_t flags = 0;
 

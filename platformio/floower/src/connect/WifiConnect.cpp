@@ -11,6 +11,9 @@
 static const char* LOG_TAG = "WifiConnect";
 #endif
 
+#define FLOUD_HOST "192.168.0.103"
+#define FLOUD_PORT 3000
+
 #define OTA_RESPONSE_TIMEOUT_MS 5000
 #define SOCKET_RESPONSE_TIMEOUT_MS 2000
 
@@ -22,9 +25,6 @@ static const char* LOG_TAG = "WifiConnect";
 #define STATE_FLOUD_UNAUTHORIZED 5
 
 #define RECONNECT_INTERVAL_MS 5000
-
-#define FLOUD_HOST "192.168.0.103"
-#define FLOUD_PORT 3000
 
 WifiConnect::WifiConnect(Config *config, CommandInterpreter *cmdInterpreter) 
         : config(config), cmdInterpreter(cmdInterpreter) {
