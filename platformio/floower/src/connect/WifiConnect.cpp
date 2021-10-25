@@ -26,8 +26,8 @@ static const char* LOG_TAG = "WifiConnect";
 #define FLOUD_HOST "192.168.0.103"
 #define FLOUD_PORT 3000
 
-WifiConnect::WifiConnect(Config *config, Floower *floower) 
-        : config(config), floower(floower) {
+WifiConnect::WifiConnect(Config *config, CommandInterpreter *cmdInterpreter) 
+        : config(config), cmdInterpreter(cmdInterpreter) {
     state = STATE_FLOUD_DISCONNECTED;
     client = NULL;
 }
@@ -107,6 +107,7 @@ void WifiConnect::loop() {
 
 void WifiConnect::handleReceivedMessage() {
     ESP_LOGI(LOG_TAG, "Got message: %d/%d/%d", receivedMessage.type, receivedMessage.id, receivedMessage.length);
+    
     // check for response codes
     if (receivedMessage.type == MessageType::STATUS_ERROR) {
         socketReconnect(); // reset on error
@@ -120,33 +121,12 @@ void WifiConnect::handleReceivedMessage() {
     else if (receivedMessage.type == MessageType::STATUS_UNAUTHORIZED) {
         state = STATE_FLOUD_UNAUTHORIZED; // TODO: force authorization again
     }
-    // handle commands
     else if (state == STATE_FLOUD_AUTHORIZED) {
-        // TODO interpret commands
-        if (receivedMessage.length > 0) {
-            payloadUnpacker.feed((const uint8_t *) receiveBuffer, receivedMessage.length);
-            if (!payloadUnpacker.deserialize(jsonPayload)) {
-                ESP_LOGE(LOG_TAG, "Invalid Payload");
-                return;
-            }
-            if (receivedMessage.type == MessageType::CMD_WRITE_COLOR) {
-                // { r: <red>, g: <green>, b: <blue>, t: <time >}
-                HsbColor color = HsbColor(RgbColor(jsonPayload["r"], jsonPayload["g"], jsonPayload["b"]));
-                //uint16_t time = jsonPayload["t"];
-                floower->transitionColor(color.H, color.S, color.B, 5000); // TODO: time
-            }
-            else if (receivedMessage.type == MessageType::CMD_WRITE_PETALS) {
-                // { l: <level>, t: <time >}
-                uint8_t level = jsonPayload["l"];
-                //uint16_t time = jsonPayload["t"];
-                floower->setPetalsOpenLevel(level, 5000);
-            }
-            else if (receivedMessage.type == MessageType::PROTOCOL_WRITE_WIFI) {
-                Serial.println("Setup WiFi");
-                String ssid = jsonPayload["ssid"];
-                String pwd = jsonPayload["pwd"];
-            }
-        }
+        // handle commands
+        uint16_t response = MessageType::STATUS_OK;
+        uint16_t responseSize = 0;
+        cmdInterpreter->run(receivedMessage.type, receiveBuffer, receivedMessage.length, &response, sendBuffer, &responseSize);
+        sendMessage(response, receivedMessage.id, sendBuffer, responseSize);
     }
 }
 
@@ -167,8 +147,13 @@ void WifiConnect::sendAuthorization() {
 
 uint16_t WifiConnect::sendMessage(const uint16_t type, const char* payload, const size_t payloadSize) {
     uint16_t messageId = messageIdCounter++;
-    WifiMessageHeader header = {
-        htons(type), htons(messageId), htons(payloadSize)
+    sendMessage(type, messageId, payload, payloadSize);
+    return messageId;
+}
+
+void WifiConnect::sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize) {
+    MessageHeader header = {
+        htons(type), htons(id), htons(payloadSize)
     };
 
     // TODO: check payload size?
@@ -176,7 +161,6 @@ uint16_t WifiConnect::sendMessage(const uint16_t type, const char* payload, cons
     client->write(payload, payloadSize);
 
     receiveTime = millis() + SOCKET_RESPONSE_TIMEOUT_MS;
-    return messageId;
 }
 
 void WifiConnect::receiveMessage(char *data, size_t len) {

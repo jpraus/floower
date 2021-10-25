@@ -10,18 +10,11 @@
 #include "hardware/Floower.h"
 #include "WiFi.h"
 #include "AsyncTCP.h"
-
-struct WifiMessageHeader {
-    uint16_t type;
-    uint16_t id;
-    uint16_t length;
-} __attribute__((packed));
-
-#define MAX_MESSAGE_PAYLOAD_BYTES 255
+#include "CommandInterpreter.h"
 
 class WifiConnect {
     public:
-        WifiConnect(Config *config, Floower *floower);
+        WifiConnect(Config *config, CommandInterpreter *cmdInterpreter);
         void setup();
         void loop();
         void start();
@@ -43,9 +36,10 @@ class WifiConnect {
         void handleReceivedMessage();
         void receiveMessage(char *data, size_t len);
         uint16_t sendMessage(const uint16_t type, const char* payload, const size_t payloadSize);
+        void sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize);
 
         Config *config;
-        Floower *floower;
+        CommandInterpreter *cmdInterpreter;
         AsyncClient *client;
         bool enabled = false;
 
@@ -57,9 +51,6 @@ class WifiConnect {
 
         unsigned long receiveTime = 0; // time when reply should be received
         volatile bool received = false;
-        WifiMessageHeader receivedMessage; 
+        MessageHeader receivedMessage; 
         char receiveBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
-        StaticJsonDocument<MAX_MESSAGE_PAYLOAD_BYTES> jsonPayload;  
-
-        MsgPack::Unpacker payloadUnpacker;
 };

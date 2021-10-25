@@ -32,9 +32,11 @@ const bool colorPickerEnabled = true;
 
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
-BluetoothControl bluetoothControl(&floower, &config);
-WifiConnect wifiConnect(&config, &floower);
 Behavior *behavior;
+
+CommandInterpreter cmdInterpreter(&config, &floower);
+BluetoothControl bluetoothControl(&floower, &config);
+WifiConnect wifiConnect(&config, &cmdInterpreter);
 
 void configure();
 void planDeepSleep(long timeoutMs);

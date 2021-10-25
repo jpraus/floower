@@ -101,35 +101,8 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     return false;
 }
 
-bool SmartPowerBehavior::onRemoteChange(StateChangeCommand data) {
-    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
-        // blossom color
-        HsbColor color = data.getColor();
-        floower->transitionColor(color.H, color.S, color.B, data.duration * 100);
-        changeState(STATE_REMOTE_CONTROL);
-        return true;
-    }
-    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
-        // petals open/close
-        floower->setPetalsOpenLevel(data.value, data.duration * 100);
-        changeState(STATE_REMOTE_CONTROL);
-        return true;
-    }
-    else if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
-        // play animation (according to value)
-        switch (data.value) {
-            case 1:
-                floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
-                changeState(STATE_REMOTE_CONTROL);
-                return true;
-            case 2:
-                floower->startAnimation(FloowerColorAnimation::CANDLE);
-                changeState(STATE_REMOTE_CONTROL);
-                return true;
-        }
-    }
-
-    return false;
+void SmartPowerBehavior::onRemoteControl() {
+    changeState(STATE_REMOTE_CONTROL);
 }
 
 bool SmartPowerBehavior::canInitializeBluetooth() {
@@ -139,7 +112,7 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
-    bluetoothControl->onRemoteChange([=](StateChangeCommand data) { onRemoteChange(data); });
+    bluetoothControl->onRemoteControl([=]() { onRemoteControl(); });
     if (config->bluetoothEnabled && config->bluetoothAlwaysOn) {
         bluetoothStartTime = millis() + BLUETOOTH_START_DELAY; // defer init of BLE by 5 seconds
     }

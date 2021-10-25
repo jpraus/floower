@@ -46,6 +46,19 @@ typedef struct StateData {
     uint8_t B; // 0-255, read-write
 } StateData;
 
+typedef struct StateChangeCommand {
+    uint8_t value;
+    uint8_t R; // 0-255, read-write
+    uint8_t G; // 0-255, read-write
+    uint8_t B; // 0-255, read-write
+    uint8_t duration; // 100 of milliseconds
+    uint8_t mode; // 8 flags, see defines above
+
+    HsbColor getColor() {
+        return HsbColor(RgbColor(R, G, B));
+    }
+} StateChangeCommand;
+
 BluetoothControl::BluetoothControl(Floower *floower, Config *config)
     : floower(floower), config(config) {
 }
@@ -160,8 +173,8 @@ bool BluetoothControl::isConnected() {
     return deviceConnected;
 }
 
-void BluetoothControl::onRemoteChange(BluetoothControlRemoteChangeCallback callback) {
-    remoteChangeCallback = callback;
+void BluetoothControl::onRemoteControl(BluetoothControlRemoteControlCallback callback) {
+    remoteControlCallback = callback;
 }
 
 void BluetoothControl::setBatteryLevel(uint8_t level, bool charging) {
@@ -188,10 +201,34 @@ BLECharacteristic* BluetoothControl::createROCharacteristics(BLEService *service
 void BluetoothControl::StateChangeCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
     std::string bytes = characteristic->getValue();
     if (bytes.length() == sizeof(StateChangeCommand)) {
-        if (bluetoothControl->remoteChangeCallback != nullptr) {
+        if (bluetoothControl->remoteControlCallback != nullptr) {
             StateChangeCommand stateChangeCommand;
             memcpy(&stateChangeCommand, bytes.data(), bytes.length());
-            bluetoothControl->remoteChangeCallback(stateChangeCommand);
+
+            if (CHECK_BIT(stateChangeCommand.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
+                // blossom color
+                HsbColor color = stateChangeCommand.getColor();
+                bluetoothControl->floower->transitionColor(color.H, color.S, color.B, stateChangeCommand.duration * 100);
+                bluetoothControl->remoteControlCallback();
+            }
+            if (CHECK_BIT(stateChangeCommand.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
+                // petals open/close
+                bluetoothControl->floower->setPetalsOpenLevel(stateChangeCommand.value, stateChangeCommand.duration * 100);
+                bluetoothControl->remoteControlCallback();
+            }
+            else if (CHECK_BIT(stateChangeCommand.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
+                // play animation (according to value)
+                switch (stateChangeCommand.value) {
+                    case 1:
+                        bluetoothControl->floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
+                        bluetoothControl->remoteControlCallback();
+                        break;
+                    case 2:
+                        bluetoothControl->floower->startAnimation(FloowerColorAnimation::CANDLE);
+                        bluetoothControl->remoteControlCallback();
+                        break;
+                }
+            }
         }
     }
 }

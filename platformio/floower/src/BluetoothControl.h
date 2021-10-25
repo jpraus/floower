@@ -7,24 +7,11 @@
 #include "Config.h"
 #include "hardware/Floower.h"
 
-typedef struct StateChangeCommand {
-    uint8_t value;
-    uint8_t R; // 0-255, read-write
-    uint8_t G; // 0-255, read-write
-    uint8_t B; // 0-255, read-write
-    uint8_t duration; // 100 of milliseconds
-    uint8_t mode; // 8 flags, see defines above
-
-    HsbColor getColor() {
-        return HsbColor(RgbColor(R, G, B));
-    }
-} StateChangeCommand;
-
 #define STATE_TRANSITION_MODE_BIT_COLOR 0
 #define STATE_TRANSITION_MODE_BIT_PETALS 1 // when this bit is set, the VALUE parameter means open level of petals (0-100%)
 #define STATE_TRANSITION_MODE_BIT_ANIMATION 2 // when this bit is set, the VALUE parameter means ID of animation
 
-typedef std::function<void(StateChangeCommand data)> BluetoothControlRemoteChangeCallback;
+typedef std::function<void()> BluetoothControlRemoteControlCallback;
 
 class BluetoothControl {
     public:
@@ -34,12 +21,12 @@ class BluetoothControl {
         void stopAdvertising();
         void setBatteryLevel(uint8_t level, bool charging);
         bool isConnected();
-        void onRemoteChange(BluetoothControlRemoteChangeCallback callback);
+        void onRemoteControl(BluetoothControlRemoteControlCallback callback);
 
     private:
         Floower *floower;
         Config *config;
-        BluetoothControlRemoteChangeCallback remoteChangeCallback;
+        BluetoothControlRemoteControlCallback remoteControlCallback;
         BLEServer *server = nullptr;
         BLEService *floowerService = nullptr;
         BLEService *batteryService = nullptr;

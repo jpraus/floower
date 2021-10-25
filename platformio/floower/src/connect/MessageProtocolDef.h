@@ -18,21 +18,13 @@ enum MessageType {
 
     // device commands (64+)
     CMD_WRITE_PETALS            = 64,
-    CMD_WRITE_COLOR             = 65
+    CMD_WRITE_RGB_COLOR         = 65
 };
 
-struct CommandPayloadColor {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-    uint16_t time;
-
-    RgbColor getColor() {
-        return RgbColor(red, green, blue);
-    }
+struct MessageHeader {
+    uint16_t type;
+    uint16_t id;
+    uint16_t length;
 } __attribute__((packed));
 
-struct CommandPayloadPetals {
-    uint8_t level;
-    uint16_t time;
-} __attribute__((packed));
+#define MAX_MESSAGE_PAYLOAD_BYTES 255
