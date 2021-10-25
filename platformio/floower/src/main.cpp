@@ -1,10 +1,10 @@
-#define FIRMWARE_VERSION 8
+#define FIRMWARE_VERSION 9
 #define HARDWARE_REVISION 9 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
 
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include "Config.h"
-#include "BluetoothControl.h"
+#include "connect/BluetoothConnect.h"
 #include "connect/WifiConnect.h"
 #include "behavior/BloomingBehavior.h"
 #include "behavior/MindfulnessBehavior.h"
@@ -35,7 +35,7 @@ Floower floower(&config);
 Behavior *behavior;
 
 CommandInterpreter cmdInterpreter(&config, &floower);
-BluetoothControl bluetoothControl(&floower, &config);
+BluetoothConnect bluetoothConnect(&floower, &config);
 WifiConnect wifiConnect(&config, &cmdInterpreter);
 
 void configure();
@@ -80,12 +80,12 @@ void setup() {
 
     // init state machine, this is core logic
     if (!config.calibrated || !config.touchCalibrated) {
-        behavior = new Calibration(&config, &floower, &bluetoothControl, config.calibrated && !config.touchCalibrated);
+        behavior = new Calibration(&config, &floower, &bluetoothConnect, config.calibrated && !config.touchCalibrated);
     }
     else {
-        behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
-        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothControl);
-        //behavior = new TestBehavior(&config, &floower, &bluetoothControl);
+        behavior = new BloomingBehavior(&config, &floower, &bluetoothConnect);
+        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothConnect);
+        //behavior = new TestBehavior(&config, &floower, &bluetoothConnect);
     }
     behavior->setup(wokeUp);
 

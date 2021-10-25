@@ -11,8 +11,8 @@ static const char* LOG_TAG = "MindfulnessBehavior";
 #define STATE_INHALE 128
 #define STATE_EXHALE 129
 
-MindfulnessBehavior::MindfulnessBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl) 
-        : SmartPowerBehavior(config, floower, bluetoothControl) {
+MindfulnessBehavior::MindfulnessBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect) 
+        : SmartPowerBehavior(config, floower, bluetoothConnect) {
 }
 
 void MindfulnessBehavior::loop() {
