@@ -13,8 +13,8 @@ static const char* LOG_TAG = "TestBehavior";
 
 #define SPEED_MS 5000
 
-TestBehavior::TestBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect) 
-        : SmartPowerBehavior(config, floower, bluetoothConnect, wifiConnect) {
+TestBehavior::TestBehavior(Config *config, Floower *floower, RemoteControl *remoteControl) 
+        : SmartPowerBehavior(config, floower, remoteControl) {
 }
 
 void TestBehavior::loop() {

@@ -25,8 +25,8 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
 
-SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect)
-        : config(config), floower(floower), bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect) {
+SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, RemoteControl *remoteControl)
+        : config(config), floower(floower), remoteControl(remoteControl) {
     state = STATE_OFF;
 }
 
@@ -61,16 +61,16 @@ void SmartPowerBehavior::loop() {
         watchDogsTime = now + WATCHDOGS_INTERVAL;
         esp_task_wdt_reset(); // reset watchdog timer
         powerWatchDog();
-        indicateStatus(INDICATE_STATUS_REMOTE, bluetoothConnect->isConnected());
+        indicateStatus(INDICATE_STATUS_REMOTE, remoteControl->isBluetoothConnected());
         indicateStatus(INDICATE_STATUS_ACTY, true);
     }
     if (bluetoothStartTime > 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
         bluetoothStartTime = 0;
-        bluetoothConnect->enable();
+        remoteControl->enableBluetooth();
     }
     if (wifiStartTime > 0 && wifiStartTime < now && !floower->arePetalsMoving()) {
         wifiStartTime = 0;
-        wifiConnect->enable();
+        remoteControl->enableWifi();
     }
     if (deepSleepTime != 0 && deepSleepTime < now) {
         deepSleepTime = 0;
@@ -83,13 +83,13 @@ void SmartPowerBehavior::loop() {
 bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && canInitializeBluetooth()) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
-        bluetoothConnect->enable();
+        remoteControl->enableBluetooth();
         changeState(STATE_BLUETOOTH_PAIRING);
         return true;
     }
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
         // bluetooth pairing interrupted
-        bluetoothConnect->disable();
+        remoteControl->disableBluetooth();
         config->setBluetoothAlwaysOn(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
@@ -115,7 +115,7 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
-    bluetoothConnect->onRemoteControl([=]() { onRemoteControl(); });
+    remoteControl->onRemoteControl([=]() { onRemoteControl(); });
     if (config->bluetoothEnabled && config->bluetoothAlwaysOn) {
         bluetoothStartTime = millis() + BLUETOOTH_START_DELAY; // defer init of BLE by 5 seconds
     }
@@ -123,8 +123,8 @@ void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
 
 void SmartPowerBehavior::disablePeripherals() {
     floower->disableTouch();
-    bluetoothConnect->disable();
-    wifiConnect->disable();
+    remoteControl->disableBluetooth();
+    remoteControl->disableWifi();
     // TODO: disconnect remote
     // TODO: disable petals?
 }
@@ -171,15 +171,15 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
             // powered by battery and deep sleep is not yet planned
             planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
         }
-        if (config->wifiEnabled && powerState.usbPowered && !wifiConnect->isEnabled() && wifiStartTime == 0) {
+        if (config->wifiEnabled && powerState.usbPowered && !remoteControl->isWifiEnabled() && wifiStartTime == 0) {
             wifiStartTime = millis() + WIFI_START_DELAY;
         }
         if (!powerState.usbPowered) {
-            wifiConnect->disable();
+            remoteControl->disableWifi();
         }
     }
 
-    bluetoothConnect->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
+    remoteControl->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
     indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
 }
 

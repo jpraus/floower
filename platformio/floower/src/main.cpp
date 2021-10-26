@@ -4,8 +4,7 @@
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include "Config.h"
-#include "connect/BluetoothConnect.h"
-#include "connect/WifiConnect.h"
+#include "connect/RemoteControl.h"
 #include "behavior/BloomingBehavior.h"
 #include "behavior/MindfulnessBehavior.h"
 #include "behavior/Calibration.h"
@@ -40,6 +39,7 @@ Behavior *behavior;
 CommandInterpreter cmdInterpreter(&config, &floower);
 BluetoothConnect bluetoothConnect(&floower, &config, &cmdInterpreter);
 WifiConnect wifiConnect(&config, &cmdInterpreter);
+RemoteControl remoteControl(&bluetoothConnect, &wifiConnect, &cmdInterpreter);
 
 void configure();
 void planDeepSleep(long timeoutMs);
@@ -84,9 +84,9 @@ void setup() {
         behavior = new Calibration(&config, &floower, &bluetoothConnect, config.calibrated && !config.touchCalibrated);
     }
     else {
-        behavior = new BloomingBehavior(&config, &floower, &bluetoothConnect, &wifiConnect);
-        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothConnect, &wifiConnect);
-        //behavior = new TestBehavior(&config, &floower, &bluetoothConnect, &wifiConnect);
+        behavior = new BloomingBehavior(&config, &floower, &remoteControl);
+        //behavior = new MindfulnessBehavior(&config, &floower, &remoteControl);
+        //behavior = new TestBehavior(&config, &floower, &remoteControl);
     }
     behavior->setup(wokeUp);
 

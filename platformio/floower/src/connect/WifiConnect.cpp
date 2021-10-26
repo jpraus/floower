@@ -25,6 +25,7 @@ static const char* LOG_TAG = "WifiConnect";
 #define STATE_FLOUD_UNAUTHORIZED 5
 
 #define RECONNECT_INTERVAL_MS 5000
+#define CONNECT_RETRY_INTERVAL_MS 30000
 
 WifiConnect::WifiConnect(Config *config, CommandInterpreter *cmdInterpreter) 
         : config(config), cmdInterpreter(cmdInterpreter) {
@@ -218,23 +219,32 @@ void WifiConnect::onSocketConnected() {
 }
 
 void WifiConnect::onSocketDisconnected() {
-    ESP_LOGI(LOG_TAG, "Disconnected from Floud");
+    if (state == STATE_FLOUD_CONNECTING) {
+        ESP_LOGI(LOG_TAG, "Failed to connect to Floud");
+        reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+    }
+    else {
+        ESP_LOGI(LOG_TAG, "Disconnected from Floud");
+        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+    }
     state = STATE_FLOUD_DISCONNECTED;
-    reconnectTime = millis() + RECONNECT_INTERVAL_MS;
 }
 
 // WIFI
 
 void WifiConnect::onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
+    // TODO
 }
 
 void WifiConnect::onWifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI(LOG_TAG, "Wifi connected");
+    // TODO
 }
 
 void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI(LOG_TAG, "Wifi got IP");
+    // TODO
 }
 
 // OTA

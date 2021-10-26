@@ -4,7 +4,7 @@
 
 class BloomingBehavior : public SmartPowerBehavior {
     public:
-        BloomingBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect);
+        BloomingBehavior(Config *config, Floower *floower, RemoteControl *remoteControl);
         virtual void loop();
 
     protected:

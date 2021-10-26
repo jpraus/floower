@@ -4,7 +4,7 @@
 
 class MindfulnessBehavior : public SmartPowerBehavior {
     public:
-        MindfulnessBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect);
+        MindfulnessBehavior(Config *config, Floower *floower, RemoteControl *remoteControl);
         virtual void loop();
 
     protected:

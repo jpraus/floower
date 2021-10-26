@@ -3,6 +3,10 @@
 CommandInterpreter::CommandInterpreter(Config *config, Floower *floower) 
         : config(config), floower(floower) {}
 
+void CommandInterpreter::onRemoteControl(RemoteControlCallback callback) {
+    remoteControlCallback = callback;
+}
+
 uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const uint16_t payloadLength, char *responsePayload, uint16_t *responseLength) {
     // commands that require request payload
     if (payloadLength > 0) {
