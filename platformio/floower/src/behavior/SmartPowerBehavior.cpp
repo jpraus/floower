@@ -20,12 +20,13 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 // TIMINGS
 
 #define BLUETOOTH_START_DELAY 2000 // delay init of BLE to lower the power surge on startup
+#define WIFI_START_DELAY 2500 // delay init of WiFi to lower the power surge on startup
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
 
-SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect)
-        : config(config), floower(floower), bluetoothConnect(bluetoothConnect) {
+SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect)
+        : config(config), floower(floower), bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect) {
     state = STATE_OFF;
 }
 
@@ -63,10 +64,13 @@ void SmartPowerBehavior::loop() {
         indicateStatus(INDICATE_STATUS_REMOTE, bluetoothConnect->isConnected());
         indicateStatus(INDICATE_STATUS_ACTY, true);
     }
-    if (bluetoothStartTime != 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
+    if (bluetoothStartTime > 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
         bluetoothStartTime = 0;
-        bluetoothConnect->init();
-        bluetoothConnect->startAdvertising();
+        bluetoothConnect->enable();
+    }
+    if (wifiStartTime > 0 && wifiStartTime < now && !floower->arePetalsMoving()) {
+        wifiStartTime = 0;
+        wifiConnect->enable();
     }
     if (deepSleepTime != 0 && deepSleepTime < now) {
         deepSleepTime = 0;
@@ -79,14 +83,13 @@ void SmartPowerBehavior::loop() {
 bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && canInitializeBluetooth()) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
-        bluetoothConnect->init();
-        bluetoothConnect->startAdvertising();
+        bluetoothConnect->enable();
         changeState(STATE_BLUETOOTH_PAIRING);
         return true;
     }
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
         // bluetooth pairing interrupted
-        bluetoothConnect->stopAdvertising();
+        bluetoothConnect->disable();
         config->setBluetoothAlwaysOn(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
@@ -120,7 +123,8 @@ void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
 
 void SmartPowerBehavior::disablePeripherals() {
     floower->disableTouch();
-    bluetoothConnect->stopAdvertising();
+    bluetoothConnect->disable();
+    wifiConnect->disable();
     // TODO: disconnect remote
     // TODO: disable petals?
 }
@@ -130,6 +134,7 @@ bool SmartPowerBehavior::isIdle() {
 }
 
 void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
+    bool wasUsbPowered = powerState.usbPowered;
     powerState = floower->readPowerState();
 
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {
@@ -156,13 +161,21 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
     else {
         // powered by USB or battery and switch is ON
         if (state == STATE_OFF || (state == STATE_LOW_BATTERY && powerState.usbPowered)) {
+            // turned ON or connected to USB on low battery
             ESP_LOGI(LOG_TAG, "Power restored");
             floower->stopAnimation(false); // in case of low battery blinking
             enablePeripherals(initial, wokeUp);
             changeState(STATE_STANDBY);
         }
         else if (state == STATE_STANDBY && !powerState.usbPowered && deepSleepTime == 0) {
+            // powered by battery and deep sleep is not yet planned
             planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
+        }
+        if (config->wifiEnabled && powerState.usbPowered && !wifiConnect->isEnabled() && wifiStartTime == 0) {
+            wifiStartTime = millis() + WIFI_START_DELAY;
+        }
+        if (!powerState.usbPowered) {
+            wifiConnect->disable();
         }
     }
 

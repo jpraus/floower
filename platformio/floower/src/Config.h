@@ -76,6 +76,7 @@ class Config {
         // feature flags
         bool deepSleepEnabled = false;
         bool bluetoothEnabled = false;
+        bool wifiEnabled = false;
         bool colorPickerEnabled = false;
 
         // configration

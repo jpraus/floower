@@ -4,7 +4,7 @@
 
 class TestBehavior : public SmartPowerBehavior {
     public:
-        TestBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect);
+        TestBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect);
         virtual void loop();
 
     protected:

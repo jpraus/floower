@@ -76,19 +76,21 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
         }
     }
     
-    // commands without request payload
-    switch (type) {
-         case MessageType::CMD_READ_STATE: {
-            // response: { r: <red>, g: <green>, b: <blue>, l: <level >}
-            jsonPayload.clear();
-            RgbColor color = RgbColor(floower->getColor());
-            jsonPayload["r"] = color.R;
-            jsonPayload["g"] = color.G;
-            jsonPayload["b"] = color.B;
-            jsonPayload["l"] = floower->getPetalsOpenLevel();
-            *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
-            Serial.println(*responseLength);
-            return STATUS_OK;
+    // command to retrive data
+    if (responsePayload != nullptr && responseLength != nullptr) {
+        switch (type) {
+            case MessageType::CMD_READ_STATE: {
+                // response: { r: <red>, g: <green>, b: <blue>, l: <level >}
+                jsonPayload.clear();
+                RgbColor color = RgbColor(floower->getColor());
+                jsonPayload["r"] = color.R;
+                jsonPayload["g"] = color.G;
+                jsonPayload["b"] = color.B;
+                jsonPayload["l"] = floower->getPetalsOpenLevel();
+                *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
+                Serial.println(*responseLength);
+                return STATUS_OK;
+            }
         }
     }
 

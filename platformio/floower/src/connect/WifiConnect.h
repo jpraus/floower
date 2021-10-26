@@ -1,7 +1,5 @@
 #pragma once
 
-#define ARDUINOJSON_VERSION 1
-
 #include "ArduinoJson.h"
 #include "MsgPack.h"
 #include "Arduino.h"
@@ -17,8 +15,10 @@ class WifiConnect {
         WifiConnect(Config *config, CommandInterpreter *cmdInterpreter);
         void setup();
         void loop();
-        void start();
-        void stop();
+        void enable();
+        void disable();
+        bool isEnabled();
+
         void runOTAUpdate();
 
     private:

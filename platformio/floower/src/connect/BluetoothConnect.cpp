@@ -1,4 +1,5 @@
 #include "BluetoothConnect.h"
+#include "WiFi.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -59,114 +60,124 @@ typedef struct StateChangeCommand {
     }
 } StateChangeCommand;
 
-BluetoothConnect::BluetoothConnect(Floower *floower, Config *config)
-    : floower(floower), config(config) {
+BluetoothConnect::BluetoothConnect(Floower *floower, Config *config, CommandInterpreter *cmdInterpreter)
+    : floower(floower), config(config), cmdInterpreter(cmdInterpreter) {
+}
+
+void BluetoothConnect::enable() {
+    if (!initialized) {
+        init();
+    }
+    startAdvertising();
+}
+
+void BluetoothConnect::disable() {
+    if (advertising) {
+        stopAdvertising();
+    }
+    if (connectionId > 0) {
+        server->disconnect(connectionId);
+    }
 }
 
 void BluetoothConnect::init() {
-    if (!initialized) {
-        ESP_LOGI(LOG_TAG, "Initializing BLE server");
-        BLECharacteristic* characteristic;
+    ESP_LOGI(LOG_TAG, "Initializing BLE server");
+    BLECharacteristic* characteristic;
 
-        // Create the BLE Device
-        BLEDevice::init(config->name.c_str());
+    // Create the BLE Device
+    BLEDevice::init(config->name.c_str());
 
-        // Create the BLE Server
-        server = BLEDevice::createServer();
-        server->setCallbacks(new ServerCallbacks(this));
-      
-        // Device Information profile service
-        BLEService *deviceInformationService = server->createService(DEVICE_INFORMATION_UUID);
-        createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
-        createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, String(config->serialNumber).c_str());
-        createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, String(config->firmwareVersion).c_str());
-        createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, String(config->hardwareRevision).c_str());
-        createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MANUFACTURER_NAME_UUID, "Floower Lab s.r.o.");
-        deviceInformationService->start();
-      
-        // Battery level profile service
-        batteryService = server->createService(BATTERY_UUID);
-        characteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-        characteristic->addDescriptor(new BLE2902());
-        characteristic = batteryService->createCharacteristic(BATTERY_POWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-        characteristic->addDescriptor(new BLE2902());
-        batteryService->start();
-      
-        // Floower customer service
-        floowerService = server->createService(FLOOWER_SERVICE_UUID);
-      
-        // device name characteristics
-        characteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-        characteristic->setValue(config->name.c_str());
-        characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
-      
-        // personification characteristics
-        characteristic = floowerService->createCharacteristic(FLOOWER_PERSONIFICATION_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-        characteristic->setValue((uint8_t *) &config->personification, sizeof(config->personification));
-        characteristic->setCallbacks(new PersonificationCharacteristicsCallbacks(this));
+    // Create the BLE Server
+    server = BLEDevice::createServer();
+    server->setCallbacks(new ServerCallbacks(this));
+    
+    // Device Information profile service
+    BLEService *deviceInformationService = server->createService(DEVICE_INFORMATION_UUID);
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, String(config->serialNumber).c_str());
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, String(config->firmwareVersion).c_str());
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, String(config->hardwareRevision).c_str());
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MANUFACTURER_NAME_UUID, "Floower Lab s.r.o.");
+    deviceInformationService->start();
+    
+    // Battery level profile service
+    batteryService = server->createService(BATTERY_UUID);
+    characteristic = batteryService->createCharacteristic(BATTERY_LEVEL_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    characteristic->addDescriptor(new BLE2902());
+    characteristic = batteryService->createCharacteristic(BATTERY_POWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    characteristic->addDescriptor(new BLE2902());
+    batteryService->start();
+    
+    // Floower customer service
+    floowerService = server->createService(FLOOWER_SERVICE_UUID);
+    
+    // device name characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    characteristic->setValue(config->name.c_str());
+    characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
+    
+    // personification characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_PERSONIFICATION_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    characteristic->setValue((uint8_t *) &config->personification, sizeof(config->personification));
+    characteristic->setCallbacks(new PersonificationCharacteristicsCallbacks(this));
 
-        // command characteristics
-        characteristic = floowerService->createCharacteristic(FLOOWER_COMMAND_UUID, BLECharacteristic::PROPERTY_WRITE);
-        characteristic->setCallbacks(new CommandCharacteristicsCallbacks(this));
-      
-        // state read characteristics
-        characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
-        RgbColor color = RgbColor(floower->getColor());
-        StateData stateData = {floower->getPetalsOpenLevel(), color.R, color.G, color.B};
-        characteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
-        characteristic->addDescriptor(new BLE2902());
+    // command characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_COMMAND_UUID, BLECharacteristic::PROPERTY_WRITE);
+    characteristic->setCallbacks(new CommandCharacteristicsCallbacks(this));
+    
+    // state read characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
+    RgbColor color = RgbColor(floower->getColor());
+    StateData stateData = {floower->getPetalsOpenLevel(), color.R, color.G, color.B};
+    characteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
+    characteristic->addDescriptor(new BLE2902());
 
-        // state write/change characteristics
-        characteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
-        characteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
-      
-        // color scheme characteristics
-        characteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-        size_t size = config->colorSchemeSize * 2;
-        uint8_t bytes[size];
-        for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
-            uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
-            bytes[b] = (valueHS >> 8) & 0xFF;
-            bytes[b + 1] = valueHS & 0xFF;
-        }
-        characteristic->setValue(bytes, size);
-        characteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
-      
-        floowerService->start();
-      
-        // listen to floower state change
-        floower->onChange([=](int8_t petalsOpenLevel, HsbColor hsbColor) {
-            RgbColor color = RgbColor(hsbColor);
-            ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
-            StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
-            BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
-            stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
-            stateCharacteristic->notify();
-        });
-
-        initialized = true;
+    // state write/change characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_STATE_CHANGE_UUID, BLECharacteristic::PROPERTY_WRITE); // write
+    characteristic->setCallbacks(new StateChangeCharacteristicsCallbacks(this));
+    
+    // color scheme characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    size_t size = config->colorSchemeSize * 2;
+    uint8_t bytes[size];
+    for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
+        uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
+        bytes[b] = (valueHS >> 8) & 0xFF;
+        bytes[b + 1] = valueHS & 0xFF;
     }
+    characteristic->setValue(bytes, size);
+    characteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
+    
+    floowerService->start();
+    
+    // listen to floower state change
+    floower->onChange([=](int8_t petalsOpenLevel, HsbColor hsbColor) {
+        RgbColor color = RgbColor(hsbColor);
+        ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
+        StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
+        BLECharacteristic* stateCharacteristic = this->floowerService->getCharacteristic(FLOOWER_STATE_UUID);
+        stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
+        stateCharacteristic->notify();
+    });
+
+    initialized = true;
 }
 
 void BluetoothConnect::startAdvertising() {
-    if (initialized) {
-        ESP_LOGI(LOG_TAG, "Start advertising ...");
-        BLEAdvertising *bleAdvertising = BLEDevice::getAdvertising();
-        bleAdvertising->addServiceUUID(FLOOWER_SERVICE_UUID);
-        bleAdvertising->setScanResponse(true);
-        bleAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
-        bleAdvertising->setMinPreferred(0x12);
-        bleAdvertising->start();
-        advertising = true;
-    }
+    ESP_LOGI(LOG_TAG, "Start advertising ...");
+    BLEAdvertising *bleAdvertising = BLEDevice::getAdvertising();
+    bleAdvertising->addServiceUUID(FLOOWER_SERVICE_UUID);
+    bleAdvertising->setScanResponse(true);
+    bleAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    bleAdvertising->setMinPreferred(0x12);
+    bleAdvertising->start();
+    advertising = true;
 }
 
 void BluetoothConnect::stopAdvertising() {
-    if (initialized && !deviceConnected && advertising) {
-        ESP_LOGI(LOG_TAG, "Stop advertising");
-        BLEDevice::getAdvertising()->stop();
-        advertising = false;
-    }
+    ESP_LOGI(LOG_TAG, "Stop advertising");
+    BLEDevice::getAdvertising()->stop();
+    advertising = false;
 }
 
 bool BluetoothConnect::isConnected() {
@@ -291,12 +302,33 @@ void BluetoothConnect::PersonificationCharacteristicsCallbacks::onWrite(BLEChara
 void BluetoothConnect::CommandCharacteristicsCallbacks::onWrite(BLECharacteristic *characteristic) {
     std::string bytes = characteristic->getValue();
     ESP_LOGI(LOG_TAG, "Command received: %", bytes);
+
+    size_t headerSize = sizeof(MessageHeader);
+    if (bytes.length() >= headerSize) {
+        MessageHeader messageHeader;
+        memcpy(&messageHeader, bytes.data(), headerSize);
+        messageHeader.type = ntohs(messageHeader.type);
+        messageHeader.id = ntohs(messageHeader.id);
+        messageHeader.length = ntohs(messageHeader.length);
+
+        // validate payload
+        if (messageHeader.length > 0) {
+            size_t available = bytes.length() - headerSize;
+            if (available > MAX_MESSAGE_PAYLOAD_BYTES || available < messageHeader.length) {
+                return;
+            }
+        }
+
+        bluetoothConnect->cmdInterpreter->run(messageHeader.type, bytes.data() + headerSize, messageHeader.length);
+    }
 }
 
 void BluetoothConnect::ServerCallbacks::onConnect(BLEServer* server) {
     ESP_LOGI(LOG_TAG, "Connected to client");
     bluetoothConnect->deviceConnected = true;
     bluetoothConnect->advertising = false;
+    bluetoothConnect->connectionId = server->getConnId();
+    Serial.println(bluetoothConnect->connectionId);
 
     if (!bluetoothConnect->config->bluetoothAlwaysOn) {
         bluetoothConnect->config->setBluetoothAlwaysOn(true);

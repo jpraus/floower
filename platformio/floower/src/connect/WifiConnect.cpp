@@ -35,8 +35,8 @@ WifiConnect::WifiConnect(Config *config, CommandInterpreter *cmdInterpreter)
 void WifiConnect::setup() {
 }
 
-void WifiConnect::start() {
-    if (config->wifiSsid.isEmpty()) {
+void WifiConnect::enable() {
+    if (config->wifiSsid.isEmpty() || enabled) {
         return;
     }
 
@@ -47,11 +47,15 @@ void WifiConnect::start() {
     WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
 
     WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
-    ESP_LOGI(LOG_TAG, "Starting WiFi: %s", config->wifiSsid);
+    ESP_LOGI(LOG_TAG, "WiFi enabled: %s", config->wifiSsid);
     enabled = true;
 }
 
-void WifiConnect::stop() {
+void WifiConnect::disable() {
+    if (!enabled) {
+        return;
+    }
+
     // TODO: disconnect the socket
     WiFi.disconnect(true); // turn off wifi
     WiFi.removeEvent(SYSTEM_EVENT_STA_CONNECTED);
@@ -59,8 +63,12 @@ void WifiConnect::stop() {
     WiFi.removeEvent(SYSTEM_EVENT_STA_DISCONNECTED);
     esp_wifi_stop();
 
-    ESP_LOGI(LOG_TAG, "Wifi stopped");
+    ESP_LOGI(LOG_TAG, "Wifi disabled");
     enabled = false;
+}
+
+bool WifiConnect::isEnabled() {
+    return enabled;
 }
 
 void WifiConnect::loop() {

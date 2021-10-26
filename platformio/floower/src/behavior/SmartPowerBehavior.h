@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "hardware/Floower.h"
 #include "connect/BluetoothConnect.h"
+#include "connect/WifiConnect.h"
 #include "behavior/Behavior.h"
 
 #define STATE_STANDBY 0
@@ -15,7 +16,7 @@
 
 class SmartPowerBehavior : public Behavior {
     public:
-        SmartPowerBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect);
+        SmartPowerBehavior(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect);
         virtual void setup(bool wokeUp = false);
         virtual void loop();
         virtual bool isIdle();
@@ -32,6 +33,7 @@ class SmartPowerBehavior : public Behavior {
         Config *config;
         Floower *floower;
         BluetoothConnect *bluetoothConnect;
+        WifiConnect *wifiConnect;
 
         uint8_t state;
         bool preventTouchUp = false;
@@ -49,6 +51,7 @@ class SmartPowerBehavior : public Behavior {
 
         unsigned long watchDogsTime = 0;
         unsigned long bluetoothStartTime = 0;
+        unsigned long wifiStartTime = 0;
         unsigned long deepSleepTime = 0;
 
         uint8_t indicatingStatus = 0;

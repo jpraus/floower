@@ -16,10 +16,13 @@ class CommandInterpreter {
             const uint16_t type,
             const char *payload,
             const uint16_t payloadLength,
-            char *responsePayload,
-            uint16_t *responseLength
+            char *responsePayload = nullptr,
+            uint16_t *responseLength = nullptr
         );
         void onRemoteControl(RemoteControlCallback callback);
+        void enableBluetooth();
+        void disbleBluetooth();
+        
 
     private:
         StaticJsonDocument<MAX_MESSAGE_PAYLOAD_BYTES> jsonPayload;  

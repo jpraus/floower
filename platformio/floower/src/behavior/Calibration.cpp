@@ -121,8 +121,7 @@ void Calibration::calibrateTouch() {
             ESP_LOGI(LOG_TAG, "Calibration done");
 
             // start BLE for the first time, these is a bug that for a first time the BLE starts it crashes
-            bluetoothConnect->init();
-            bluetoothConnect->startAdvertising();
+            bluetoothConnect->enable();
             ESP_LOGI(LOG_TAG, "Bluetooth warmed up");
 
             ESP.restart(); // restart now

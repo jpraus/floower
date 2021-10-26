@@ -13,9 +13,12 @@
 ///////////// SOFTWARE CONFIGURATION
 
 // feature flags
-const bool deepSleepEnabled = true;
-const bool bluetoothEnabled = true;
-const bool colorPickerEnabled = true;
+void setFeatureFlags(Config &config) {
+    config.deepSleepEnabled = true;
+    config.bluetoothEnabled = true;
+    config.wifiEnabled = true;
+    config.colorPickerEnabled = true;
+}
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
@@ -35,7 +38,7 @@ Floower floower(&config);
 Behavior *behavior;
 
 CommandInterpreter cmdInterpreter(&config, &floower);
-BluetoothConnect bluetoothConnect(&floower, &config);
+BluetoothConnect bluetoothConnect(&floower, &config, &cmdInterpreter);
 WifiConnect wifiConnect(&config, &cmdInterpreter);
 
 void configure();
@@ -53,9 +56,7 @@ void setup() {
 
     // read configuration
     configure();
-    config.deepSleepEnabled = deepSleepEnabled;
-    config.bluetoothEnabled = bluetoothEnabled;
-    config.colorPickerEnabled = colorPickerEnabled;
+    setFeatureFlags(config);
 
     // after wake up setup
     bool wokeUp = false;
@@ -83,17 +84,15 @@ void setup() {
         behavior = new Calibration(&config, &floower, &bluetoothConnect, config.calibrated && !config.touchCalibrated);
     }
     else {
-        behavior = new BloomingBehavior(&config, &floower, &bluetoothConnect);
-        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothConnect);
-        //behavior = new TestBehavior(&config, &floower, &bluetoothConnect);
+        behavior = new BloomingBehavior(&config, &floower, &bluetoothConnect, &wifiConnect);
+        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothConnect, &wifiConnect);
+        //behavior = new TestBehavior(&config, &floower, &bluetoothConnect, &wifiConnect);
     }
     behavior->setup(wokeUp);
 
     //config.setWifi("", "");
     //config.setFloud("nejbezpecnejsi");
     //config.commit();
-    wifiConnect.setup();
-    wifiConnect.start();
 }
 
 void loop() {
