@@ -9,6 +9,7 @@ enum MessageType {
     STATUS_OK                   = 0,
     STATUS_ERROR                = 1,
     STATUS_UNAUTHORIZED         = 2,
+    STATUS_UNSUPPORTED          = 3,
 
     // protocol commands (16-63)
     PROTOCOL_AUTH               = 16, // authorize the connection with server by sending a secure token
@@ -18,7 +19,10 @@ enum MessageType {
 
     // device commands (64+)
     CMD_WRITE_PETALS            = 64,
-    CMD_WRITE_RGB_COLOR         = 65
+    CMD_WRITE_RGB_COLOR         = 65,
+    //CMD_WRITE_HSB_COLOR       = 66,
+    CMD_READ_STATE              = 67, // state of Floower (color, petals open level)
+    CMD_PLAY_ANIMATION          = 68,
 };
 
 struct MessageHeader {

@@ -12,13 +12,12 @@ typedef std::function<void()> RemoteControlCallback;
 class CommandInterpreter {
     public:
         CommandInterpreter(Config *config, Floower *floower);
-        void run(
+        uint16_t run(
             const uint16_t type,
             const char *payload,
             const uint16_t payloadLength,
-            const uint16_t *responseType,
-            const char *responsePayload,
-            const uint16_t *responseLength
+            char *responsePayload,
+            uint16_t *responseLength
         );
         void onRemoteControl(RemoteControlCallback callback);
 

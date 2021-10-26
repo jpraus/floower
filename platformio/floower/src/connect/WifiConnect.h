@@ -35,7 +35,8 @@ class WifiConnect {
 
         void handleReceivedMessage();
         void receiveMessage(char *data, size_t len);
-        uint16_t sendMessage(const uint16_t type, const char* payload, const size_t payloadSize);
+        uint16_t sendRequest(const uint16_t type, const char* payload, const size_t payloadSize);
+        void sendRequest(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize);
         void sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize);
 
         Config *config;

@@ -123,9 +123,8 @@ void WifiConnect::handleReceivedMessage() {
     }
     else if (state == STATE_FLOUD_AUTHORIZED) {
         // handle commands
-        uint16_t response = MessageType::STATUS_OK;
         uint16_t responseSize = 0;
-        cmdInterpreter->run(receivedMessage.type, receiveBuffer, receivedMessage.length, &response, sendBuffer, &responseSize);
+        uint16_t response = cmdInterpreter->run(receivedMessage.type, receiveBuffer, receivedMessage.length, sendBuffer, &responseSize);
         sendMessage(response, receivedMessage.id, sendBuffer, responseSize);
     }
 }
@@ -142,13 +141,18 @@ void WifiConnect::sendAuthorization() {
     ESP_LOGI(LOG_TAG, "Authorizing to Floud");
     String &token = config->floudToken;
     token.toCharArray(sendBuffer, token.length() + 1); // add +1 to accomodate for 0 terminate char
-    authorizationMessageId = sendMessage(MessageType::PROTOCOL_AUTH, sendBuffer, token.length()); // dont send the 0 terminate char
+    authorizationMessageId = sendRequest(MessageType::PROTOCOL_AUTH, sendBuffer, token.length()); // dont send the 0 terminate char
 }
 
-uint16_t WifiConnect::sendMessage(const uint16_t type, const char* payload, const size_t payloadSize) {
+uint16_t WifiConnect::sendRequest(const uint16_t type, const char* payload, const size_t payloadSize) {
     uint16_t messageId = messageIdCounter++;
-    sendMessage(type, messageId, payload, payloadSize);
+    sendRequest(type, messageId, payload, payloadSize);
     return messageId;
+}
+
+void WifiConnect::sendRequest(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize) {
+    sendMessage(type, id, payload, payloadSize);
+    receiveTime = millis() + SOCKET_RESPONSE_TIMEOUT_MS;
 }
 
 void WifiConnect::sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize) {
@@ -159,8 +163,6 @@ void WifiConnect::sendMessage(const uint16_t type, const uint16_t id, const char
     // TODO: check payload size?
     client->write((char*) &header, sizeof(header));
     client->write(payload, payloadSize);
-
-    receiveTime = millis() + SOCKET_RESPONSE_TIMEOUT_MS;
 }
 
 void WifiConnect::receiveMessage(char *data, size_t len) {

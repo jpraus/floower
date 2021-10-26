@@ -450,7 +450,7 @@ PowerState Floower::readPowerState() {
         usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
     }
 
-    ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
+    ESP_LOGD(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
 
     powerState = {voltage, level, charging, usbPowered, switchedOn};
     return powerState;
