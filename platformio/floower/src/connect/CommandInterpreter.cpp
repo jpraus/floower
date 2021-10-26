@@ -3,8 +3,8 @@
 CommandInterpreter::CommandInterpreter(Config *config, Floower *floower) 
         : config(config), floower(floower) {}
 
-void CommandInterpreter::onRemoteControl(RemoteControlCallback callback) {
-    remoteControlCallback = callback;
+void CommandInterpreter::onControlCommand(ControlCommandCallback callback) {
+    controlCommandCallback = callback;
 }
 
 uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const uint16_t payloadLength, char *responsePayload, uint16_t *responseLength) {
@@ -54,8 +54,8 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
                         time = jsonPayload["t"];
                     }
                     floower->setPetalsOpenLevel(level, time);
-                    if (remoteControlCallback != nullptr) {
-                        remoteControlCallback();
+                    if (controlCommandCallback != nullptr) {
+                        controlCommandCallback();
                     }
                 }
                 return STATUS_OK;
@@ -72,8 +72,8 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
                     time = jsonPayload["t"];
                 }
                 floower->transitionColor(color.H, color.S, color.B, time); // TODO: time
-                if (remoteControlCallback != nullptr) {
-                    remoteControlCallback();
+                if (controlCommandCallback != nullptr) {
+                    controlCommandCallback();
                 }
                 return STATUS_OK;
             }

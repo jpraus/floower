@@ -7,7 +7,7 @@
 #include "MsgPack.h"
 #include "MessageProtocolDef.h"
 
-typedef std::function<void()> RemoteControlCallback;
+typedef std::function<void()> ControlCommandCallback;
 
 class CommandInterpreter {
     public:
@@ -19,7 +19,7 @@ class CommandInterpreter {
             char *responsePayload = nullptr,
             uint16_t *responseLength = nullptr
         );
-        void onRemoteControl(RemoteControlCallback callback);
+        void onControlCommand(ControlCommandCallback callback);
         void enableBluetooth();
         void disbleBluetooth();
         
@@ -27,7 +27,7 @@ class CommandInterpreter {
     private:
         StaticJsonDocument<MAX_MESSAGE_PAYLOAD_BYTES> jsonPayload;  
         MsgPack::Unpacker payloadUnpacker;
-        RemoteControlCallback remoteControlCallback;
+        ControlCommandCallback controlCommandCallback;
 
         Config *config;
         Floower *floower;

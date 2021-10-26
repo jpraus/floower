@@ -27,4 +27,6 @@ class RemoteControl {
         WifiConnect *wifiConnect;
         CommandInterpreter *cmdInterpreter;
         RemoteControlCallback remoteControlCallback;
+
+        void fireRemoteControl();
 };

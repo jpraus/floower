@@ -2,23 +2,18 @@
 
 RemoteControl::RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandInterpreter *cmdInterpreter):
         bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect), cmdInterpreter(cmdInterpreter) {
-    cmdInterpreter->onRemoteControl([=]() {
-        if (this->remoteControlCallback != nullptr) {
-            remoteControlCallback();
-            Serial.println("Remote control");
-        }
-    });
-    // deprecated
-    bluetoothConnect->onRemoteControl([=]() {
-        if (this->remoteControlCallback != nullptr) {
-            remoteControlCallback();
-            Serial.println("Remote control");
-        }
-    });
+    cmdInterpreter->onControlCommand([=]() { fireRemoteControl(); });
+    bluetoothConnect->onRemoteControl([=]() { fireRemoteControl(); }); // deprecated
 }
 
 void RemoteControl::onRemoteControl(RemoteControlCallback callback) {
     remoteControlCallback = callback;
+}
+
+void RemoteControl::fireRemoteControl() {
+    if (remoteControlCallback != nullptr) {
+        remoteControlCallback();
+    }
 }
 
 void RemoteControl::enableBluetooth() {
