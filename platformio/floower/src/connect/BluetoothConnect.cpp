@@ -75,9 +75,7 @@ void BluetoothConnect::disable() {
     if (advertising) {
         stopAdvertising();
     }
-    if (connectionId > 0) {
-        server->disconnect(connectionId);
-    }
+    server->disconnect(connectionId);
 }
 
 void BluetoothConnect::init() {
@@ -311,6 +309,8 @@ void BluetoothConnect::CommandCharacteristicsCallbacks::onWrite(BLECharacteristi
         messageHeader.id = ntohs(messageHeader.id);
         messageHeader.length = ntohs(messageHeader.length);
 
+        ESP_LOGI(LOG_TAG, "Got message: %d/%d/%d", messageHeader.type, messageHeader.id, messageHeader.length);
+
         // validate payload
         if (messageHeader.length > 0) {
             size_t available = bytes.length() - headerSize;
@@ -327,8 +327,7 @@ void BluetoothConnect::ServerCallbacks::onConnect(BLEServer* server) {
     ESP_LOGI(LOG_TAG, "Connected to client");
     bluetoothConnect->deviceConnected = true;
     bluetoothConnect->advertising = false;
-    bluetoothConnect->connectionId = server->getConnId();
-    Serial.println(bluetoothConnect->connectionId);
+    bluetoothConnect->connectionId = server->getConnId(); // first one is 0
 
     if (!bluetoothConnect->config->bluetoothAlwaysOn) {
         bluetoothConnect->config->setBluetoothAlwaysOn(true);

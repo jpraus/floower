@@ -18,6 +18,7 @@ class WifiConnect {
         void enable();
         void disable();
         bool isEnabled();
+        void reconnect();
 
         void runOTAUpdate();
 
@@ -43,6 +44,7 @@ class WifiConnect {
         CommandInterpreter *cmdInterpreter;
         AsyncClient *client;
         bool enabled = false;
+        bool wifiOn = false;
 
         unsigned long reconnectTime = 0;
         uint16_t messageIdCounter = 1;

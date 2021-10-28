@@ -292,7 +292,7 @@ HsbColor Floower::getCurrentColor() {
     return pixelsColor;
 }
 
-void Floower::startAnimation(FloowerColorAnimation animation) {
+void Floower::startAnimation(uint8_t animation) {
     interruptiblePixelsAnimation = true;
 
     if (animation == RAINBOW) {

@@ -10,9 +10,9 @@
 #include <AccelStepper.h>
 
 enum FloowerColorAnimation {
-    RAINBOW,
-    RAINBOW_LOOP,
-    CANDLE
+    RAINBOW = 0,
+    RAINBOW_LOOP = 1,
+    CANDLE = 2
 };
 
 enum FloowerStatusAnimation {
@@ -61,7 +61,7 @@ class Floower {
         void flashColor(double hue, double saturation, int flashDuration);
         HsbColor getColor();
         HsbColor getCurrentColor();
-        void startAnimation(FloowerColorAnimation animation);
+        void startAnimation(uint8_t animation);
         void stopAnimation(bool retainColor);
         bool isLit();
         bool isAnimating();

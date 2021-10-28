@@ -31,4 +31,6 @@ class CommandInterpreter {
 
         Config *config;
         Floower *floower;
+
+        void fireControlCommandCallback(); 
 };

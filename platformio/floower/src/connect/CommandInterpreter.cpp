@@ -19,11 +19,6 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
             case MessageType::PROTOCOL_WRITE_WIFI: {
                 Serial.println("Setup WiFi");
                 if (jsonPayload.containsKey("ssid")) {
-                    String ssid = jsonPayload["ssid"];
-                    String pwd = jsonPayload["pwd"];
-                    Serial.println(ssid);
-                    Serial.println(pwd);
-
                     config->setWifi(jsonPayload["ssid"], jsonPayload["pwd"]);
                     if (jsonPayload.containsKey("token")) {
                         config->setFloud(jsonPayload["token"]);
@@ -54,9 +49,7 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
                         time = jsonPayload["t"];
                     }
                     floower->setPetalsOpenLevel(level, time);
-                    if (controlCommandCallback != nullptr) {
-                        controlCommandCallback();
-                    }
+                    fireControlCommandCallback();
                 }
                 return STATUS_OK;
             }
@@ -71,10 +64,42 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
                 if (jsonPayload.containsKey("t")) {
                     time = jsonPayload["t"];
                 }
-                floower->transitionColor(color.H, color.S, color.B, time); // TODO: time
-                if (controlCommandCallback != nullptr) {
-                    controlCommandCallback();
+                floower->transitionColor(color.H, color.S, color.B, time);
+                fireControlCommandCallback();
+                return STATUS_OK;
+            }
+            case MessageType::CMD_WRITE_STATE: {
+                // { r: <red>, g: <green>, b: <blue>, l: <petalsLevel>, t: <time >}
+                uint16_t time = config->speedMillis;
+                if (jsonPayload.containsKey("t")) {
+                    time = jsonPayload["t"];
                 }
+                if (jsonPayload.containsKey("l")) {
+                    uint8_t level = jsonPayload["l"];
+                    floower->setPetalsOpenLevel(level, time);
+                }
+                if (jsonPayload.containsKey("r") || jsonPayload.containsKey("g") || jsonPayload.containsKey("b")) {
+                    HsbColor color = HsbColor(RgbColor(
+                        jsonPayload["r"], 
+                        jsonPayload["g"], 
+                        jsonPayload["b"]
+                    ));
+                    floower->transitionColor(color.H, color.S, color.B, time);
+                }
+                fireControlCommandCallback();
+                return STATUS_OK;
+            }
+            case MessageType::CMD_PLAY_ANIMATION: {
+                // { a: <animationCode> }
+                uint8_t animation = jsonPayload["a"];
+                if (animation > 0) {
+                    floower->startAnimation(animation);
+                    fireControlCommandCallback();
+                }
+                return STATUS_OK;
+            }
+            case MessageType::CMD_RUN_OTA: {
+                // TODO: notify wifi to run OTA
                 return STATUS_OK;
             }
         }
@@ -99,4 +124,10 @@ uint16_t CommandInterpreter::run(const uint16_t type, const char *payload, const
     }
 
     return STATUS_UNSUPPORTED;
+}
+
+inline void CommandInterpreter::fireControlCommandCallback() {
+    if (controlCommandCallback != nullptr) {
+        controlCommandCallback();
+    }
 }

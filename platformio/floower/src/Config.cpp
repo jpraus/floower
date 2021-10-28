@@ -112,7 +112,7 @@ void Config::load() {
         for (uint8_t i = 0; i < colorSchemeSize; i++) {
             ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
         }
-        ESP_LOGI(LOG_TAG, "WiFi: %s, p%d, t%d", wifiSsid, !wifiPassword.isEmpty(), !floudToken.isEmpty());
+        ESP_LOGI(LOG_TAG, "WiFi: %s, p%d, t%d", wifiSsid.c_str(), !wifiPassword.isEmpty(), !floudToken.isEmpty());
     }
     else {
         ESP_LOGE(LOG_TAG, "Not configured");
@@ -265,11 +265,17 @@ void Config::setWifi(String ssid, String password) {
     this->wifiPassword = password;
     writeString(EEPROM_ADDRESS_WIFI_SSID, ssid, EEPROM_ADDRESS_WIFI_SSID_LENGTH, WIFI_SSID_MAX_LENGTH);
     writeString(EEPROM_ADDRESS_WIFI_PWD, password, EEPROM_ADDRESS_WIFI_PWD_LENGTH, WIFI_PWD_MAX_LENGTH);
+    if (wifiOrFloudChangedCallback != nullptr) {
+        wifiOrFloudChangedCallback();
+    }
 }
 
 void Config::setFloud(String token) {
     this->floudToken = token;
     writeString(EEPROM_ADDRESS_FLOUD_TOKEN, token, EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH, FLOUD_TOKEN_MAX_LENGTH);
+    if (wifiOrFloudChangedCallback != nullptr) {
+        wifiOrFloudChangedCallback();
+    }
 }
 
 void Config::readWifiAndFloud() {
@@ -314,4 +320,8 @@ String Config::readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLen
 
 void Config::commit() {
     EEPROM.commit();
+}
+
+void Config::onWifiOrFloudChanged(WifiOrFloudChangedCallback callback) {
+    wifiOrFloudChangedCallback = callback;
 }

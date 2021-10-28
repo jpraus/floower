@@ -37,18 +37,17 @@ void WifiConnect::setup() {
 }
 
 void WifiConnect::enable() {
-    if (config->wifiSsid.isEmpty() || enabled) {
-        return;
+    if (!config->wifiSsid.isEmpty()) {
+        WiFi.mode(WIFI_STA);
+
+        WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, SYSTEM_EVENT_STA_CONNECTED);
+        WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, SYSTEM_EVENT_STA_GOT_IP);
+        WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
+
+        WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
+        ESP_LOGI(LOG_TAG, "WiFi on: %s", config->wifiSsid.c_str());
+        wifiOn = true;
     }
-
-    WiFi.mode(WIFI_STA);
-
-    WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, SYSTEM_EVENT_STA_CONNECTED);
-    WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, SYSTEM_EVENT_STA_GOT_IP);
-    WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
-
-    WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
-    ESP_LOGI(LOG_TAG, "WiFi enabled: %s", config->wifiSsid);
     enabled = true;
 }
 
@@ -64,7 +63,8 @@ void WifiConnect::disable() {
     WiFi.removeEvent(SYSTEM_EVENT_STA_DISCONNECTED);
     esp_wifi_stop();
 
-    ESP_LOGI(LOG_TAG, "Wifi disabled");
+    ESP_LOGI(LOG_TAG, "Wifi off");
+    wifiOn = false;
     enabled = false;
 }
 
@@ -72,10 +72,24 @@ bool WifiConnect::isEnabled() {
     return enabled;
 }
 
+void WifiConnect::reconnect() {
+    if (enabled) {
+        if (wifiOn) {
+            WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
+            ESP_LOGI(LOG_TAG, "WiFi reconnecting: %s", config->wifiSsid);
+        }
+        else {
+            enable();
+        }
+    }
+}
+
 void WifiConnect::loop() {
     if (!enabled) {
         return;
     }
+
+    // TODO: retry connect to WiFi
 
     if (WiFi.status() == WL_CONNECTED) {
         if (config->floudToken) {

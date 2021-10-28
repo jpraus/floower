@@ -21,8 +21,10 @@ enum MessageType {
     CMD_WRITE_PETALS            = 64,
     CMD_WRITE_RGB_COLOR         = 65,
     //CMD_WRITE_HSB_COLOR       = 66,
-    CMD_READ_STATE              = 67, // state of Floower (color, petals open level)
-    CMD_PLAY_ANIMATION          = 68,
+    CMD_WRITE_STATE             = 67, // setting both color and petals open level
+    CMD_READ_STATE              = 68, // state of Floower (color, petals open level)
+    CMD_PLAY_ANIMATION          = 69,
+    CMD_RUN_OTA                 = 70
 };
 
 struct MessageHeader {

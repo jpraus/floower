@@ -48,6 +48,7 @@ void periodicOperation();
 
 void setup() {
     Serial.begin(115200);
+    //delay(1000);
     ESP_LOGI(LOG_TAG, "Initializing");
 
     // start watchdog timer
@@ -57,6 +58,7 @@ void setup() {
     // read configuration
     configure();
     setFeatureFlags(config);
+    config.onWifiOrFloudChanged([]{ wifiConnect.reconnect(); });
 
     // after wake up setup
     bool wokeUp = false;

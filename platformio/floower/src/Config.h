@@ -39,6 +39,9 @@ typedef struct Personification {
     uint8_t colorBrightness; // 0-100, read-write
 } Personification;
 
+
+typedef std::function<void()> WifiOrFloudChangedCallback;
+
 class Config {
     public:
         Config(uint8_t firmwareVersion) : firmwareVersion(firmwareVersion) {}
@@ -57,6 +60,7 @@ class Config {
         void setWifi(String ssid, String password);
         void setFloud(String token);
         void commit();
+        void onWifiOrFloudChanged(WifiOrFloudChangedCallback callback);
 
         static uint16_t encodeHSColor(double hue, double saturation);
         static HsbColor decodeHSColor(uint16_t valueHS);
@@ -106,5 +110,6 @@ class Config {
         String readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLength);
 
         uint8_t flags = 0;
+        WifiOrFloudChangedCallback wifiOrFloudChangedCallback;
 
 };
