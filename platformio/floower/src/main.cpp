@@ -48,6 +48,7 @@ void periodicOperation();
 
 void onConfigChanged(bool wifiChanged) {
     Serial.println("Config changed");
+    ESP_LOGI(LOG_TAG, "Config changed");
     if (wifiChanged) {
         wifiConnect.reconnect();
     }
@@ -55,7 +56,7 @@ void onConfigChanged(bool wifiChanged) {
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    //delay(1000);
     ESP_LOGI(LOG_TAG, "Initializing");
 
     // start watchdog timer
