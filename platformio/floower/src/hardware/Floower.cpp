@@ -338,12 +338,12 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 void Floower::pixelsRainbowLoopAnimationUpdate(const AnimationParam& param) {
     double hue = param.progress;
     double step = 1.0 / 6.0;
-    pixels.SetPixelColor(0, HsbColor(param.progress, 1, config->colorBrightness));
+    pixels.SetPixelColor(0, HsbColor(param.progress, 1, config->colorBrightnessDecimal));
     for (uint8_t i = 1; i < 7; i++, hue += step) {
         if (hue >= 1.0) {
             hue = hue - 1;
         }
-        pixels.SetPixelColor(i, HsbColor(hue, 1, config->colorBrightness));
+        pixels.SetPixelColor(i, HsbColor(hue, 1, config->colorBrightnessDecimal));
     }
     if (param.state == AnimationState_Completed) {
         animations.RestartAnimation(param.index);

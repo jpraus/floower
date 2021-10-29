@@ -16,17 +16,6 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
             return STATUS_ERROR;
         }
         switch (type) {
-            case CommandType::CMD_WRITE_WIFI: {
-                // { ssid: <wifiSsid>, pwd: <wifiPwd>, tkn: <floudToken> }
-                if (jsonPayload.containsKey("ssid")) {
-                    config->setWifi(jsonPayload["ssid"], jsonPayload["pwd"]);
-                }
-                if (jsonPayload.containsKey("tkn")) {
-                    config->setFloud(jsonPayload["tkn"]);
-                }
-                config->commit();
-                return STATUS_OK;
-            }
             case CommandType::CMD_WRITE_PETALS: {
                 // { l: <level>, t: <time> }
                 if (jsonPayload.containsKey("l")) {
@@ -85,6 +74,45 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 }
                 return STATUS_OK;
             }
+            case CommandType::CMD_WRITE_WIFI: {
+                // { ssid: <wifiSsid>, pwd: <wifiPwd>, tkn: <floudToken> }
+                if (jsonPayload.containsKey("ssid")) {
+                    config->setWifi(jsonPayload["ssid"], jsonPayload["pwd"]);
+                }
+                if (jsonPayload.containsKey("tkn")) {
+                    config->setFloud(jsonPayload["tkn"]);
+                }
+                config->commit();
+                return STATUS_OK;
+            }
+            case CommandType::CMD_WRITE_NAME: {
+                // { n: <string> }
+                String name = jsonPayload["n"];
+                if (!name.isEmpty()) {
+                    config->setName(name);
+                }
+                config->commit();
+                return STATUS_OK;
+            }
+            case CommandType::CMD_WRITE_SETTINGS: {
+                // { spd: <transitionSpeedInTenthsOfSeconds>, brg: <colorBrightness>, mol: <maxOpenLevel> }
+                if (jsonPayload.containsKey("spd")) {
+                    config->setSpeed(jsonPayload["spd"]);
+                }
+                if (jsonPayload.containsKey("brg")) {
+                    config->setColorBrightness(jsonPayload["brg"]);
+                }
+                if (jsonPayload.containsKey("mol")) {
+                    config->setMaxOpenLevel(jsonPayload["mol"]);
+                }
+                config->commit();
+                return STATUS_OK;
+            }
+            case CommandType::CMD_WRITE_COLOR_SCHEME: {
+                // [ <encoded HS color values as single 2 byte number>, ... ]
+                config->commit();
+                return STATUS_UNSUPPORTED;
+            }
             case CommandType::CMD_RUN_OTA: {
                 // TODO: notify wifi to run OTA
                 return STATUS_OK;
@@ -109,35 +137,25 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
             case CommandType::CMD_READ_WIFI: {
                 // response: { ssid: <wifiSsid>, tkn: <floudToken>, s: <state>}
                 jsonPayload.clear();
-                RgbColor color = RgbColor(floower->getColor());
                 jsonPayload["ssid"] = config->wifiSsid;
                 jsonPayload["tkn"] = config->floudToken;
                 //jsonPayload["s"] = color.B; TODO: how to get state of WiFi
                 *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
                 return STATUS_OK;
             }
-            case CommandType::CMD_WRITE_PERSONIFICATION: {
-                return STATUS_UNSUPPORTED;
-            }
-            case CommandType::CMD_READ_PERSONIFICATION: {
+            case CommandType::CMD_READ_SETTINGS: {
                 // response: { spd: <transitionSpeedInTenthsOfSeconds>, brg: <colorBrightness>, mol: <maxOpenLevel>}
                 jsonPayload.clear();
-                RgbColor color = RgbColor(floower->getColor());
-                jsonPayload["spd"] = config->personification.speed;
-                jsonPayload["brg"] = config->personification.colorBrightness;
-                jsonPayload["mol"] = config->personification.maxOpenLevel;
+                jsonPayload["spd"] = config->speed;
+                jsonPayload["brg"] = config->colorBrightness;
+                jsonPayload["mol"] = config->maxOpenLevel;
                 *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
                 Serial.println(*responseLength);
                 return STATUS_OK;
             }
-            case CommandType::CMD_WRITE_COLOR_SCHEME: {
-                return STATUS_UNSUPPORTED;
-            }
             case CommandType::CMD_READ_COLOR_SCHEME: {
                 // response: [ <encoded HS color values as single 2 byte number>, ... ]
                 jsonPayload.clear();
-                RgbColor color = RgbColor(floower->getColor());
-
                 JsonArray array = jsonPayload.to<JsonArray>();
                 for (uint8_t i = 0; i < config->colorSchemeSize; i++) {
                     uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);

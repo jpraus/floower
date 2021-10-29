@@ -134,7 +134,6 @@ bool SmartPowerBehavior::isIdle() {
 }
 
 void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
-    bool wasUsbPowered = powerState.usbPowered;
     powerState = floower->readPowerState();
 
     if (!powerState.usbPowered && powerState.batteryVoltage < LOW_BATTERY_THRESHOLD_V) {

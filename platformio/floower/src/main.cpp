@@ -46,9 +46,16 @@ void planDeepSleep(long timeoutMs);
 void enterDeepSleep();
 void periodicOperation();
 
+void onConfigChanged(bool wifiChanged) {
+    Serial.println("Config changed");
+    if (wifiChanged) {
+        wifiConnect.reconnect();
+    }
+}
+
 void setup() {
     Serial.begin(115200);
-    //delay(1000);
+    delay(1000);
     ESP_LOGI(LOG_TAG, "Initializing");
 
     // start watchdog timer
@@ -58,7 +65,7 @@ void setup() {
     // read configuration
     configure();
     setFeatureFlags(config);
-    config.onWifiOrFloudChanged([]{ wifiConnect.reconnect(); });
+    config.onConfigChanged(onConfigChanged);
 
     // after wake up setup
     bool wokeUp = false;

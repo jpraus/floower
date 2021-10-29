@@ -24,10 +24,12 @@ enum CommandType {
     CMD_RUN_OTA                 = 70,
     CMD_WRITE_WIFI              = 71,
     CMD_READ_WIFI               = 72,
-    CMD_WRITE_PERSONIFICATION   = 73,
-    CMD_READ_PERSONIFICATION    = 74,
-    CMD_WRITE_COLOR_SCHEME      = 75,
-    CMD_READ_COLOR_SCHEME       = 76,
+    CMD_WRITE_NAME              = 73,
+    CMD_READ_NAME               = 74,
+    CMD_WRITE_SETTINGS          = 75,
+    CMD_READ_SETTINGS           = 76,
+    CMD_WRITE_COLOR_SCHEME      = 77,
+    CMD_READ_COLOR_SCHEME       = 78,
 };
 
 struct CommandMessageHeader {

@@ -74,7 +74,7 @@ void Config::load() {
             setCalibrated();
         }
 
-        // backward compatibility => personification data
+        // backward compatibility => settings values
         if (configVersion < 4) {
             resetColorScheme();
             hardwareRevision = EEPROM.read(EEPROM_ADDRESS_REVISION);
@@ -102,13 +102,15 @@ void Config::load() {
         readFlags();
         readColorScheme();
         readName();
-        readPersonification();
+        readSpeed();
+        readMaxOpenLevel();
+        readColorBrightness();
         readWifiAndFloud();
       
         ESP_LOGI(LOG_TAG, "Config ready");
         ESP_LOGI(LOG_TAG, "HW: %d -> %d, R%d, SN%d, f%d, tt%d", servoClosed, servoOpen, hardwareRevision, serialNumber, flags, touchThreshold);
         ESP_LOGI(LOG_TAG, "Flags: bt%d, %s", bluetoothAlwaysOn, name.c_str());
-        ESP_LOGI(LOG_TAG, "P13n: bh%d, sp%d, mo%d, cb%d", personification.behavior, personification.speed, personification.maxOpenLevel, personification.colorBrightness);
+        ESP_LOGI(LOG_TAG, "Sett: spd%d, mol%d, brg%d", speed, maxOpenLevel, colorBrightness);
         for (uint8_t i = 0; i < colorSchemeSize; i++) {
             ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
         }
@@ -139,8 +141,11 @@ void Config::factorySettings() {
     ESP_LOGI(LOG_TAG, "Factory reset");
     setName("Floower");
     setBluetoothAlwaysOn(false);
-    Personification personification = {DEFAULT_TOUCH_THRESHOLD, DEFAULT_BEHAVIOR, DEFAULT_SPEED, DEFAULT_MAX_OPEN_LEVEL, DEFAULT_COLOR_BRIGHTNESS};
-    setPersonification(personification);
+    setSpeed(DEFAULT_SPEED);
+    setMaxOpenLevel(DEFAULT_MAX_OPEN_LEVEL);
+    setColorBrightness(DEFAULT_COLOR_BRIGHTNESS);
+    EEPROM.write(EEPROM_ADDRESS_TOUCH_THRESHOLD, DEFAULT_TOUCH_THRESHOLD); // not used, for forward compabitility only
+    EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, DEFAULT_BEHAVIOR); // not used, for forward compabitility only
     resetColorScheme();
 }
 
@@ -195,32 +200,44 @@ void Config::setTouchThreshold(uint8_t touchThreshold) {
     this->touchThreshold = touchThreshold;
 }
 
-void Config::setPersonification(Personification personification) {
-    this->personification = personification;
-    this->speedMillis = personification.speed * 100;
-    this->colorBrightness = (double) personification.colorBrightness / 100.0;
-    EEPROM.write(EEPROM_ADDRESS_BEHAVIOR, personification.behavior);
-    EEPROM.write(EEPROM_ADDRESS_SPEED, personification.speed);
-    EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, personification.maxOpenLevel);
-    EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, personification.colorBrightness);
+void Config::setSpeed(uint8_t speed) {
+    this->speed = speed;
+    this->speedMillis = speed * 100;
+    EEPROM.write(EEPROM_ADDRESS_SPEED, speed);
 }
 
-void Config::readPersonification() {
-    personification.behavior = EEPROM.read(EEPROM_ADDRESS_BEHAVIOR);
-    personification.speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
-    if (personification.speed < 5) {
-        personification.speed = 5;
+void Config::setMaxOpenLevel(uint8_t maxOpenLevel) {
+    this->maxOpenLevel = maxOpenLevel;
+    EEPROM.write(EEPROM_ADDRESS_MAX_OPEN_LEVEL, maxOpenLevel);
+}
+
+void Config::setColorBrightness(uint8_t colorBrightness) {
+    this->colorBrightness = colorBrightness;
+    this->colorBrightnessDecimal = (double) colorBrightness / 100.0;
+    EEPROM.write(EEPROM_ADDRESS_COLOR_BRIGHTNESS, colorBrightness);
+}
+
+void Config::readSpeed() {
+    speed = EEPROM.read(EEPROM_ADDRESS_SPEED);
+    if (speed < 5) {
+        speed = 5;
     }
-    speedMillis = this->personification.speed * 100;
-    personification.maxOpenLevel = EEPROM.read(EEPROM_ADDRESS_MAX_OPEN_LEVEL);
-    if (personification.maxOpenLevel > 100) {
-        personification.maxOpenLevel = 100;
+    speedMillis = speed * 100;
+}
+
+void Config::readMaxOpenLevel() {
+    maxOpenLevel = EEPROM.read(EEPROM_ADDRESS_MAX_OPEN_LEVEL);
+    if (maxOpenLevel > 100) {
+        maxOpenLevel = 100;
     }
-    personification.colorBrightness = EEPROM.read(EEPROM_ADDRESS_COLOR_BRIGHTNESS);
-    if (personification.colorBrightness > 100) {
-        personification.colorBrightness = 100;
+}
+
+void Config::readColorBrightness() {
+    colorBrightness = EEPROM.read(EEPROM_ADDRESS_COLOR_BRIGHTNESS);
+    if (colorBrightness > 100) {
+        colorBrightness = 100;
     }
-    colorBrightness = (double) personification.colorBrightness / 100.0;
+    colorBrightnessDecimal = (double) colorBrightness / 100.0;
 }
 
 void Config::writeColorScheme() {
@@ -265,17 +282,13 @@ void Config::setWifi(String ssid, String password) {
     this->wifiPassword = password;
     writeString(EEPROM_ADDRESS_WIFI_SSID, ssid, EEPROM_ADDRESS_WIFI_SSID_LENGTH, WIFI_SSID_MAX_LENGTH);
     writeString(EEPROM_ADDRESS_WIFI_PWD, password, EEPROM_ADDRESS_WIFI_PWD_LENGTH, WIFI_PWD_MAX_LENGTH);
-    if (wifiOrFloudChangedCallback != nullptr) {
-        wifiOrFloudChangedCallback();
-    }
+    wifiChanged = true;
 }
 
 void Config::setFloud(String token) {
     this->floudToken = token;
     writeString(EEPROM_ADDRESS_FLOUD_TOKEN, token, EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH, FLOUD_TOKEN_MAX_LENGTH);
-    if (wifiOrFloudChangedCallback != nullptr) {
-        wifiOrFloudChangedCallback();
-    }
+    wifiChanged = true;
 }
 
 void Config::readWifiAndFloud() {
@@ -320,8 +333,12 @@ String Config::readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLen
 
 void Config::commit() {
     EEPROM.commit();
+    if (configChangedCallback != nullptr) {
+        configChangedCallback(wifiChanged);
+        wifiChanged = false;
+    }
 }
 
-void Config::onWifiOrFloudChanged(WifiOrFloudChangedCallback callback) {
-    wifiOrFloudChangedCallback = callback;
+void Config::onConfigChanged(ConfigChangedCallback callback) {
+    configChangedCallback = callback;
 }
