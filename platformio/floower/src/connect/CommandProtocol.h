@@ -5,13 +5,13 @@
 #include "hardware/Floower.h"
 #include "ArduinoJson.h"
 #include "MsgPack.h"
-#include "MessageProtocolDef.h"
+#include "CommandProtocolDef.h"
 
 typedef std::function<void()> ControlCommandCallback;
 
-class CommandInterpreter {
+class CommandProtocol {
     public:
-        CommandInterpreter(Config *config, Floower *floower);
+        CommandProtocol(Config *config, Floower *floower);
         uint16_t run(
             const uint16_t type,
             const char *payload,

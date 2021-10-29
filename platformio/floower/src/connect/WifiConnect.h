@@ -4,15 +4,15 @@
 #include "MsgPack.h"
 #include "Arduino.h"
 #include "Config.h"
-#include "MessageProtocolDef.h"
+#include "CommandProtocolDef.h"
 #include "hardware/Floower.h"
 #include "WiFi.h"
 #include "AsyncTCP.h"
-#include "CommandInterpreter.h"
+#include "CommandProtocol.h"
 
 class WifiConnect {
     public:
-        WifiConnect(Config *config, CommandInterpreter *cmdInterpreter);
+        WifiConnect(Config *config, CommandProtocol *cmdProtocol);
         void setup();
         void loop();
         void enable();
@@ -41,7 +41,7 @@ class WifiConnect {
         void sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize);
 
         Config *config;
-        CommandInterpreter *cmdInterpreter;
+        CommandProtocol *cmdProtocol;
         AsyncClient *client;
         bool enabled = false;
         bool wifiOn = false;
@@ -54,6 +54,6 @@ class WifiConnect {
 
         unsigned long receiveTime = 0; // time when reply should be received
         volatile bool received = false;
-        MessageHeader receivedMessage; 
+        CommandMessageHeader receivedMessage; 
         char receiveBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
 };

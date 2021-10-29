@@ -4,7 +4,7 @@
 #include "NeoPixelBus.h"
 #include "MsgPack.h"
 
-enum MessageType {
+enum CommandType {
     // response statuses (0-15)
     STATUS_OK                   = 0,
     STATUS_ERROR                = 1,
@@ -13,9 +13,6 @@ enum MessageType {
 
     // protocol commands (16-63)
     PROTOCOL_AUTH               = 16, // authorize the connection with server by sending a secure token
-    PROTOCOL_WRITE_WIFI         = 17, // setup wifi SSID and password setup
-    PROTOCOL_WRITE_TOKEN        = 18, // setup token for AUTH command
-    PROTOCOL_READ_STATUS        = 19,  // return status of the device/connection (WiFi,BT,Authorized,..)
 
     // device commands (64+)
     CMD_WRITE_PETALS            = 64,
@@ -24,10 +21,16 @@ enum MessageType {
     CMD_WRITE_STATE             = 67, // setting both color and petals open level
     CMD_READ_STATE              = 68, // state of Floower (color, petals open level)
     CMD_PLAY_ANIMATION          = 69,
-    CMD_RUN_OTA                 = 70
+    CMD_RUN_OTA                 = 70,
+    CMD_WRITE_WIFI              = 71,
+    CMD_READ_WIFI               = 72,
+    CMD_WRITE_PERSONIFICATION   = 73,
+    CMD_READ_PERSONIFICATION    = 74,
+    CMD_WRITE_COLOR_SCHEME      = 75,
+    CMD_READ_COLOR_SCHEME       = 76,
 };
 
-struct MessageHeader {
+struct CommandMessageHeader {
     uint16_t type;
     uint16_t id;
     uint16_t length;

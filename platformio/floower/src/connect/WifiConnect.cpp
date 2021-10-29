@@ -27,8 +27,8 @@ static const char* LOG_TAG = "WifiConnect";
 #define RECONNECT_INTERVAL_MS 5000
 #define CONNECT_RETRY_INTERVAL_MS 30000
 
-WifiConnect::WifiConnect(Config *config, CommandInterpreter *cmdInterpreter) 
-        : config(config), cmdInterpreter(cmdInterpreter) {
+WifiConnect::WifiConnect(Config *config, CommandProtocol *cmdProtocol) 
+        : config(config), cmdProtocol(cmdProtocol) {
     state = STATE_FLOUD_DISCONNECTED;
     client = NULL;
 }
@@ -132,22 +132,22 @@ void WifiConnect::handleReceivedMessage() {
     ESP_LOGI(LOG_TAG, "Got message: %d/%d/%d", receivedMessage.type, receivedMessage.id, receivedMessage.length);
     
     // check for response codes
-    if (receivedMessage.type == MessageType::STATUS_ERROR) {
+    if (receivedMessage.type == CommandType::STATUS_ERROR) {
         socketReconnect(); // reset on error
     }
-    else if (receivedMessage.type == MessageType::STATUS_OK) {
+    else if (receivedMessage.type == CommandType::STATUS_OK) {
         if (state == STATE_FLOUD_AUTHORIZING && receivedMessage.id == authorizationMessageId) {
             ESP_LOGI(LOG_TAG, "Authorized");
             state = STATE_FLOUD_AUTHORIZED;
         }
     }
-    else if (receivedMessage.type == MessageType::STATUS_UNAUTHORIZED) {
+    else if (receivedMessage.type == CommandType::STATUS_UNAUTHORIZED) {
         state = STATE_FLOUD_UNAUTHORIZED; // TODO: force authorization again
     }
     else if (state == STATE_FLOUD_AUTHORIZED) {
         // handle commands
         uint16_t responseSize = 0;
-        uint16_t response = cmdInterpreter->run(receivedMessage.type, receiveBuffer, receivedMessage.length, sendBuffer, &responseSize);
+        uint16_t response = cmdProtocol->run(receivedMessage.type, receiveBuffer, receivedMessage.length, sendBuffer, &responseSize);
         sendMessage(response, receivedMessage.id, sendBuffer, responseSize);
     }
 }
@@ -164,7 +164,7 @@ void WifiConnect::sendAuthorization() {
     ESP_LOGI(LOG_TAG, "Authorizing to Floud");
     String &token = config->floudToken;
     token.toCharArray(sendBuffer, token.length() + 1); // add +1 to accomodate for 0 terminate char
-    authorizationMessageId = sendRequest(MessageType::PROTOCOL_AUTH, sendBuffer, token.length()); // dont send the 0 terminate char
+    authorizationMessageId = sendRequest(CommandType::PROTOCOL_AUTH, sendBuffer, token.length()); // dont send the 0 terminate char
 }
 
 uint16_t WifiConnect::sendRequest(const uint16_t type, const char* payload, const size_t payloadSize) {
@@ -179,7 +179,7 @@ void WifiConnect::sendRequest(const uint16_t type, const uint16_t id, const char
 }
 
 void WifiConnect::sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize) {
-    MessageHeader header = {
+    CommandMessageHeader header = {
         htons(type), htons(id), htons(payloadSize)
     };
 

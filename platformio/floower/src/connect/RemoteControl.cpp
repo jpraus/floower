@@ -1,6 +1,6 @@
 #include "RemoteControl.h"
 
-RemoteControl::RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandInterpreter *cmdInterpreter):
+RemoteControl::RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandProtocol *cmdInterpreter):
         bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect), cmdInterpreter(cmdInterpreter) {
     cmdInterpreter->onControlCommand([=]() { fireRemoteControl(); });
     bluetoothConnect->onRemoteControl([=]() { fireRemoteControl(); }); // deprecated

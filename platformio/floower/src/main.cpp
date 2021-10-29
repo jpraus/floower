@@ -36,10 +36,10 @@ Config config(FIRMWARE_VERSION);
 Floower floower(&config);
 Behavior *behavior;
 
-CommandInterpreter cmdInterpreter(&config, &floower);
-BluetoothConnect bluetoothConnect(&floower, &config, &cmdInterpreter);
-WifiConnect wifiConnect(&config, &cmdInterpreter);
-RemoteControl remoteControl(&bluetoothConnect, &wifiConnect, &cmdInterpreter);
+CommandProtocol cmdProtocol(&config, &floower);
+BluetoothConnect bluetoothConnect(&floower, &config, &cmdProtocol);
+WifiConnect wifiConnect(&config, &cmdProtocol);
+RemoteControl remoteControl(&bluetoothConnect, &wifiConnect, &cmdProtocol);
 
 void configure();
 void planDeepSleep(long timeoutMs);

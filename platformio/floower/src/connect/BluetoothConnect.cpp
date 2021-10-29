@@ -20,6 +20,9 @@ static const char* LOG_TAG = "BluetoothControl";
 //#define FLOOWER_COLORS_SCHEME_UUID "7b1e9cff-de97-4273-85e3-fd30bc72e128" // DEPRECATED: array of 3 bytes per pre-defined color [(R + G + B), (R + G + B), ..], COLOR_SCHEME_MAX_LENGTH see config.h
 #define FLOOWER_COLORS_SCHEME_UUID "10b8879e-0ea0-4fe2-9055-a244a1eaca8b" // array of 2 bytes per stored HSB color, B is missing [(H/9 + S/7), (H/9 + S/7), ..], COLOR_SCHEME_MAX_LENGTH see config.h
 #define FLOOWER_PERSONIFICATION_UUID "c380596f-10d2-47a7-95af-95835e0361c7" // see PersonificationPacketData (previously touch threshold)
+
+// new services
+#define FLOOWER_CONFIG_UUID "87742eb5-b497-43a6-8668-cbfec274b49f" // messagepack, overall config
 #define FLOOWER_COMMAND_UUID "03c6eedc-22b5-4a0e-9110-2cd0131cd528" // command interface to replace all other
 
 // https://docs.springcard.com/books/SpringCore/Host_interfaces/Physical_and_Transport/Bluetooth/Standard_Services
@@ -60,8 +63,8 @@ typedef struct StateChangeCommand {
     }
 } StateChangeCommand;
 
-BluetoothConnect::BluetoothConnect(Floower *floower, Config *config, CommandInterpreter *cmdInterpreter)
-    : floower(floower), config(config), cmdInterpreter(cmdInterpreter) {
+BluetoothConnect::BluetoothConnect(Floower *floower, Config *config, CommandProtocol *cmdProtocol)
+    : floower(floower), config(config), cmdProtocol(cmdProtocol) {
 }
 
 void BluetoothConnect::enable() {
@@ -113,15 +116,16 @@ void BluetoothConnect::init() {
     characteristic = floowerService->createCharacteristic(FLOOWER_NAME_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
     characteristic->setValue(config->name.c_str());
     characteristic->setCallbacks(new NameCharacteristicsCallbacks(this));
+
+    // command API characteristics
+    characteristic = floowerService->createCharacteristic(FLOOWER_COMMAND_UUID, BLECharacteristic::PROPERTY_WRITE);
+    characteristic->setCallbacks(new CommandCharacteristicsCallbacks(this));
+    // TODO: could be use to retrive response?
     
     // personification characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_PERSONIFICATION_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
     characteristic->setValue((uint8_t *) &config->personification, sizeof(config->personification));
     characteristic->setCallbacks(new PersonificationCharacteristicsCallbacks(this));
-
-    // command characteristics
-    characteristic = floowerService->createCharacteristic(FLOOWER_COMMAND_UUID, BLECharacteristic::PROPERTY_WRITE);
-    characteristic->setCallbacks(new CommandCharacteristicsCallbacks(this));
     
     // state read characteristics
     characteristic = floowerService->createCharacteristic(FLOOWER_STATE_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY); // read
@@ -145,6 +149,20 @@ void BluetoothConnect::init() {
     }
     characteristic->setValue(bytes, size);
     characteristic->setCallbacks(new ColorsSchemeCharacteristicsCallbacks(this));
+
+    // congif (personification, wifi, color scheme)
+    characteristic = floowerService->createCharacteristic(FLOOWER_CONFIG_UUID, BLECharacteristic::PROPERTY_READ);
+    jsonPayload.clear();
+    RgbColor color2 = RgbColor(floower->getColor());
+    jsonPayload["ssid"] = config->wifiSsid; // wifi ssid
+    jsonPayload["token"] = config->floudToken; // floud token
+    jsonPayload["spd"] = config->personification.speed; // transiton speed
+    jsonPayload["mop"] = config->personification.maxOpenLevel; // max open level
+    jsonPayload["brg"] = config->personification.colorBrightness; // color brightness
+
+    size_t responseLength = serializeMsgPack(jsonPayload, responseBuffer, MAX_MESSAGE_PAYLOAD_BYTES);
+    Serial.println(responseLength);
+    characteristic->setValue((uint8_t *)responseBuffer, responseLength);
     
     floowerService->start();
     
@@ -301,9 +319,9 @@ void BluetoothConnect::CommandCharacteristicsCallbacks::onWrite(BLECharacteristi
     std::string bytes = characteristic->getValue();
     ESP_LOGI(LOG_TAG, "Command received: %", bytes);
 
-    size_t headerSize = sizeof(MessageHeader);
+    size_t headerSize = sizeof(CommandMessageHeader);
     if (bytes.length() >= headerSize) {
-        MessageHeader messageHeader;
+        CommandMessageHeader messageHeader;
         memcpy(&messageHeader, bytes.data(), headerSize);
         messageHeader.type = ntohs(messageHeader.type);
         messageHeader.id = ntohs(messageHeader.id);
@@ -319,7 +337,7 @@ void BluetoothConnect::CommandCharacteristicsCallbacks::onWrite(BLECharacteristi
             }
         }
 
-        bluetoothConnect->cmdInterpreter->run(messageHeader.type, bytes.data() + headerSize, messageHeader.length);
+        bluetoothConnect->cmdProtocol->run(messageHeader.type, bytes.data() + headerSize, messageHeader.length);
     }
 }
 

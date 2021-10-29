@@ -4,14 +4,14 @@
 #include "Config.h"
 #include "hardware/Floower.h"
 #include "BluetoothConnect.h"
-#include "CommandInterpreter.h"
+#include "CommandProtocol.h"
 #include "WifiConnect.h"
 
 typedef std::function<void()> RemoteControlCallback;
 
 class RemoteControl {
     public:
-        RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandInterpreter *cmdInterpreter);
+        RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandProtocol *cmdInterpreter);
 
         void onRemoteControl(RemoteControlCallback callback);
         void enableBluetooth();
@@ -25,7 +25,7 @@ class RemoteControl {
     private:
         BluetoothConnect *bluetoothConnect;
         WifiConnect *wifiConnect;
-        CommandInterpreter *cmdInterpreter;
+        CommandProtocol *cmdInterpreter;
         RemoteControlCallback remoteControlCallback;
 
         void fireRemoteControl();

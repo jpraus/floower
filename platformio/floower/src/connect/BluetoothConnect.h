@@ -6,7 +6,7 @@
 #include <BLE2902.h>
 #include "Config.h"
 #include "hardware/Floower.h"
-#include "CommandInterpreter.h"
+#include "CommandProtocol.h"
 
 #define STATE_TRANSITION_MODE_BIT_COLOR 0
 #define STATE_TRANSITION_MODE_BIT_PETALS 1 // when this bit is set, the VALUE parameter means open level of petals (0-100%)
@@ -16,7 +16,7 @@ typedef std::function<void()> BluetoothControlRemoteControlCallback;
 
 class BluetoothConnect {
     public:
-        BluetoothConnect(Floower *floower, Config *config, CommandInterpreter *cmdInterpreter);
+        BluetoothConnect(Floower *floower, Config *config, CommandProtocol *cmdProtocol);
         void enable();
         void disable();
         void setBatteryLevel(uint8_t level, bool charging);
@@ -30,7 +30,7 @@ class BluetoothConnect {
         
         Floower *floower;
         Config *config;
-        CommandInterpreter *cmdInterpreter;
+        CommandProtocol *cmdProtocol;
         BluetoothControlRemoteControlCallback remoteControlCallback;
         BLEServer *server = nullptr;
         BLEService *floowerService = nullptr;
@@ -41,6 +41,8 @@ class BluetoothConnect {
         bool advertising = false;
         bool initialized = false;
         char receiveBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
+        char responseBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
+        StaticJsonDocument<MAX_MESSAGE_PAYLOAD_BYTES> jsonPayload;  
 
         BLECharacteristic* createROCharacteristics(BLEService *service, const char *uuid, const char *value);
 
