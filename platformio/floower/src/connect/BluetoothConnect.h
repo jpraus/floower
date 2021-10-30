@@ -29,7 +29,9 @@ class BluetoothConnect {
         Config *config;
         CommandProtocol *cmdProtocol;
         BLEServer *server = nullptr;
-        BLEService *floowerService = nullptr;
+        BLEService *commandService = nullptr;
+        BLEService *connectService = nullptr;
+        BLEService *configService = nullptr;
         BLEService *batteryService = nullptr;
 
         bool deviceConnected = false;

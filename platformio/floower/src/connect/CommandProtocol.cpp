@@ -75,12 +75,12 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 return STATUS_OK;
             }
             case CommandType::CMD_WRITE_WIFI: {
-                // { ssid: <wifiSsid>, pwd: <wifiPwd>, tkn: <floudToken> }
+                // { ssid: <wifiSsid>, pwd: <wifiPwd>, dvc: <floudDeviceId>, tkn: <floudToken> }
                 if (jsonPayload.containsKey("ssid")) {
                     config->setWifi(jsonPayload["ssid"], jsonPayload["pwd"]);
                 }
-                if (jsonPayload.containsKey("tkn")) {
-                    config->setFloud(jsonPayload["tkn"]);
+                if (jsonPayload.containsKey("dvc") && jsonPayload.containsKey("tkn")) {
+                    config->setFloud(jsonPayload["dvc"], jsonPayload["tkn"]);
                 }
                 config->commit();
                 return STATUS_OK;

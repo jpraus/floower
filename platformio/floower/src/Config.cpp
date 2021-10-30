@@ -11,7 +11,7 @@ static const char* LOG_TAG = "Config";
 
 // max 512B of EEPROM
 
-#define EEPROM_SIZE 256
+#define EEPROM_SIZE 512
 #define CONFIG_VERSION 5
 
 #define FLAG_BIT_CALIBRATED 0
@@ -50,6 +50,8 @@ static const char* LOG_TAG = "Config";
 #define EEPROM_ADDRESS_WIFI_PWD 134 // (134-197) max 64 characters (since version 5)
 #define EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH 198 // byte - length of data stored in EEPROM_ADDRESS_FLOUD_TOKEN (since version 5)
 #define EEPROM_ADDRESS_FLOUD_TOKEN 199 // (199-238) max 40 characters (since version 5)
+#define EEPROM_ADDRESS_FLOUD_DEVICE_ID_LENGTH 239 // byte - length of data stored in EEPROM_ADDRESS_FLOUD_TOKEN (since version 5)
+#define EEPROM_ADDRESS_FLOUD_DEVICE_ID 240 // (240-279) max 40 characters (since version 5)
 // next available is 239
 
 void Config::begin() {
@@ -87,7 +89,7 @@ void Config::load() {
         // backward compatibility => wifi settings
         if (configVersion < 5) {
             setWifi("", "");
-            setFloud("");
+            setFloud("", "");
         }
 
         if (configVersion < CONFIG_VERSION) {
@@ -114,7 +116,8 @@ void Config::load() {
         for (uint8_t i = 0; i < colorSchemeSize; i++) {
             ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colorScheme[i].H, colorScheme[i].S);
         }
-        ESP_LOGI(LOG_TAG, "WiFi: %s, p%d, t%d", wifiSsid.c_str(), !wifiPassword.isEmpty(), !floudToken.isEmpty());
+        ESP_LOGI(LOG_TAG, "WiFi: %s, p%d", wifiSsid.c_str(), !wifiPassword.isEmpty());
+        ESP_LOGI(LOG_TAG, "Floud: %s, t%d", floudDeviceId.c_str(), !floudToken.isEmpty());
     }
     else {
         ESP_LOGE(LOG_TAG, "Not configured");
@@ -285,8 +288,10 @@ void Config::setWifi(String ssid, String password) {
     wifiChanged = true;
 }
 
-void Config::setFloud(String token) {
+void Config::setFloud(String deviceId, String token) {
+    this->floudDeviceId = deviceId;
     this->floudToken = token;
+    writeString(EEPROM_ADDRESS_FLOUD_DEVICE_ID, deviceId, EEPROM_ADDRESS_FLOUD_DEVICE_ID_LENGTH, FLOUD_DEVICE_ID_MAX_LENGTH);
     writeString(EEPROM_ADDRESS_FLOUD_TOKEN, token, EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH, FLOUD_TOKEN_MAX_LENGTH);
     wifiChanged = true;
 }
@@ -294,6 +299,7 @@ void Config::setFloud(String token) {
 void Config::readWifiAndFloud() {
     wifiSsid = readString(EEPROM_ADDRESS_WIFI_SSID, EEPROM_ADDRESS_WIFI_SSID_LENGTH, WIFI_SSID_MAX_LENGTH);
     wifiPassword = readString(EEPROM_ADDRESS_WIFI_PWD, EEPROM_ADDRESS_WIFI_PWD_LENGTH, WIFI_PWD_MAX_LENGTH);
+    floudDeviceId = readString(EEPROM_ADDRESS_FLOUD_DEVICE_ID, EEPROM_ADDRESS_FLOUD_DEVICE_ID_LENGTH, FLOUD_DEVICE_ID_MAX_LENGTH);
     floudToken = readString(EEPROM_ADDRESS_FLOUD_TOKEN, EEPROM_ADDRESS_FLOUD_TOKEN_LENGTH, FLOUD_TOKEN_MAX_LENGTH);
 }
 
@@ -314,16 +320,20 @@ uint16_t Config::readInt(uint16_t address) {
 
 void Config::writeString(uint16_t address, String value, uint16_t sizeAddress, uint8_t maxLength) {
     uint8_t length = min((uint8_t) value.length(), (uint8_t) maxLength);
-    for (uint8_t i = 0; i < length; i++) {
-        EEPROM.write(address + i, value[i]);
+    if (length > 0) {
+        for (uint8_t i = 0; i < length; i++) {
+            EEPROM.write(address + i, value[i]);
+        }
     }
     EEPROM.write(sizeAddress, length);
 }
 
 String Config::readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLength) {
     uint8_t length = min(EEPROM.read(sizeAddress), (uint8_t) maxLength);
+    if (length == 0) {
+        return String();
+    }
     char data[length + 1];
-
     for(uint8_t i = 0; i < length; i++) {
         data[i] = EEPROM.read(address + i);
     }

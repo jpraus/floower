@@ -13,6 +13,7 @@
 #define WIFI_SSID_MAX_LENGTH 32
 #define WIFI_PWD_MAX_LENGTH 64
 #define FLOUD_TOKEN_MAX_LENGTH 40
+#define FLOUD_DEVICE_ID_MAX_LENGTH 40
 
 // default values
 #define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
@@ -51,7 +52,7 @@ class Config {
         void setMaxOpenLevel(uint8_t maxOpenLevel);
         void setColorBrightness(uint8_t colorBrightness);
         void setWifi(String ssid, String password);
-        void setFloud(String token);
+        void setFloud(String deviceId, String token);
         void commit();
         void onConfigChanged(ConfigChangedCallback callback);
 
@@ -88,6 +89,7 @@ class Config {
         uint8_t maxOpenLevel;
         String wifiSsid;
         String wifiPassword;
+        String floudDeviceId;
         String floudToken;
 
     private:
