@@ -14,7 +14,7 @@
 // feature flags
 void setFeatureFlags(Config &config) {
     config.deepSleepEnabled = true;
-    config.bluetoothEnabled = true;
+    //config.bluetoothEnabled = true;
     config.wifiEnabled = true;
     config.colorPickerEnabled = true;
 }
@@ -47,8 +47,7 @@ void enterDeepSleep();
 void periodicOperation();
 
 void onConfigChanged(bool wifiChanged) {
-    Serial.println("Config changed");
-    ESP_LOGI(LOG_TAG, "Config changed");
+    ESP_LOGI(LOG_TAG, "Config changed: wifi=%d", wifiChanged ? 1 : 0);
     if (wifiChanged) {
         wifiConnect.reconnect();
     }

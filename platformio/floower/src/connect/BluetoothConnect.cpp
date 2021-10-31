@@ -87,7 +87,7 @@ void BluetoothConnect::init() {
     
     // Device Information profile service
     BLEService *deviceInformationService = server->createService(DEVICE_INFORMATION_UUID);
-    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, "Floower");
+    createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_MODEL_NUMBER_STRING_UUID, String(config->modelName).c_str());
     createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_SERIAL_NUMBER_UUID, String(config->serialNumber).c_str());
     createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_FIRMWARE_REVISION_UUID, String(config->firmwareVersion).c_str());
     createROCharacteristics(deviceInformationService, DEVICE_INFORMATION_HARDWARE_REVISION_UUID, String(config->hardwareRevision).c_str());
@@ -116,7 +116,7 @@ void BluetoothConnect::init() {
     // config service
     configService = server->createService(FLOOWER_SERVICE_CONFIG_UUID);
     characteristic = configService->createCharacteristic(FLOOWER_CHAR_NAME_UUID, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(config->name.c_str());
+    characteristic->setValue(String(config->name).c_str());
     characteristic = configService->createCharacteristic(FLOOWER_CHAR_MAX_OPEN_LEVEL, BLECharacteristic::PROPERTY_READ);
     characteristic->setValue(&config->maxOpenLevel, 1);
     characteristic = configService->createCharacteristic(FLOOWER_CHAR_COLOR_BRIGHTNESS, BLECharacteristic::PROPERTY_READ);
@@ -137,9 +137,9 @@ void BluetoothConnect::init() {
     // connect service
     connectService = server->createService(FLOOWER_SERVICE_CONNECT_UUID);
     characteristic = connectService->createCharacteristic(FLOOWER_CHAR_WIFI_SSID, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(config->wifiSsid.c_str());
+    characteristic->setValue(String(config->wifiSsid).c_str());
     characteristic = connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(config->floudDeviceId.c_str());
+    characteristic->setValue(String(config->floudDeviceId).c_str());
     connectService->start();
     
     // listen to floower state change
@@ -178,7 +178,7 @@ bool BluetoothConnect::isConnected() {
     return deviceConnected;
 }
 
-void BluetoothConnect::setBatteryLevel(uint8_t level, bool charging) {
+void BluetoothConnect::updateBatteryData(uint8_t level, bool charging) {
     if (deviceConnected && batteryService != nullptr && !floower->arePetalsMoving()) {
         ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
 

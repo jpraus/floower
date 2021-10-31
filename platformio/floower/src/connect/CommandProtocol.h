@@ -19,6 +19,7 @@ class CommandProtocol {
             char *responsePayload = nullptr,
             uint16_t *responseLength = nullptr
         );
+        uint16_t sendStatus(const uint8_t batteryLevel, const bool charging, char *payload, uint16_t *payloadLength); // returns type of command that should be send
         void onControlCommand(ControlCommandCallback callback);
         void enableBluetooth();
         void disbleBluetooth();

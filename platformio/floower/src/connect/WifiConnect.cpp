@@ -12,6 +12,7 @@ static const char* LOG_TAG = "WifiConnect";
 #endif
 
 #define FLOUD_HOST "192.168.0.103"
+//#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
 #define FLOUD_PORT 3000
 
 #define OTA_RESPONSE_TIMEOUT_MS 5000
@@ -84,6 +85,14 @@ void WifiConnect::reconnect() {
     }
 }
 
+void WifiConnect::updateBatteryData(uint8_t level, bool charging) {
+    if (enabled && state == STATE_FLOUD_AUTHORIZED) {
+        uint16_t payloadSize = 0;
+        uint16_t type = cmdProtocol->sendStatus(level, charging, sendBuffer, &payloadSize);
+        sendRequest(type, receivedMessage.id, sendBuffer, payloadSize);
+    }
+}
+
 void WifiConnect::loop() {
     if (!enabled) {
         return;
@@ -147,8 +156,8 @@ void WifiConnect::handleReceivedMessage() {
     else if (state == STATE_FLOUD_AUTHORIZED) {
         // handle commands
         uint16_t responseSize = 0;
-        uint16_t response = cmdProtocol->run(receivedMessage.type, receiveBuffer, receivedMessage.length, sendBuffer, &responseSize);
-        sendMessage(response, receivedMessage.id, sendBuffer, responseSize);
+        uint16_t responseType = cmdProtocol->run(receivedMessage.type, receiveBuffer, receivedMessage.length, sendBuffer, &responseSize);
+        sendMessage(responseType, receivedMessage.id, sendBuffer, responseSize);
     }
 }
 

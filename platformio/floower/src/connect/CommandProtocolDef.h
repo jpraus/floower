@@ -13,6 +13,7 @@ enum CommandType {
 
     // protocol commands (16-63)
     PROTOCOL_AUTH               = 16, // authorize the connection with server by sending a secure token
+    PROTOCOL_STATUS             = 17, // heartbeat status
 
     // device commands (64+)
     CMD_WRITE_PETALS            = 64,
@@ -30,6 +31,7 @@ enum CommandType {
     CMD_READ_SETTINGS           = 76,
     CMD_WRITE_COLOR_SCHEME      = 77,
     CMD_READ_COLOR_SCHEME       = 78,
+    CMD_READ_DEVICE_INFO        = 79 // serial number, name, hw revision, fw revision, model name
 };
 
 struct CommandMessageHeader {

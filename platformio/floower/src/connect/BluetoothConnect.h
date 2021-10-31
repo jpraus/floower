@@ -17,7 +17,7 @@ class BluetoothConnect {
         BluetoothConnect(Floower *floower, Config *config, CommandProtocol *cmdProtocol);
         void enable();
         void disable();
-        void setBatteryLevel(uint8_t level, bool charging);
+        void updateBatteryData(uint8_t level, bool charging);
         bool isConnected();
 
     private:

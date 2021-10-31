@@ -39,6 +39,7 @@ bool RemoteControl::isWifiEnabled() {
     return wifiConnect->isEnabled();
 }
 
-void RemoteControl::setBatteryLevel(uint8_t level, bool charging) {
-    bluetoothConnect->setBatteryLevel(level, charging);
+void RemoteControl::updateBatteryData(uint8_t level, bool charging) {
+    bluetoothConnect->updateBatteryData(level, charging);
+    wifiConnect->updateBatteryData(level, charging);
 }

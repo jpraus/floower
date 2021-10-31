@@ -77,6 +77,9 @@ class Config {
         bool wifiEnabled = false;
         bool colorPickerEnabled = false;
 
+        // static configuration
+        String modelName = "Floower";
+
         // configration
         uint8_t colorSchemeSize = 0;
         HsbColor colorScheme[10]; // max 10 colors

@@ -178,7 +178,7 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
         }
     }
 
-    remoteControl->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
+    remoteControl->updateBatteryData(powerState.batteryLevel, powerState.batteryCharging);
     indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
 }
 

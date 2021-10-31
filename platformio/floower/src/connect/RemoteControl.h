@@ -20,7 +20,7 @@ class RemoteControl {
         void enableWifi();
         void disableWifi();
         bool isWifiEnabled();
-        void setBatteryLevel(uint8_t level, bool charging);
+        void updateBatteryData(uint8_t level, bool charging);
 
     private:
         BluetoothConnect *bluetoothConnect;

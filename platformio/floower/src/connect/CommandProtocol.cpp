@@ -165,10 +165,30 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 Serial.println(*responseLength);
                 return STATUS_OK;
             }
+            case CommandType::CMD_READ_DEVICE_INFO: {
+                // response: { n: <name>, m: <modelName>, fw: <firmwareVersion>, hw: <hardwareRevision>, sn: <serialNumber> }
+                jsonPayload.clear();
+                jsonPayload["n"] = config->name;
+                jsonPayload["m"] = config->modelName;
+                jsonPayload["fw"] = config->firmwareVersion;
+                jsonPayload["hw"] = config->hardwareRevision;
+                jsonPayload["sn"] = config->serialNumber;
+                *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
+                return STATUS_OK;
+            }
         }
     }
 
     return STATUS_UNSUPPORTED;
+}
+
+uint16_t CommandProtocol::sendStatus(const uint8_t batteryLevel, const bool charging, char *payload, uint16_t *payloadLength) {
+    // payload: { b: <batteryLevel>, bc: <batteryCharging> }
+    jsonPayload.clear();
+    jsonPayload["b"] = batteryLevel;
+    jsonPayload["c"] = charging;
+    *payloadLength = serializeMsgPack(jsonPayload, payload, MAX_MESSAGE_PAYLOAD_BYTES);
+    return PROTOCOL_STATUS;
 }
 
 inline void CommandProtocol::fireControlCommandCallback() {

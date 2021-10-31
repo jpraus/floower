@@ -19,6 +19,7 @@ class WifiConnect {
         void disable();
         bool isEnabled();
         void reconnect();
+        void updateBatteryData(uint8_t level, bool charging);
 
         void runOTAUpdate();
 
