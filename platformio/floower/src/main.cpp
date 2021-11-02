@@ -51,6 +51,7 @@ void onConfigChanged(bool wifiChanged) {
     if (wifiChanged) {
         wifiConnect.reconnect();
     }
+    bluetoothConnect.reloadConfig();
 }
 
 void setup() {

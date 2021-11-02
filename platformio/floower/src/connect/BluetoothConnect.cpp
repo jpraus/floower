@@ -1,4 +1,5 @@
 #include "BluetoothConnect.h"
+#include "MD5Builder.h"
 #include "WiFi.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
@@ -30,6 +31,7 @@ static const char* LOG_TAG = "BluetoothControl";
 #define FLOOWER_SERVICE_CONNECT_UUID "c1724350-5989-4741-a21b-5878621468fa"
 #define FLOOWER_CHAR_WIFI_SSID "31c43b5e-6aed-47b7-bf10-0c7bbd563024" // string of wifi ssid
 #define FLOOWER_CHAR_FLOUD_DEVICE_ID "297a6db3-168a-42a6-9fbe-29e5c6e56f16" // string of floud device id
+#define FLOOWER_CHAR_FLOUD_TOKEN_HASH "8ba180d5-c5af-4240-a1e8-9314b1470874" // string of floud token hash
 
 // https://docs.springcard.com/books/SpringCore/Host_interfaces/Physical_and_Transport/Bluetooth/Standard_Services
 // Device Information profile
@@ -115,32 +117,22 @@ void BluetoothConnect::init() {
     
     // config service
     configService = server->createService(FLOOWER_SERVICE_CONFIG_UUID);
-    characteristic = configService->createCharacteristic(FLOOWER_CHAR_NAME_UUID, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(String(config->name).c_str());
-    characteristic = configService->createCharacteristic(FLOOWER_CHAR_MAX_OPEN_LEVEL, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(&config->maxOpenLevel, 1);
-    characteristic = configService->createCharacteristic(FLOOWER_CHAR_COLOR_BRIGHTNESS, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(&config->colorBrightness, 1);
-    characteristic = configService->createCharacteristic(FLOOWER_CHAR_SPEED_TENTS_OF_SEC, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(&config->speed, 1);
-    characteristic = configService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ);
-    size_t size = config->colorSchemeSize * 2;
-    uint8_t bytes[size];
-    for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
-        uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
-        bytes[b] = (valueHS >> 8) & 0xFF;
-        bytes[b + 1] = valueHS & 0xFF;
-    }
-    characteristic->setValue(bytes, size);
+    configService->createCharacteristic(FLOOWER_CHAR_NAME_UUID, BLECharacteristic::PROPERTY_READ);
+    configService->createCharacteristic(FLOOWER_CHAR_MAX_OPEN_LEVEL, BLECharacteristic::PROPERTY_READ);
+    configService->createCharacteristic(FLOOWER_CHAR_COLOR_BRIGHTNESS, BLECharacteristic::PROPERTY_READ);
+    configService->createCharacteristic(FLOOWER_CHAR_SPEED_TENTS_OF_SEC, BLECharacteristic::PROPERTY_READ);
+    configService->createCharacteristic(FLOOWER_COLORS_SCHEME_UUID, BLECharacteristic::PROPERTY_READ);
     configService->start();
 
     // connect service
     connectService = server->createService(FLOOWER_SERVICE_CONNECT_UUID);
-    characteristic = connectService->createCharacteristic(FLOOWER_CHAR_WIFI_SSID, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(String(config->wifiSsid).c_str());
-    characteristic = connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID, BLECharacteristic::PROPERTY_READ);
-    characteristic->setValue(String(config->floudDeviceId).c_str());
+    connectService->createCharacteristic(FLOOWER_CHAR_WIFI_SSID, BLECharacteristic::PROPERTY_READ);
+    connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID, BLECharacteristic::PROPERTY_READ);
+    connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_TOKEN_HASH, BLECharacteristic::PROPERTY_READ);
     connectService->start();
+
+    // set values for config and connect service
+    reloadConfig();
     
     // listen to floower state change
     floower->onChange([=](int8_t petalsOpenLevel, HsbColor hsbColor) {
@@ -153,6 +145,37 @@ void BluetoothConnect::init() {
     });
 
     initialized = true;
+}
+
+void BluetoothConnect::reloadConfig() {
+    BLECharacteristic* characteristic;
+
+    // connect service
+    characteristic = connectService->getCharacteristic(FLOOWER_CHAR_WIFI_SSID);
+    characteristic->setValue(String(config->wifiSsid).c_str());
+    characteristic = connectService->getCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID);
+    characteristic->setValue(String(config->floudDeviceId).c_str());
+    characteristic = connectService->getCharacteristic(FLOOWER_CHAR_FLOUD_TOKEN_HASH);
+    characteristic->setValue(md5(config->floudToken).c_str());
+
+    // config service
+    characteristic = configService->getCharacteristic(FLOOWER_CHAR_NAME_UUID);
+    characteristic->setValue(String(config->name).c_str());
+    characteristic = configService->getCharacteristic(FLOOWER_CHAR_MAX_OPEN_LEVEL);
+    characteristic->setValue(&config->maxOpenLevel, 1);
+    characteristic = configService->getCharacteristic(FLOOWER_CHAR_COLOR_BRIGHTNESS);
+    characteristic->setValue(&config->colorBrightness, 1);
+    characteristic = configService->getCharacteristic(FLOOWER_CHAR_SPEED_TENTS_OF_SEC);
+    characteristic->setValue(&config->speed, 1);
+    characteristic = configService->getCharacteristic(FLOOWER_COLORS_SCHEME_UUID);
+    size_t size = config->colorSchemeSize * 2;
+    uint8_t bytes[size];
+    for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
+        uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
+        bytes[b] = (valueHS >> 8) & 0xFF;
+        bytes[b + 1] = valueHS & 0xFF;
+    }
+    characteristic->setValue(bytes, size);
 }
 
 void BluetoothConnect::startAdvertising() {
@@ -176,6 +199,14 @@ void BluetoothConnect::stopAdvertising() {
 
 bool BluetoothConnect::isConnected() {
     return deviceConnected;
+}
+
+String BluetoothConnect::md5(String value) {
+    MD5Builder md5;
+    md5.begin();
+    md5.add(String(value));
+    md5.calculate();
+    return md5.toString();
 }
 
 void BluetoothConnect::updateBatteryData(uint8_t level, bool charging) {

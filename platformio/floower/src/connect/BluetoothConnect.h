@@ -19,11 +19,13 @@ class BluetoothConnect {
         void disable();
         void updateBatteryData(uint8_t level, bool charging);
         bool isConnected();
+        void reloadConfig();
 
     private:
         void init();
         void startAdvertising();
         void stopAdvertising();
+        String md5(String value);
         
         Floower *floower;
         Config *config;
