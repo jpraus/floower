@@ -11,8 +11,8 @@
 static const char* LOG_TAG = "WifiConnect";
 #endif
 
-#define FLOUD_HOST "192.168.0.103"
-//#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
+//#define FLOUD_HOST "192.168.0.103"
+#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
 #define FLOUD_PORT 3000
 
 #define OTA_RESPONSE_TIMEOUT_MS 5000
