@@ -241,6 +241,7 @@ void WifiConnect::onSocketData(char *data, size_t len) {
 
 void WifiConnect::onSocketConnected() {
     ESP_LOGI(LOG_TAG, "Connected to Floud");
+    reconnectTime = 0;
     state = STATE_FLOUD_ESTABLISHED;
 }
 
@@ -276,6 +277,7 @@ void WifiConnect::onWifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
 
 void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI(LOG_TAG, "Wifi got IP");
+    reconnectTime = 0;
     wifiConnected = true;
 }
 
