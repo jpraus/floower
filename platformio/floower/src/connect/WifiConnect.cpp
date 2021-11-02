@@ -11,8 +11,8 @@
 static const char* LOG_TAG = "WifiConnect";
 #endif
 
-#define FLOUD_HOST "192.168.0.103"
-//#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
+//#define FLOUD_HOST "192.168.0.103"
+#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
 #define FLOUD_PORT 3000
 
 #define OTA_RESPONSE_TIMEOUT_MS 5000
@@ -25,7 +25,7 @@ static const char* LOG_TAG = "WifiConnect";
 #define STATE_FLOUD_AUTHORIZED 4
 #define STATE_FLOUD_UNAUTHORIZED 5
 
-#define RECONNECT_INTERVAL_MS 5000
+#define RECONNECT_INTERVAL_MS 1000
 #define CONNECT_RETRY_INTERVAL_MS 30000
 
 WifiConnect::WifiConnect(Config *config, CommandProtocol *cmdProtocol) 
@@ -98,9 +98,8 @@ void WifiConnect::loop() {
         return;
     }
 
-    // TODO: retry connect to WiFi
-
     if (WiFi.status() == WL_CONNECTED) {
+        wifiConnected = true;
         if (config->floudToken) {
             switch (state) {
                 case STATE_FLOUD_DISCONNECTED:
@@ -113,7 +112,7 @@ void WifiConnect::loop() {
                             client->onDisconnect([=](void* arg, AsyncClient* client){ onSocketDisconnected(); });
                         }
                         client->connect(FLOUD_HOST, FLOUD_PORT);
-                        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+                        reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
                         state = STATE_FLOUD_CONNECTING;
                     }
                     break;
@@ -123,6 +122,10 @@ void WifiConnect::loop() {
                     break;
             }
         }
+    }
+    else if (WiFi.status() == WL_DISCONNECTED && reconnectTime > 0 && reconnectTime <= millis()) {
+        reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+        reconnect();
     }
 
     if (received) {
@@ -256,8 +259,14 @@ void WifiConnect::onSocketDisconnected() {
 // WIFI
 
 void WifiConnect::onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
-    // TODO
+    if (!wifiConnected) {
+        ESP_LOGI(LOG_TAG, "Failed to connect WiFi");
+        reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+    }
+    else {
+        ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
+        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+    }
 }
 
 void WifiConnect::onWifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -267,7 +276,7 @@ void WifiConnect::onWifiConnected(WiFiEvent_t event, WiFiEventInfo_t info) {
 
 void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI(LOG_TAG, "Wifi got IP");
-    // TODO
+    wifiConnected = true;
 }
 
 // OTA

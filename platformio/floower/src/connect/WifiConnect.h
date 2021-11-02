@@ -46,6 +46,7 @@ class WifiConnect {
         AsyncClient *client;
         bool enabled = false;
         bool wifiOn = false;
+        bool wifiConnected = false;
 
         unsigned long reconnectTime = 0;
         uint16_t messageIdCounter = 1;

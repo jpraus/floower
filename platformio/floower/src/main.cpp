@@ -14,7 +14,7 @@
 // feature flags
 void setFeatureFlags(Config &config) {
     config.deepSleepEnabled = true;
-    //config.bluetoothEnabled = true;
+    config.bluetoothEnabled = true;
     config.wifiEnabled = true;
     config.colorPickerEnabled = true;
 }
