@@ -94,7 +94,7 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 config->commit();
                 return STATUS_OK;
             }
-            case CommandType::CMD_WRITE_SETTINGS: {
+            case CommandType::CMD_WRITE_CUSTOMIZATION: {
                 // { spd: <transitionSpeedInTenthsOfSeconds>, brg: <colorBrightness>, mol: <maxOpenLevel> }
                 if (jsonPayload.containsKey("spd")) {
                     config->setSpeed(jsonPayload["spd"]);
@@ -143,14 +143,13 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
                 return STATUS_OK;
             }
-            case CommandType::CMD_READ_SETTINGS: {
+            case CommandType::CMD_READ_CUSTOMIZATION: {
                 // response: { spd: <transitionSpeedInTenthsOfSeconds>, brg: <colorBrightness>, mol: <maxOpenLevel>}
                 jsonPayload.clear();
                 jsonPayload["spd"] = config->speed;
                 jsonPayload["brg"] = config->colorBrightness;
                 jsonPayload["mol"] = config->maxOpenLevel;
                 *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
-                Serial.println(*responseLength);
                 return STATUS_OK;
             }
             case CommandType::CMD_READ_COLOR_SCHEME: {
@@ -162,7 +161,6 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                     array.add(valueHS);
                 }
                 *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
-                Serial.println(*responseLength);
                 return STATUS_OK;
             }
             case CommandType::CMD_READ_DEVICE_INFO: {

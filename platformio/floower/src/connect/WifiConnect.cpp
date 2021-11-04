@@ -12,7 +12,8 @@ static const char* LOG_TAG = "WifiConnect";
 #endif
 
 //#define FLOUD_HOST "192.168.0.103"
-#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
+//#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
+#define FLOUD_HOST "connect.floud.cz"
 #define FLOUD_PORT 3000
 
 #define OTA_RESPONSE_TIMEOUT_MS 5000
@@ -25,7 +26,7 @@ static const char* LOG_TAG = "WifiConnect";
 #define STATE_FLOUD_AUTHORIZED 4
 #define STATE_FLOUD_UNAUTHORIZED 5
 
-#define RECONNECT_INTERVAL_MS 1000
+#define RECONNECT_INTERVAL_MS 3000
 #define CONNECT_RETRY_INTERVAL_MS 30000
 
 WifiConnect::WifiConnect(Config *config, CommandProtocol *cmdProtocol) 
