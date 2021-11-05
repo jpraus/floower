@@ -110,12 +110,25 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
             }
             case CommandType::CMD_WRITE_COLOR_SCHEME: {
                 // [ <encoded HS color values as single 2 byte number>, ... ]
-                config->commit();
-                return STATUS_UNSUPPORTED;
+                JsonArray array = jsonPayload.as<JsonArray>();
+                size_t size = floor(jsonPayload.size());
+                if (size > 0 && size <= COLOR_SCHEME_MAX_LENGTH) {
+                    HsbColor colors[array.size()];
+                    ESP_LOGI(LOG_TAG, "New color scheme: %d", array.size());
+                    for (uint8_t i = 0; i < array.size(); i++) {\
+                        uint16_t hsValue = array.getElement(i).as<int>();
+                        colors[i] = Config::decodeHSColor(hsValue);
+                        ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colors[i].H, colors[i].S);
+                    }
+                    config->setColorScheme(colors, size);
+                    config->commit();
+                    return STATUS_OK;
+                }
+                return STATUS_ERROR;
             }
             case CommandType::CMD_RUN_OTA: {
                 // TODO: notify wifi to run OTA
-                return STATUS_OK;
+                return STATUS_UNSUPPORTED;
             }
         }
     }
@@ -157,8 +170,7 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 jsonPayload.clear();
                 JsonArray array = jsonPayload.to<JsonArray>();
                 for (uint8_t i = 0; i < config->colorSchemeSize; i++) {
-                    uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
-                    array.add(valueHS);
+                    array.add(Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S));
                 }
                 *responseLength = serializeMsgPack(jsonPayload, responsePayload, MAX_MESSAGE_PAYLOAD_BYTES);
                 return STATUS_OK;
