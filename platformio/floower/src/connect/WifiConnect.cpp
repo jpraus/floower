@@ -107,7 +107,10 @@ void WifiConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) 
 }
 
 uint8_t WifiConnect::getStatus() {
-    if (state == STATE_FLOUD_AUTHORIZED) {
+    if (!enabled) {
+        return WIFI_STATUS_DISABLED;
+    }
+    else if (state == STATE_FLOUD_AUTHORIZED) {
         return WIFI_STATUS_FLOUD_CONNECTED;
     }
     else if (authorizationFailed) {
