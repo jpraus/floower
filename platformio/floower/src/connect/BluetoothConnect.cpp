@@ -133,16 +133,6 @@ void BluetoothConnect::init() {
 
     // set values for config and connect service
     reloadConfig();
-    
-    // listen to floower state change
-    floower->onChange([=](int8_t petalsOpenLevel, HsbColor hsbColor) {
-        RgbColor color = RgbColor(hsbColor);
-        ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
-        StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
-        BLECharacteristic* stateCharacteristic = this->commandService->getCharacteristic(FLOOWER_CHAR_STATE_UUID);
-        stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
-        stateCharacteristic->notify();
-    });
 
     initialized = true;
 }
@@ -222,6 +212,15 @@ void BluetoothConnect::updateBatteryData(uint8_t level, bool charging) {
         characteristic->setValue(&batteryState, 1);
         characteristic->notify();
     }
+}
+
+void BluetoothConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) {
+    RgbColor color = RgbColor(hsbColor);
+    ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
+    StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
+    BLECharacteristic* stateCharacteristic = this->commandService->getCharacteristic(FLOOWER_CHAR_STATE_UUID);
+    stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
+    stateCharacteristic->notify();
 }
 
 BLECharacteristic* BluetoothConnect::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {

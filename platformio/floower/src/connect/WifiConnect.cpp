@@ -94,6 +94,14 @@ void WifiConnect::updateBatteryData(uint8_t level, bool charging) {
     }
 }
 
+void WifiConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) {
+    if (enabled && state == STATE_FLOUD_AUTHORIZED) {
+        uint16_t payloadSize = 0;
+        uint16_t type = cmdProtocol->sendState(petalsOpenLevel, hsbColor, sendBuffer, &payloadSize);
+        sendRequest(type, receivedMessage.id, sendBuffer, payloadSize);
+    }
+}
+
 void WifiConnect::loop() {
     if (!enabled) {
         return;

@@ -54,6 +54,12 @@ void onConfigChanged(bool wifiChanged) {
     bluetoothConnect.reloadConfig();
 }
 
+void onFloowerChanged(int8_t petalsOpenLevel, HsbColor hsbColor) {
+    ESP_LOGI(LOG_TAG, "Floower state changed");
+    wifiConnect.updateFloowerState(petalsOpenLevel, hsbColor);
+    bluetoothConnect.updateFloowerState(petalsOpenLevel, hsbColor);
+}
+
 void setup() {
     Serial.begin(115200);
     delay(1000);
@@ -87,6 +93,7 @@ void setup() {
     floower.init();
     floower.enableTouch([=](FloowerTouchEvent event){}, !wokeUp); // enable NOP touch to enable deep sleep wake up function
     floower.readPowerState(); // calibrate the ADC
+    floower.onChange(onFloowerChanged);
     delay(50); // wait to warm-up
 
     // init state machine, this is core logic

@@ -19,6 +19,7 @@ class WifiConnect {
         void disable();
         bool isEnabled();
         void reconnect();
+        void updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor);
         void updateBatteryData(uint8_t level, bool charging);
 
         void runOTAUpdate();

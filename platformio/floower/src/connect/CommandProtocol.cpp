@@ -201,6 +201,18 @@ uint16_t CommandProtocol::sendStatus(const uint8_t batteryLevel, const bool char
     return PROTOCOL_STATUS;
 }
 
+uint16_t CommandProtocol::sendState(const int8_t petalsOpenLevel, const HsbColor hsbColor, char *payload, uint16_t *payloadLength) {
+    // payload: { r: <red>, g: <green>, b: <blue>, l: <level >}
+    jsonPayload.clear();
+    RgbColor color = RgbColor(hsbColor);
+    jsonPayload["r"] = color.R;
+    jsonPayload["g"] = color.G;
+    jsonPayload["b"] = color.B;
+    jsonPayload["l"] = petalsOpenLevel;
+    *payloadLength = serializeMsgPack(jsonPayload, payload, MAX_MESSAGE_PAYLOAD_BYTES);
+    return CMD_WRITE_STATE;
+}
+
 inline void CommandProtocol::fireControlCommandCallback() {
     if (controlCommandCallback != nullptr) {
         controlCommandCallback();
