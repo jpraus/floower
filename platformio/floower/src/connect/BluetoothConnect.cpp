@@ -130,7 +130,8 @@ void BluetoothConnect::init() {
     connectService->createCharacteristic(FLOOWER_CHAR_WIFI_SSID, BLECharacteristic::PROPERTY_READ);
     connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID, BLECharacteristic::PROPERTY_READ);
     connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_TOKEN_HASH, BLECharacteristic::PROPERTY_READ);
-    connectService->createCharacteristic(FLOOWER_CHAR_WIFI_STATUS, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    characteristic = connectService->createCharacteristic(FLOOWER_CHAR_WIFI_STATUS, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    characteristic->addDescriptor(new BLE2902());
     connectService->start();
 
     // set values for config and connect service
