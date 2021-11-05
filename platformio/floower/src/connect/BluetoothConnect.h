@@ -18,7 +18,7 @@ class BluetoothConnect {
         void enable();
         void disable();
         void updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor);
-        void updateBatteryData(uint8_t level, bool charging);
+        void updateStatusData(uint8_t batteryLevel, bool batteryCharging, uint8_t wifiStatus);
         bool isConnected();
         void reloadConfig();
 

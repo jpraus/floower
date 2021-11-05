@@ -9,9 +9,10 @@
 static const char* LOG_TAG = "SmartPowerBehavior";
 #endif
 
-#define INDICATE_STATUS_ACTY 0
+#define INDICATE_STATUS_IDLE 0
 #define INDICATE_STATUS_CHARGING 1
-#define INDICATE_STATUS_REMOTE 2
+#define INDICATE_STATUS_BLUETOOTH 2
+#define INDICATE_STATUS_WIFI 3
 
 // POWER MANAGEMENT (tuned for 1600mAh LIPO battery)
 
@@ -61,8 +62,9 @@ void SmartPowerBehavior::loop() {
         watchDogsTime = now + WATCHDOGS_INTERVAL;
         esp_task_wdt_reset(); // reset watchdog timer
         powerWatchDog();
-        indicateStatus(INDICATE_STATUS_REMOTE, remoteControl->isBluetoothConnected());
-        indicateStatus(INDICATE_STATUS_ACTY, true);
+        indicateStatus(INDICATE_STATUS_BLUETOOTH, remoteControl->isBluetoothConnected());
+        indicateStatus(INDICATE_STATUS_WIFI, remoteControl->isWifiConnected());
+        //indicateStatus(INDICATE_STATUS_ACTY, true);
     }
     if (bluetoothStartTime > 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
         bluetoothStartTime = 0;
@@ -178,7 +180,7 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
         }
     }
 
-    remoteControl->updateBatteryData(powerState.batteryLevel, powerState.batteryCharging);
+    remoteControl->updateStatusData(powerState.batteryLevel, powerState.batteryCharging);
     indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
 }
 
@@ -204,29 +206,28 @@ void SmartPowerBehavior::changeState(uint8_t newState) {
 }
 
 void SmartPowerBehavior::indicateStatus(uint8_t status, bool enable) {
-    if (enable) {
-        if (status == INDICATE_STATUS_ACTY && indicatingStatus == INDICATE_STATUS_ACTY) {
-            HsbColor purple = colorPurple;
-            purple.B = 0.1;
-            floower->showStatus(purple, FloowerStatusAnimation::BLINK_ONCE, 50);
-        }
-        else if (indicatingStatus != status) {
-            switch (status) {
-                case INDICATE_STATUS_CHARGING: // charging has the top priotity
-                    floower->showStatus(colorRed, FloowerStatusAnimation::PULSATING, 2000);
+    if (enable && indicatingStatus != status) {
+        switch (status) {
+            case INDICATE_STATUS_CHARGING: // charging has the top priotity
+                floower->showStatus(colorRed, FloowerStatusAnimation::PULSATING, 2000);
+                indicatingStatus = status;
+                break;
+            case INDICATE_STATUS_BLUETOOTH:
+                if (indicatingStatus != INDICATE_STATUS_CHARGING) {
+                    floower->showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
                     indicatingStatus = status;
-                    break;
-                case INDICATE_STATUS_REMOTE:
-                    if (indicatingStatus != INDICATE_STATUS_CHARGING) {
-                        floower->showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
-                        indicatingStatus = status;
-                    }
-                    break;
-            }
+                }
+                break;
+            case INDICATE_STATUS_WIFI:
+                if (indicatingStatus != INDICATE_STATUS_CHARGING && indicatingStatus != INDICATE_STATUS_BLUETOOTH) {
+                    floower->showStatus(colorPurple, FloowerStatusAnimation::PULSATING, 2000);
+                    indicatingStatus = status;
+                }
+                break;
         }
     }
-    else if (indicatingStatus == status) {
-        indicatingStatus = INDICATE_STATUS_ACTY; // idle status
+    else if (!enable && indicatingStatus == status) {
+        indicatingStatus = INDICATE_STATUS_IDLE; // idle status
         floower->showStatus(colorBlack, FloowerStatusAnimation::STILL, 0);
     }
 }

@@ -32,6 +32,7 @@ static const char* LOG_TAG = "BluetoothControl";
 #define FLOOWER_CHAR_WIFI_SSID "31c43b5e-6aed-47b7-bf10-0c7bbd563024" // string of wifi ssid
 #define FLOOWER_CHAR_FLOUD_DEVICE_ID "297a6db3-168a-42a6-9fbe-29e5c6e56f16" // string of floud device id
 #define FLOOWER_CHAR_FLOUD_TOKEN_HASH "8ba180d5-c5af-4240-a1e8-9314b1470874" // string of floud token hash
+#define FLOOWER_CHAR_WIFI_STATUS "bf970815-44d5-416b-a737-0bf74195d4b5" // status code of wifi
 
 // https://docs.springcard.com/books/SpringCore/Host_interfaces/Physical_and_Transport/Bluetooth/Standard_Services
 // Device Information profile
@@ -129,6 +130,7 @@ void BluetoothConnect::init() {
     connectService->createCharacteristic(FLOOWER_CHAR_WIFI_SSID, BLECharacteristic::PROPERTY_READ);
     connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID, BLECharacteristic::PROPERTY_READ);
     connectService->createCharacteristic(FLOOWER_CHAR_FLOUD_TOKEN_HASH, BLECharacteristic::PROPERTY_READ);
+    connectService->createCharacteristic(FLOOWER_CHAR_WIFI_STATUS, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
     connectService->start();
 
     // set values for config and connect service
@@ -199,17 +201,21 @@ String BluetoothConnect::md5(String value) {
     return md5.toString();
 }
 
-void BluetoothConnect::updateBatteryData(uint8_t level, bool charging) {
-    if (deviceConnected && batteryService != nullptr && !floower->arePetalsMoving()) {
-        ESP_LOGD(LOG_TAG, "level: %d, charging: %d", level, charging);
-
+void BluetoothConnect::updateStatusData(uint8_t batteryLevel, bool batteryCharging, uint8_t wifiStatus) {
+    ESP_LOGI(LOG_TAG, "level: %d, charging: %d, wifi status: %d", batteryLevel, batteryCharging, wifiStatus);
+    if (deviceConnected && batteryService != nullptr) {
         BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
-        characteristic->setValue(&level, 1);
+        characteristic->setValue(&batteryLevel, 1);
         characteristic->notify();
 
-        uint8_t batteryState = charging ? BATTERY_POWER_STATE_CHARGING : BATTERY_POWER_STATE_DISCHARGING;
+        uint8_t batteryState = batteryCharging ? BATTERY_POWER_STATE_CHARGING : BATTERY_POWER_STATE_DISCHARGING;
         characteristic = batteryService->getCharacteristic(BATTERY_POWER_STATE_UUID);
         characteristic->setValue(&batteryState, 1);
+        characteristic->notify();
+    }
+    if (deviceConnected && connectService != nullptr) {
+        BLECharacteristic* characteristic = connectService->getCharacteristic(FLOOWER_CHAR_WIFI_STATUS);
+        characteristic->setValue(&wifiStatus, 1);
         characteristic->notify();
     }
 }

@@ -10,6 +10,12 @@
 #include "AsyncTCP.h"
 #include "CommandProtocol.h"
 
+// network status
+#define WIFI_STATUS_NOT_CONFIGURED 0
+#define WIFI_STATUS_NOT_CONNECTED 1
+#define WIFI_STATUS_FLOUD_UNAUTHORIZED 2
+#define WIFI_STATUS_FLOUD_CONNECTED 3
+
 class WifiConnect {
     public:
         WifiConnect(Config *config, CommandProtocol *cmdProtocol);
@@ -17,11 +23,12 @@ class WifiConnect {
         void loop();
         void enable();
         void disable();
-        bool isEnabled();
         void reconnect();
         void updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor);
-        void updateBatteryData(uint8_t level, bool charging);
-
+        void updateStatusData(uint8_t batteryLevel, bool batteryCharging);
+        bool isEnabled();
+        bool isConnected();
+        uint8_t getStatus();
         void runOTAUpdate();
 
     private:
@@ -53,6 +60,7 @@ class WifiConnect {
         uint16_t messageIdCounter = 1;
         uint8_t state;
         uint16_t authorizationMessageId;
+        bool authorizationFailed = false;
         char sendBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
 
         unsigned long receiveTime = 0; // time when reply should be received

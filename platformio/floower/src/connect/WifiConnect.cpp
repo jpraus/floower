@@ -16,15 +16,15 @@ static const char* LOG_TAG = "WifiConnect";
 #define FLOUD_HOST "connect.floud.cz"
 #define FLOUD_PORT 3000
 
-#define OTA_RESPONSE_TIMEOUT_MS 5000
-#define SOCKET_RESPONSE_TIMEOUT_MS 2000
-
+// connector state
 #define STATE_FLOUD_DISCONNECTED 0
 #define STATE_FLOUD_CONNECTING 1
 #define STATE_FLOUD_ESTABLISHED 2
 #define STATE_FLOUD_AUTHORIZING 3
 #define STATE_FLOUD_AUTHORIZED 4
-#define STATE_FLOUD_UNAUTHORIZED 5
+
+#define OTA_RESPONSE_TIMEOUT_MS 5000
+#define SOCKET_RESPONSE_TIMEOUT_MS 2000
 
 #define RECONNECT_INTERVAL_MS 3000
 #define CONNECT_RETRY_INTERVAL_MS 30000
@@ -74,6 +74,10 @@ bool WifiConnect::isEnabled() {
     return enabled;
 }
 
+bool WifiConnect::isConnected() {
+    return state == STATE_FLOUD_AUTHORIZED;
+}
+
 void WifiConnect::reconnect() {
     if (enabled) {
         if (wifiOn) {
@@ -86,10 +90,10 @@ void WifiConnect::reconnect() {
     }
 }
 
-void WifiConnect::updateBatteryData(uint8_t level, bool charging) {
+void WifiConnect::updateStatusData(uint8_t batteryLevel, bool batteryCharging) {
     if (enabled && state == STATE_FLOUD_AUTHORIZED) {
         uint16_t payloadSize = 0;
-        uint16_t type = cmdProtocol->sendStatus(level, charging, sendBuffer, &payloadSize);
+        uint16_t type = cmdProtocol->sendStatus(batteryLevel, batteryCharging, sendBuffer, &payloadSize);
         sendRequest(type, receivedMessage.id, sendBuffer, payloadSize);
     }
 }
@@ -100,6 +104,21 @@ void WifiConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) 
         uint16_t type = cmdProtocol->sendState(petalsOpenLevel, hsbColor, sendBuffer, &payloadSize);
         sendRequest(type, receivedMessage.id, sendBuffer, payloadSize);
     }
+}
+
+uint8_t WifiConnect::getStatus() {
+    if (state == STATE_FLOUD_AUTHORIZED) {
+        return WIFI_STATUS_FLOUD_CONNECTED;
+    }
+    else if (authorizationFailed) {
+        return WIFI_STATUS_FLOUD_UNAUTHORIZED;
+    }
+    else if (config->wifiSsid.isEmpty()) {
+        return WIFI_STATUS_NOT_CONFIGURED;
+    }
+    else {
+        return WIFI_STATUS_NOT_CONNECTED;
+    }   
 }
 
 void WifiConnect::loop() {
@@ -159,11 +178,14 @@ void WifiConnect::handleReceivedMessage() {
     else if (receivedMessage.type == CommandType::STATUS_OK) {
         if (state == STATE_FLOUD_AUTHORIZING && receivedMessage.id == authorizationMessageId) {
             ESP_LOGI(LOG_TAG, "Authorized");
+            authorizationFailed = false;
             state = STATE_FLOUD_AUTHORIZED;
         }
     }
     else if (receivedMessage.type == CommandType::STATUS_UNAUTHORIZED) {
-        state = STATE_FLOUD_UNAUTHORIZED; // TODO: force authorization again
+        ESP_LOGW(LOG_TAG, "Unauthorized");
+        authorizationFailed = true;
+        socketReconnect();
     }
     else if (state == STATE_FLOUD_AUTHORIZED) {
         // handle commands
@@ -276,6 +298,7 @@ void WifiConnect::onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     else {
         ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
         reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+        wifiConnected = false;
     }
 }
 

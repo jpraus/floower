@@ -27,6 +27,10 @@ bool RemoteControl::isBluetoothConnected() {
     return bluetoothConnect->isConnected();
 }
 
+bool RemoteControl::isWifiConnected() {
+    return wifiConnect->isConnected();
+}
+
 void RemoteControl::enableWifi() {
     wifiConnect->enable();
 }
@@ -39,7 +43,7 @@ bool RemoteControl::isWifiEnabled() {
     return wifiConnect->isEnabled();
 }
 
-void RemoteControl::updateBatteryData(uint8_t level, bool charging) {
-    bluetoothConnect->updateBatteryData(level, charging);
-    wifiConnect->updateBatteryData(level, charging);
+void RemoteControl::updateStatusData(uint8_t batteryLevel, bool batteryCharging) {
+    wifiConnect->updateStatusData(batteryLevel, batteryCharging);
+    bluetoothConnect->updateStatusData(batteryLevel, batteryCharging, wifiConnect->getStatus());
 }
