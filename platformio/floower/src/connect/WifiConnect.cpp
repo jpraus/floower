@@ -12,7 +12,6 @@ static const char* LOG_TAG = "WifiConnect";
 #endif
 
 //#define FLOUD_HOST "192.168.0.103"
-//#define FLOUD_HOST "floowergarden-dev.eu-west-1.elasticbeanstalk.com"
 #define FLOUD_HOST "connect.floud.cz"
 #define FLOUD_PORT 3000
 
@@ -107,7 +106,10 @@ void WifiConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) 
 }
 
 uint8_t WifiConnect::getStatus() {
-    if (!enabled) {
+    if (config->wifiSsid.isEmpty()) {
+        return WIFI_STATUS_NOT_CONFIGURED;
+    }
+    else if (!enabled) {
         return WIFI_STATUS_DISABLED;
     }
     else if (state == STATE_FLOUD_AUTHORIZED) {
@@ -116,10 +118,7 @@ uint8_t WifiConnect::getStatus() {
     else if (authorizationFailed) {
         return WIFI_STATUS_FLOUD_UNAUTHORIZED;
     }
-    else if (config->wifiSsid.isEmpty()) {
-        return WIFI_STATUS_NOT_CONFIGURED;
-    }
-    else {
+    else { // failure
         return WIFI_STATUS_NOT_CONNECTED;
     }   
 }
