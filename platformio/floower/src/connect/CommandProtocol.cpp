@@ -47,19 +47,28 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
             case CommandType::CMD_WRITE_STATE: {
                 // { r: <red>, g: <green>, b: <blue>, l: <petalsLevel>, t: <time> }
                 uint16_t time = config->speedMillis;
+                uint8_t level = -1;
+                HsbColor color;
+                bool transitionColor = false;
+
                 if (jsonPayload.containsKey("t")) {
                     time = jsonPayload["t"];
                 }
                 if (jsonPayload.containsKey("l")) {
-                    uint8_t level = jsonPayload["l"];
-                    floower->setPetalsOpenLevel(level, time);
+                    level = jsonPayload["l"];
                 }
                 if (jsonPayload.containsKey("r") || jsonPayload.containsKey("g") || jsonPayload.containsKey("b")) {
-                    HsbColor color = HsbColor(RgbColor(
+                    color = HsbColor(RgbColor(
                         jsonPayload["r"], 
                         jsonPayload["g"], 
                         jsonPayload["b"]
                     ));
+                    transitionColor = true;
+                }
+                if (level != -1) {
+                    floower->setPetalsOpenLevel(level, time);
+                }
+                if (transitionColor) {
                     floower->transitionColor(color.H, color.S, color.B, time);
                 }
                 fireControlCommandCallback();

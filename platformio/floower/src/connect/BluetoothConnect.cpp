@@ -203,7 +203,7 @@ String BluetoothConnect::md5(String value) {
 }
 
 void BluetoothConnect::updateStatusData(uint8_t batteryLevel, bool batteryCharging, uint8_t wifiStatus) {
-    ESP_LOGI(LOG_TAG, "level: %d, charging: %d, wifi status: %d", batteryLevel, batteryCharging, wifiStatus);
+    ESP_LOGD(LOG_TAG, "level: %d, charging: %d, wifi status: %d", batteryLevel, batteryCharging, wifiStatus);
     if (deviceConnected && batteryService != nullptr) {
         BLECharacteristic* characteristic = batteryService->getCharacteristic(BATTERY_LEVEL_UUID);
         characteristic->setValue(&batteryLevel, 1);
