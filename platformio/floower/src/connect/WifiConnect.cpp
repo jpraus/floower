@@ -15,14 +15,24 @@ static const char* LOG_TAG = "WifiConnect";
 #define FLOUD_HOST "connect.floud.cz"
 #define FLOUD_PORT 3000
 
-// connector state
+// floud connector state
 #define STATE_FLOUD_DISCONNECTED 0
 #define STATE_FLOUD_CONNECTING 1
 #define STATE_FLOUD_ESTABLISHED 2
 #define STATE_FLOUD_AUTHORIZING 3
 #define STATE_FLOUD_AUTHORIZED 4
 
-#define OTA_RESPONSE_TIMEOUT_MS 5000
+// ota state
+#define STATE_OTA_CONNECTING 10
+#define STATE_OTA_CONNECTED 11
+#define STATE_OTA_HEADER 12
+#define STATE_OTA_DATA 13
+
+// running mode
+#define MODE_FLOUD 0
+#define MODE_OTA 1
+
+#define OTA_RESPONSE_TIMEOUT_MS 10000
 #define SOCKET_RESPONSE_TIMEOUT_MS 2000
 
 #define RECONNECT_INTERVAL_MS 3000
@@ -30,6 +40,8 @@ static const char* LOG_TAG = "WifiConnect";
 
 WifiConnect::WifiConnect(Config *config, CommandProtocol *cmdProtocol) 
         : config(config), cmdProtocol(cmdProtocol) {
+    //mode = MODE_FLOUD;
+    mode = MODE_OTA;
     state = STATE_FLOUD_DISCONNECTED;
     client = NULL;
 }
@@ -123,6 +135,15 @@ uint8_t WifiConnect::getStatus() {
     }   
 }
 
+void WifiConnect::ensureClient() {
+    if (client == NULL) {
+        client = new AsyncClient(NULL);
+        client->onData([=](void* arg, AsyncClient* client, void *data, size_t len){ onSocketData((char *)data, len); });
+        client->onConnect([=](void* arg, AsyncClient* client){ onSocketConnected(); });
+        client->onDisconnect([=](void* arg, AsyncClient* client){ onSocketDisconnected(); });
+    }
+}
+
 void WifiConnect::loop() {
     if (!enabled) {
         return;
@@ -130,25 +151,33 @@ void WifiConnect::loop() {
 
     if (WiFi.status() == WL_CONNECTED) {
         wifiConnected = true;
-        if (config->floudToken) {
-            switch (state) {
-                case STATE_FLOUD_DISCONNECTED:
-                    if (reconnectTime <= millis()) {
-                        ESP_LOGI(LOG_TAG, "Connecting to Floud");
-                        if (client == NULL) {
-                            client = new AsyncClient(NULL);
-                            client->onData([=](void* arg, AsyncClient* client, void *data, size_t len){ onSocketData((char *)data, len); });
-                            client->onConnect([=](void* arg, AsyncClient* client){ onSocketConnected(); });
-                            client->onDisconnect([=](void* arg, AsyncClient* client){ onSocketDisconnected(); });
+        if (mode == MODE_FLOUD) {
+            if (!config->floudToken.isEmpty()) {
+                switch (state) {
+                    case STATE_FLOUD_DISCONNECTED:
+                        if (reconnectTime <= millis()) {
+                            ESP_LOGI(LOG_TAG, "Connecting to Floud");
+                            ensureClient();
+                            client->connect(FLOUD_HOST, FLOUD_PORT);
+                            reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+                            state = STATE_FLOUD_CONNECTING;
                         }
-                        client->connect(FLOUD_HOST, FLOUD_PORT);
-                        reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
-                        state = STATE_FLOUD_CONNECTING;
-                    }
-                    break;
-                case STATE_FLOUD_ESTABLISHED:
-                    sendAuthorization();
-                    state = STATE_FLOUD_AUTHORIZING;
+                        break;
+                    case STATE_FLOUD_ESTABLISHED:
+                        sendAuthorization();
+                        state = STATE_FLOUD_AUTHORIZING;
+                        break;
+                }
+            }
+        } 
+        // TODO: remove this, its started externally
+        else if (mode == MODE_OTA) {
+            if (state == STATE_FLOUD_DISCONNECTED) {
+                startOTAUpdate("upgrade.floud.cz/10/firmware.bin");
+            }
+            switch (state) {
+                case STATE_OTA_CONNECTED:
+                    requestOTAData();
                     break;
             }
         }
@@ -269,25 +298,49 @@ void WifiConnect::receiveMessage(char *data, size_t len) {
 }
 
 void WifiConnect::onSocketData(char *data, size_t len) {
-    receiveMessage(data, len);
+    if (mode == MODE_FLOUD) {
+        receiveMessage(data, len);
+    }
+    else if (mode == MODE_OTA) {
+        receiveOTAData(data, len);
+    }
 }
 
 void WifiConnect::onSocketConnected() {
-    ESP_LOGI(LOG_TAG, "Connected to Floud");
-    reconnectTime = 0;
-    state = STATE_FLOUD_ESTABLISHED;
+    if (mode == MODE_FLOUD) {
+        ESP_LOGI(LOG_TAG, "Connected to Floud");
+        reconnectTime = 0;
+        state = STATE_FLOUD_ESTABLISHED;
+    }
+    else if (mode == MODE_OTA) {
+        ESP_LOGI(LOG_TAG, "Connected to OTA server");
+        state = STATE_OTA_CONNECTED;
+    }
 }
 
 void WifiConnect::onSocketDisconnected() {
-    if (state == STATE_FLOUD_CONNECTING) {
-        ESP_LOGI(LOG_TAG, "Failed to connect to Floud");
-        reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+    if (mode == MODE_FLOUD) {
+        if (state == STATE_FLOUD_CONNECTING) {
+            ESP_LOGI(LOG_TAG, "Failed to connect to Floud");
+            reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+        }
+        else {
+            ESP_LOGI(LOG_TAG, "Disconnected from Floud");
+            reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+        }
+        state = STATE_FLOUD_DISCONNECTED;
     }
-    else {
-        ESP_LOGI(LOG_TAG, "Disconnected from Floud");
-        reconnectTime = millis() + RECONNECT_INTERVAL_MS;
+    else if (mode == MODE_OTA) {
+        if (state == STATE_OTA_DATA) {
+            ESP_LOGI(LOG_TAG, "OTA data received");
+            finalizeOTA();
+        }
+        else {
+            ESP_LOGI(LOG_TAG, "Disconnected from OTA server");
+            mode = MODE_FLOUD;
+            state = STATE_FLOUD_DISCONNECTED;
+        }
     }
-    state = STATE_FLOUD_DISCONNECTED;
 }
 
 // WIFI
@@ -317,105 +370,119 @@ void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
 
 // OTA
 
+void WifiConnect::startOTAUpdate(String firmwareUrl) {
+    if (WiFi.status() == WL_CONNECTED) {
+        ESP_LOGI(LOG_TAG, "Staring OTA update: %s", firmwareUrl.c_str());
+        String host, path;
+
+        int hostIndex = firmwareUrl.indexOf('/');
+        if (hostIndex != -1) {
+            host = firmwareUrl.substring(0, hostIndex);
+            path = firmwareUrl.substring(hostIndex);
+        }
+
+        if (host.isEmpty() || path.isEmpty()) {
+            ESP_LOGI(LOG_TAG, "Invalid firmware url: %s", firmwareUrl.c_str());
+            return;
+        }
+
+        mode = MODE_OTA;
+        state = STATE_OTA_CONNECTING;
+        otaFirmwareHost = host;
+        otaFirmwarePath = path;
+        ensureClient();
+        client->connect(host.c_str(), 80);
+    }
+}
+
+void WifiConnect::requestOTAData() {
+    state = STATE_OTA_HEADER;
+
+    ESP_LOGI(LOG_TAG, "Requesting OTA update: host=%s path=%s", otaFirmwareHost.c_str(), otaFirmwarePath.c_str());
+    client->write(String("GET " + otaFirmwarePath + " HTTP/1.1\r\n").c_str());
+    client->write(String("Host: " + otaFirmwareHost + "\r\n").c_str());
+    client->write("Cache-Control: no-cache\r\n");
+    client->write("Connection: close\r\n\r\n");
+}
+
 inline String getHeaderValue(String header, String headerName) {
     return header.substring(strlen(headerName.c_str()));
 }
 
-void WifiConnect::runOTAUpdate() {
-    WiFiClient client;
+void WifiConnect::receiveOTAData(char *data, size_t len) {
+    if (state == STATE_OTA_HEADER) {
+        int contentLength = 0;
+        bool isValidContentType = false;
+        bool isSuccess = false;
+        String line;
 
-    if (!client.connect("upgrade.floower.io", 80)) {
-        Serial.println("Cannot connect to upgrade.floower.io");
-        return;
-    }
-
-    client.print("GET /flooware.ino.bin HTTP/1.1\r\n");
-    client.print("Host: upgrade.floower.io\r\n");
-    client.print("Cache-Control: no-cache\r\n");
-    client.print("Connection: close\r\n\r\n");
-
-    unsigned long timeout = millis();
-    while (client.available() == 0) {
-        if (millis() - timeout > OTA_RESPONSE_TIMEOUT_MS) {
-            Serial.println("OTA Timeout");
-            client.stop();
-            return;
-        }
-    }
-
-    unsigned int contentLength = 0;
-    bool isValidContentType = false;
-
-    while (client.available()) {
-        String line = client.readStringUntil('\n');
-        line.trim(); // Check if the line is end of headers by removing space symbol
-
-        if (!line.length()) {
-            break; // if the the line is empty, this is the end of the headers
-        }
-
-        // Check allowed HTTP responses
-        if (line.startsWith("HTTP/1.1")) {
-            if (line.indexOf("200") == -1) {
-                Serial.println("Got " + line + " response from server");
-                client.stop();
-                return;
-            }
-        }
-
-        // Checking headers
-        if (line.startsWith("Content-Length: ")) {
-            contentLength = atoi((getHeaderValue(line, "Content-Length: ")).c_str());
-            Serial.println("Got " + String(contentLength) + " bytes from server");
-        }
-
-        if (line.startsWith("Content-Type: ")) {
-            String contentType = getHeaderValue(line, "Content-Type: ");
-            Serial.println("Got " + contentType + " payload.");
-            if (contentType == "application/octet-stream") {
-                isValidContentType = true;
-            }
-        }
-    }
-
-    // check whether we have everything for OTA update
-    if (contentLength && isValidContentType) {
-        if (Update.begin(contentLength)) {
-            Serial.println("Starting Over-The-Air update. This may take some time to complete ...");
-
-            esp_task_wdt_delete(nullptr);
-            esp_task_wdt_deinit();
-
-            size_t written = Update.writeStream(client);
-
-            if (written == contentLength) {
-                Serial.println("Written : " + String(written) + " successfully");
-            }
-            else {
-                Serial.println("Written only : " + String(written) + "/" + String(contentLength) + ". Retry?");
-                // Retry??
-            }
-
-            if (Update.end()) {
-                if (Update.isFinished()) {
-                    Serial.println("OTA update has successfully completed. Rebooting ...");
-                    ESP.restart();
+        char *token = strtok(data, "\n");
+        while (token) {
+            line = String(token);
+            line.trim();
+            
+            if (line.startsWith("HTTP/1.1")) {
+                if (line.indexOf("200") != -1) {
+                    isSuccess = true;
                 }
                 else {
-                    Serial.println("Something went wrong! OTA update hasn't been finished properly.");
+                    ESP_LOGE(LOG_TAG, "Invalid reponse from server: %s", line.c_str());
                 }
             }
+            else if (line.startsWith("Content-Length: ")) {
+                contentLength = atoi((getHeaderValue(line, "Content-Length: ")).c_str());
+                ESP_LOGI(LOG_TAG, "Firmware size: %d", contentLength);
+            }
+            else if (line.startsWith("Content-Type: ")) {
+                String contentType = getHeaderValue(line, "Content-Type: ");
+                ESP_LOGI(LOG_TAG, "Content type: %s", contentType.c_str());
+                if (contentType == "application/octet-stream") {
+                    isValidContentType = true;
+                }
+            }
+            else if (line.isEmpty()) { // end of headers
+                break;
+            }
+
+            token = strtok(NULL, "\n");
+        }
+
+        if (isSuccess && contentLength > 0 && isValidContentType) {
+            if (Update.begin(contentLength)) {
+                ESP_LOGI(LOG_TAG, "Running OTA update: size=%d", contentLength);
+                state = STATE_OTA_DATA;
+                otaDataLength = contentLength;
+                otaReceivedBytes = 0;
+            }
             else {
-                Serial.println("An error Occurred. Error #: " + String(Update.getError()));
+                ESP_LOGI(LOG_TAG, "Low space for OTA: size=%d", contentLength);
+                client->close();
             }
         }
         else {
-            Serial.println("There isn't enough space to start OTA update");
-            client.flush();
+            ESP_LOGI(LOG_TAG, "Invalid firmware file");
+            client->close();
+        }
+    }
+    else if (state == STATE_OTA_DATA) {
+        otaReceivedBytes += len;
+        Update.write((uint8_t *)data, len);
+    }
+}
+
+void WifiConnect::finalizeOTA() {
+    if (Update.end()) {
+        if (Update.isFinished()) {
+            ESP_LOGI(LOG_TAG, "OTA successful, restarting");
+            ESP.restart();
+        }
+        else {
+            ESP_LOGI(LOG_TAG, "OTA failed");
         }
     }
     else {
-        Serial.println("There was no valid content in the response from the OTA server!");
-        client.flush();
+        ESP_LOGI(LOG_TAG, "OTA failed: %d", Update.getError());
     }
+    mode = MODE_FLOUD;
+    state = STATE_FLOUD_DISCONNECTED;
 }

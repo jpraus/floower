@@ -7,6 +7,10 @@ void CommandProtocol::onControlCommand(ControlCommandCallback callback) {
     controlCommandCallback = callback;
 }
 
+void CommandProtocol::onRunOTA(RunOTACallback callback) {
+    runOTACallback = callback;
+}
+
 uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const uint16_t payloadLength, char *responsePayload, uint16_t *responseLength) {
     // commands that require request payload
     if (payloadLength > 0) {
@@ -136,8 +140,12 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                 return STATUS_ERROR;
             }
             case CommandType::CMD_RUN_OTA: {
-                // TODO: notify wifi to run OTA
-                return STATUS_UNSUPPORTED;
+                // { u: <firmwareUrl> }
+                if (jsonPayload.containsKey("u") && runOTACallback != nullptr) {
+                    runOTACallback(jsonPayload["u"]);
+                    return STATUS_OK;
+                }
+                return STATUS_ERROR;
             }
         }
     }

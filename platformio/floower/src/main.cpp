@@ -60,9 +60,13 @@ void onFloowerChanged(int8_t petalsOpenLevel, HsbColor hsbColor) {
     bluetoothConnect.updateFloowerState(petalsOpenLevel, hsbColor);
 }
 
+void onCmdProtocolRunOTA(String firmwareUrl) {
+    wifiConnect.startOTAUpdate(firmwareUrl);
+}
+
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    //delay(1000);
     ESP_LOGI(LOG_TAG, "Initializing");
 
     // start watchdog timer
@@ -73,6 +77,7 @@ void setup() {
     configure();
     setFeatureFlags(config);
     config.onConfigChanged(onConfigChanged);
+    cmdProtocol.onRunOTA(onCmdProtocolRunOTA);
 
     // after wake up setup
     bool wokeUp = false;
