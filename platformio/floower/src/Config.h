@@ -10,6 +10,10 @@
 
 #define COLOR_SCHEME_MAX_LENGTH 10
 #define NAME_MAX_LENGTH 25 // BLE name limit
+#define WIFI_SSID_MAX_LENGTH 32
+#define WIFI_PWD_MAX_LENGTH 64
+#define FLOUD_TOKEN_MAX_LENGTH 40
+#define FLOUD_DEVICE_ID_MAX_LENGTH 40
 
 // default values
 #define DEFAULT_TOUCH_THRESHOLD 45 // lower means lower sensitivity (45 is normal)
@@ -28,13 +32,7 @@ const HsbColor colorPurple(0.81, 1.0, 1.0);
 const HsbColor colorPink(0.93, 1.0, 1.0);
 const HsbColor colorBlack(0.0, 1.0, 0.0);
 
-typedef struct Personification {
-    uint8_t touchThreshold; // read-only, TODO: not used, kept for backward compatibility
-    uint8_t behavior; // read-write
-    uint8_t speed; // in 0.1s, read-write
-    uint8_t maxOpenLevel; // 0-100, read-write
-    uint8_t colorBrightness; // 0-100, read-write
-} Personification;
+typedef std::function<void(bool wifiChanged)> ConfigChangedCallback;
 
 class Config {
     public:
@@ -50,8 +48,13 @@ class Config {
         void setBluetoothAlwaysOn(bool bluetoothAlwaysOn);
         void setCalibrated();
         void setTouchCalibrated(bool touchCalibrated);
-        void setPersonification(Personification personification);
+        void setSpeed(uint8_t speed);
+        void setMaxOpenLevel(uint8_t maxOpenLevel);
+        void setColorBrightness(uint8_t colorBrightness);
+        void setWifi(String ssid, String password);
+        void setFloud(String deviceId, String token);
         void commit();
+        void onConfigChanged(ConfigChangedCallback callback);
 
         static uint16_t encodeHSColor(double hue, double saturation);
         static HsbColor decodeHSColor(uint16_t valueHS);
@@ -71,27 +74,45 @@ class Config {
         // feature flags
         bool deepSleepEnabled = false;
         bool bluetoothEnabled = false;
+        bool wifiEnabled = false;
         bool colorPickerEnabled = false;
+
+        // static configuration
+        String modelName = "Floower";
 
         // configration
         uint8_t colorSchemeSize = 0;
         HsbColor colorScheme[10]; // max 10 colors
-        uint8_t touchThreshold; // read-only
+        uint8_t touchThreshold; // read-only, calibrated at the beginning
         String name;
-        Personification personification;
+        uint8_t speed;
         uint16_t speedMillis; // read-only, precalculated speed in ms
-        double colorBrightness; // read-only, precalcuated color brightness (0.0-1.0)
+        uint8_t colorBrightness;
+        double colorBrightnessDecimal; // read-only, precalcuated color brightness (0.0-1.0)
+        uint8_t maxOpenLevel;
+        String wifiSsid;
+        String wifiPassword;
+        String floudDeviceId;
+        String floudToken;
 
     private:
         void readFlags();
         void writeColorScheme();
         void readColorScheme();
         void readName();
-        void readPersonification();
+        void readWifiAndFloud();
+        void readSpeed();
+        void readMaxOpenLevel();
+        void readColorBrightness();
 
         void writeInt(uint16_t address, uint16_t value);
         uint16_t readInt(uint16_t address);
 
+        void writeString(uint16_t address, String value, uint16_t sizeAddress, uint8_t maxLength);
+        String readString(uint16_t address, uint16_t sizeAddress, uint8_t maxLength);
+
         uint8_t flags = 0;
+        ConfigChangedCallback configChangedCallback;
+        bool wifiChanged = false;
 
 };

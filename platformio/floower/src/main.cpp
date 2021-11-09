@@ -1,11 +1,10 @@
-#define FIRMWARE_VERSION 8
+#define FIRMWARE_VERSION 10
 #define HARDWARE_REVISION 9 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
 
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
 #include "Config.h"
-#include "BluetoothControl.h"
-//#include "connect/WifiConnect.h"
+#include "connect/RemoteControl.h"
 #include "behavior/BloomingBehavior.h"
 #include "behavior/MindfulnessBehavior.h"
 #include "behavior/Calibration.h"
@@ -13,9 +12,12 @@
 ///////////// SOFTWARE CONFIGURATION
 
 // feature flags
-const bool deepSleepEnabled = true;
-const bool bluetoothEnabled = true;
-const bool colorPickerEnabled = true;
+void setFeatureFlags(Config &config) {
+    config.deepSleepEnabled = true;
+    config.bluetoothEnabled = true;
+    config.wifiEnabled = true;
+    config.colorPickerEnabled = true;
+}
 
 ///////////// HARDWARE CALIBRATION CONFIGURATION
 // following constant are used only when Floower is calibrated in factory
@@ -32,14 +34,31 @@ const bool colorPickerEnabled = true;
 
 Config config(FIRMWARE_VERSION);
 Floower floower(&config);
-BluetoothControl bluetoothControl(&floower, &config);
-//WifiConnect wifiConnect(&config);
 Behavior *behavior;
+
+CommandProtocol cmdProtocol(&config, &floower);
+BluetoothConnect bluetoothConnect(&floower, &config, &cmdProtocol);
+WifiConnect wifiConnect(&config, &cmdProtocol);
+RemoteControl remoteControl(&bluetoothConnect, &wifiConnect, &cmdProtocol);
 
 void configure();
 void planDeepSleep(long timeoutMs);
 void enterDeepSleep();
 void periodicOperation();
+
+void onConfigChanged(bool wifiChanged) {
+    ESP_LOGI(LOG_TAG, "Config changed: wifi=%d", wifiChanged ? 1 : 0);
+    if (wifiChanged) {
+        wifiConnect.reconnect();
+    }
+    bluetoothConnect.reloadConfig();
+}
+
+void onFloowerChanged(int8_t petalsOpenLevel, HsbColor hsbColor) {
+    ESP_LOGI(LOG_TAG, "Floower state changed");
+    wifiConnect.updateFloowerState(petalsOpenLevel, hsbColor);
+    bluetoothConnect.updateFloowerState(petalsOpenLevel, hsbColor);
+}
 
 void setup() {
     Serial.begin(115200);
@@ -51,9 +70,8 @@ void setup() {
 
     // read configuration
     configure();
-    config.deepSleepEnabled = deepSleepEnabled;
-    config.bluetoothEnabled = bluetoothEnabled;
-    config.colorPickerEnabled = colorPickerEnabled;
+    setFeatureFlags(config);
+    config.onConfigChanged(onConfigChanged);
 
     // after wake up setup
     bool wokeUp = false;
@@ -69,30 +87,30 @@ void setup() {
     }
 
     // init hardware
-    //esp_wifi_stop();
+    esp_wifi_stop();
     btStop();
     floower.init();
     floower.enableTouch([=](FloowerTouchEvent event){}, !wokeUp); // enable NOP touch to enable deep sleep wake up function
     floower.readPowerState(); // calibrate the ADC
+    floower.onChange(onFloowerChanged);
     delay(50); // wait to warm-up
 
     // init state machine, this is core logic
     if (!config.calibrated || !config.touchCalibrated) {
-        behavior = new Calibration(&config, &floower, &bluetoothControl, config.calibrated && !config.touchCalibrated);
+        behavior = new Calibration(&config, &floower, &bluetoothConnect, config.calibrated && !config.touchCalibrated);
     }
     else {
-        behavior = new BloomingBehavior(&config, &floower, &bluetoothControl);
-        //behavior = new MindfulnessBehavior(&config, &floower, &bluetoothControl);
-        //behavior = new TestBehavior(&config, &floower, &bluetoothControl);
+        behavior = new BloomingBehavior(&config, &floower, &remoteControl);
+        //behavior = new MindfulnessBehavior(&config, &floower, &remoteControl);
+        //behavior = new TestBehavior(&config, &floower, &remoteControl);
     }
     behavior->setup(wokeUp);
-
-    //wifiConnect.init();
 }
 
 void loop() {
     floower.update();
     behavior->loop();
+    wifiConnect.loop();
 
     // save some power when there is nothing happening
     if (behavior->isIdle()) {

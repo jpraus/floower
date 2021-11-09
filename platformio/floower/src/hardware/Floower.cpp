@@ -59,12 +59,12 @@ void Floower::init() {
     pixelsOriginColor = colorBlack;
     pixelsTargetColor = colorBlack;
     pixels.Begin();
-    statusPixel.ClearTo(pixelsColor);
+    pixels.ClearTo(pixelsColor);
     pixels.Show();
 
     statusColor = colorBlack;
     statusPixel.Begin();
-    statusPixel.ClearTo(statusColor);
+    statusPixel.SetPixelColor(0, statusColor);
     statusPixel.Show();
 
     // configure ADC for battery level reading
@@ -284,6 +284,36 @@ void Floower::pixelsFlashAnimationUpdate(const AnimationParam& param) {
     }
 }
 
+void Floower::circleColor(double hue, double saturation, int flashDuration) {
+    pixelsTargetColor = HsbColor(hue, saturation, 1.0);
+    pixelsColor = pixelsTargetColor;
+
+    interruptiblePixelsAnimation = false;
+    animations.StartAnimation(ANIMATION_INDEX_LEDS, flashDuration, [=](const AnimationParam& param){ pixelsCircleAnimationUpdate(param); });
+}
+
+void Floower::pixelsCircleAnimationUpdate(const AnimationParam& param) {
+    int index = (param.progress * 6) + 1;
+    float brightness = 1;
+
+    pixels.ClearTo(colorBlack);
+    for (uint8_t i = 0; i < 3; i++, index--, brightness -= 0.45) {
+        if (index < 1) {
+            index += 6;
+        }
+        if (brightness < 0) {
+            brightness = 0;
+        }
+        pixels.SetPixelColor(index, HsbColor(pixelsColor.H, pixelsColor.S, brightness));
+    }
+
+    if (param.state == AnimationState_Completed) {
+        if (pixelsTargetColor.B > 0) { // while there is something to show
+            animations.RestartAnimation(param.index);
+        }
+    }
+}
+
 HsbColor Floower::getColor() {
     return pixelsTargetColor;
 }
@@ -292,7 +322,7 @@ HsbColor Floower::getCurrentColor() {
     return pixelsColor;
 }
 
-void Floower::startAnimation(FloowerColorAnimation animation) {
+void Floower::startAnimation(uint8_t animation) {
     interruptiblePixelsAnimation = true;
 
     if (animation == RAINBOW) {
@@ -338,12 +368,12 @@ void Floower::pixelsRainbowAnimationUpdate(const AnimationParam& param) {
 void Floower::pixelsRainbowLoopAnimationUpdate(const AnimationParam& param) {
     double hue = param.progress;
     double step = 1.0 / 6.0;
-    pixels.SetPixelColor(0, HsbColor(param.progress, 1, config->colorBrightness));
+    pixels.SetPixelColor(0, HsbColor(param.progress, 1, config->colorBrightnessDecimal));
     for (uint8_t i = 1; i < 7; i++, hue += step) {
         if (hue >= 1.0) {
             hue = hue - 1;
         }
-        pixels.SetPixelColor(i, HsbColor(hue, 1, config->colorBrightness));
+        pixels.SetPixelColor(i, HsbColor(hue, 1, config->colorBrightnessDecimal));
     }
     if (param.state == AnimationState_Completed) {
         animations.RestartAnimation(param.index);
@@ -450,7 +480,7 @@ PowerState Floower::readPowerState() {
         usbPowered = analogRead(USB_ANALOG_PIN) > 2000; // ~2900 is 5V
     }
 
-    ESP_LOGI(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
+    ESP_LOGD(LOG_TAG, "Battery %.0f %.2fV %d%% %s", reading, voltage, level, charging ? "CHRG" : (usbPowered ? "USB" : ""));
 
     powerState = {voltage, level, charging, usbPowered, switchedOn};
     return powerState;

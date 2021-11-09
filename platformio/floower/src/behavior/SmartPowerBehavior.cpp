@@ -1,5 +1,6 @@
 #include "behavior/SmartPowerBehavior.h"
 #include <esp_task_wdt.h>
+#include <esp_wifi.h>
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -9,9 +10,10 @@
 static const char* LOG_TAG = "SmartPowerBehavior";
 #endif
 
-#define INDICATE_STATUS_ACTY 0
+#define INDICATE_STATUS_IDLE 0
 #define INDICATE_STATUS_CHARGING 1
-#define INDICATE_STATUS_REMOTE 2
+#define INDICATE_STATUS_BLUETOOTH 2
+#define INDICATE_STATUS_WIFI 3
 
 // POWER MANAGEMENT (tuned for 1600mAh LIPO battery)
 
@@ -20,12 +22,13 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 // TIMINGS
 
 #define BLUETOOTH_START_DELAY 2000 // delay init of BLE to lower the power surge on startup
+#define WIFI_START_DELAY 2500 // delay init of WiFi to lower the power surge on startup
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
 
-SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl)
-        : config(config), floower(floower), bluetoothControl(bluetoothControl) {
+SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, RemoteControl *remoteControl)
+        : config(config), floower(floower), remoteControl(remoteControl) {
     state = STATE_OFF;
 }
 
@@ -49,9 +52,20 @@ void SmartPowerBehavior::setup(bool wokeUp) {
 }
 
 void SmartPowerBehavior::loop() {
-    // reset remote control state in case the floower is idle
     if (state == STATE_REMOTE_CONTROL && !floower->isLit() && !floower->isAnimating() && floower->getCurrentPetalsOpenLevel() == 0) {
+        // reset remote control state in case the floower is idle
         changeState(STATE_STANDBY);
+    }
+    else if (state == STATE_UPDATE_INIT && !floower->arePetalsMoving() && !updateFirmwareUrl.isEmpty()) {
+        // floower is closed, we can start upgrading
+        changeState(STATE_UPDATE_RUNNING);
+        remoteControl->runUpdate(updateFirmwareUrl);
+    }
+    else if (state == STATE_UPDATE_RUNNING && !remoteControl->isUpdateRunning()) {
+        // restore after failed update
+        changeState(STATE_STANDBY);
+        floower->stopAnimation(false);
+        enablePeripherals(false, false);
     }
 
     // timers
@@ -60,13 +74,14 @@ void SmartPowerBehavior::loop() {
         watchDogsTime = now + WATCHDOGS_INTERVAL;
         esp_task_wdt_reset(); // reset watchdog timer
         powerWatchDog();
-        indicateStatus(INDICATE_STATUS_REMOTE, bluetoothControl->isConnected());
-        indicateStatus(INDICATE_STATUS_ACTY, true);
     }
-    if (bluetoothStartTime != 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
+    if (bluetoothStartTime > 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
         bluetoothStartTime = 0;
-        bluetoothControl->init();
-        bluetoothControl->startAdvertising();
+        remoteControl->enableBluetooth();
+    }
+    if (wifiStartTime > 0 && wifiStartTime < now && !floower->arePetalsMoving()) {
+        wifiStartTime = 0;
+        remoteControl->enableWifi();
     }
     if (deepSleepTime != 0 && deepSleepTime < now) {
         deepSleepTime = 0;
@@ -79,14 +94,13 @@ void SmartPowerBehavior::loop() {
 bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     if (event == FloowerTouchEvent::TOUCH_HOLD && config->bluetoothEnabled && canInitializeBluetooth()) {
         floower->flashColor(colorBlue.H, colorBlue.S, 1000);
-        bluetoothControl->init();
-        bluetoothControl->startAdvertising();
+        remoteControl->enableBluetooth();
         changeState(STATE_BLUETOOTH_PAIRING);
         return true;
     }
     else if (event == FloowerTouchEvent::TOUCH_DOWN && state == STATE_BLUETOOTH_PAIRING) {
         // bluetooth pairing interrupted
-        bluetoothControl->stopAdvertising();
+        remoteControl->disableBluetooth();
         config->setBluetoothAlwaysOn(false);
         floower->transitionColorBrightness(0, 500);
         changeState(STATE_STANDBY);
@@ -101,35 +115,17 @@ bool SmartPowerBehavior::onLeafTouch(FloowerTouchEvent event) {
     return false;
 }
 
-bool SmartPowerBehavior::onRemoteChange(StateChangePacketData data) {
-    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_COLOR)) {
-        // blossom color
-        HsbColor color = HsbColor(data.getColor());
-        floower->transitionColor(color.H, color.S, color.B, data.duration * 100);
-        changeState(STATE_REMOTE_CONTROL);
-        return true;
-    }
-    if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_PETALS)) {
-        // petals open/close
-        floower->setPetalsOpenLevel(data.value, data.duration * 100);
-        changeState(STATE_REMOTE_CONTROL);
-        return true;
-    }
-    else if (CHECK_BIT(data.mode, STATE_TRANSITION_MODE_BIT_ANIMATION)) {
-        // play animation (according to value)
-        switch (data.value) {
-            case 1:
-                floower->startAnimation(FloowerColorAnimation::RAINBOW_LOOP);
-                changeState(STATE_REMOTE_CONTROL);
-                return true;
-            case 2:
-                floower->startAnimation(FloowerColorAnimation::CANDLE);
-                changeState(STATE_REMOTE_CONTROL);
-                return true;
-        }
-    }
+void SmartPowerBehavior::onRemoteControl() {
+    changeState(STATE_REMOTE_CONTROL);
+}
 
-    return false;
+void SmartPowerBehavior::runUpdate(String firmwareUrl) {
+    changeState(STATE_UPDATE_INIT);
+    floower->circleColor(colorPurple.H, colorPurple.S, 600);
+    floower->setPetalsOpenLevel(0, 2500);
+    floower->disableTouch();
+    remoteControl->disableBluetooth();
+    updateFirmwareUrl = firmwareUrl;
 }
 
 bool SmartPowerBehavior::canInitializeBluetooth() {
@@ -139,7 +135,8 @@ bool SmartPowerBehavior::canInitializeBluetooth() {
 void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
-    bluetoothControl->onRemoteChange([=](StateChangePacketData data) { onRemoteChange(data); });
+    remoteControl->onRemoteControl([=]() { onRemoteControl(); });
+    remoteControl->onRunUpdate([=](String firmwareUrl) { runUpdate(firmwareUrl); });
     if (config->bluetoothEnabled && config->bluetoothAlwaysOn) {
         bluetoothStartTime = millis() + BLUETOOTH_START_DELAY; // defer init of BLE by 5 seconds
     }
@@ -147,7 +144,8 @@ void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
 
 void SmartPowerBehavior::disablePeripherals() {
     floower->disableTouch();
-    bluetoothControl->stopAdvertising();
+    remoteControl->disableBluetooth();
+    remoteControl->disableWifi();
     // TODO: disconnect remote
     // TODO: disable petals?
 }
@@ -183,18 +181,26 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
     else {
         // powered by USB or battery and switch is ON
         if (state == STATE_OFF || (state == STATE_LOW_BATTERY && powerState.usbPowered)) {
+            // turned ON or connected to USB on low battery
             ESP_LOGI(LOG_TAG, "Power restored");
             floower->stopAnimation(false); // in case of low battery blinking
             enablePeripherals(initial, wokeUp);
             changeState(STATE_STANDBY);
         }
         else if (state == STATE_STANDBY && !powerState.usbPowered && deepSleepTime == 0) {
+            // powered by battery and deep sleep is not yet planned
             planDeepSleep(DEEP_SLEEP_INACTIVITY_TIMEOUT);
+        }
+        if (config->wifiEnabled && powerState.usbPowered && !remoteControl->isWifiEnabled() && wifiStartTime == 0) {
+            wifiStartTime = millis() + WIFI_START_DELAY;
+        }
+        if (!powerState.usbPowered) {
+            remoteControl->disableWifi();
         }
     }
 
-    bluetoothControl->setBatteryLevel(powerState.batteryLevel, powerState.batteryCharging);
-    indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
+    remoteControl->updateStatusData(powerState.batteryLevel, powerState.batteryCharging);
+    indicateStatus(powerState.batteryCharging);
 }
 
 void SmartPowerBehavior::changeStateIfIdle(state_t fromState, state_t toState) {
@@ -218,32 +224,36 @@ void SmartPowerBehavior::changeState(uint8_t newState) {
     }
 }
 
-void SmartPowerBehavior::indicateStatus(uint8_t status, bool enable) {
-    if (enable) {
-        if (status == INDICATE_STATUS_ACTY && indicatingStatus == INDICATE_STATUS_ACTY) {
-            HsbColor purple = colorPurple;
-            purple.B = 0.1;
-            floower->showStatus(purple, FloowerStatusAnimation::BLINK_ONCE, 50);
-        }
-        else if (indicatingStatus != status) {
-            switch (status) {
-                case INDICATE_STATUS_CHARGING: // charging has the top priotity
-                    floower->showStatus(colorRed, FloowerStatusAnimation::PULSATING, 2000);
-                    indicatingStatus = status;
-                    break;
-                case INDICATE_STATUS_REMOTE:
-                    if (indicatingStatus != INDICATE_STATUS_CHARGING) {
-                        floower->showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
-                        indicatingStatus = status;
-                    }
-                    break;
-            }
+void SmartPowerBehavior::indicateStatus(bool charging) {
+    uint8_t status = INDICATE_STATUS_IDLE;
+    if (charging) {
+        status = INDICATE_STATUS_CHARGING; // charging has the top priotity
+    }
+    else if (remoteControl->isBluetoothConnected()) {
+        status = INDICATE_STATUS_BLUETOOTH;
+    }
+    else if (remoteControl->isWifiConnected()) {
+        status = INDICATE_STATUS_WIFI;
+    }
+
+    if (indicatingStatus != status) {
+        switch (status) {
+            case INDICATE_STATUS_CHARGING: 
+                floower->showStatus(colorRed, FloowerStatusAnimation::PULSATING, 2000);
+                break;
+            case INDICATE_STATUS_BLUETOOTH:
+                floower->showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
+                break;
+            case INDICATE_STATUS_WIFI:
+                floower->showStatus(colorPurple, FloowerStatusAnimation::PULSATING, 2000);
+                break;
         }
     }
-    else if (indicatingStatus == status) {
-        indicatingStatus = INDICATE_STATUS_ACTY; // idle status
-        floower->showStatus(colorBlack, FloowerStatusAnimation::STILL, 0);
+    if (status == INDICATE_STATUS_IDLE) {
+        HsbColor color = HsbColor(colorRed.H, colorRed.S, 0.01);
+        floower->showStatus(color, FloowerStatusAnimation::STILL, 0);
     }
+    indicatingStatus = status;
 }
 
 void SmartPowerBehavior::planDeepSleep(long timeoutMs) {
@@ -257,7 +267,7 @@ void SmartPowerBehavior::enterDeepSleep() {
     ESP_LOGI(LOG_TAG, "Going to sleep now");
     floower->beforeDeepSleep();
     esp_sleep_enable_touchpad_wakeup();
-    //esp_wifi_stop();
+    esp_wifi_stop();
     btStop();
     esp_deep_sleep_start();
 }

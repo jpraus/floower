@@ -11,8 +11,8 @@
 #define TOUCH_SAMPLING_INTERVAL 500 // 0.5s
 #define WATCHDOGS_INTERVAL 1000
 
-Calibration::Calibration(Config *config, Floower *floower, BluetoothControl *bluetoothControl, bool autoCalibrateTouch)
-        : config(config), floower(floower), bluetoothControl(bluetoothControl), autoCalibrateTouch(autoCalibrateTouch) {
+Calibration::Calibration(Config *config, Floower *floower, BluetoothConnect *bluetoothConnect, bool autoCalibrateTouch)
+        : config(config), floower(floower), bluetoothConnect(bluetoothConnect), autoCalibrateTouch(autoCalibrateTouch) {
 }
 
 void Calibration::setup(bool wokeUp) {
@@ -121,8 +121,7 @@ void Calibration::calibrateTouch() {
             ESP_LOGI(LOG_TAG, "Calibration done");
 
             // start BLE for the first time, these is a bug that for a first time the BLE starts it crashes
-            bluetoothControl->init();
-            bluetoothControl->startAdvertising();
+            bluetoothConnect->enable();
             ESP_LOGI(LOG_TAG, "Bluetooth warmed up");
 
             ESP.restart(); // restart now

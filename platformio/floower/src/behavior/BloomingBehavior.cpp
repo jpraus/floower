@@ -17,8 +17,8 @@ static const char* LOG_TAG = "BloomingBehavior";
 #define STATE_LIGHT_PICKER 134
 #define STATE_FADE 135
 
-BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, BluetoothControl *bluetoothControl) 
-        : SmartPowerBehavior(config, floower, bluetoothControl) {
+BloomingBehavior::BloomingBehavior(Config *config, Floower *floower, RemoteControl *remoteControl) 
+        : SmartPowerBehavior(config, floower, remoteControl) {
 }
 
 void BloomingBehavior::loop() {
@@ -39,7 +39,7 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
         if (state == STATE_STANDBY) {
             // light up instantly on touch
             HsbColor nextColor = nextRandomColor();
-            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
+            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightnessDecimal, config->speedMillis);
             changeState(STATE_BLOOM_LIGHT);
             return true;
         }
@@ -48,7 +48,7 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
             if (floower->getPetalsOpenLevel() > 0) {
                 if (!floower->isLit()) {
                     HsbColor nextColor = nextRandomColor();
-                    floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
+                    floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightnessDecimal, config->speedMillis);
                 }
                 changeState(STATE_BLOOM);
             }
@@ -75,14 +75,14 @@ bool BloomingBehavior::onLeafTouch(FloowerTouchEvent event) {
         if (state == STATE_STANDBY) {
             // light + open
             HsbColor nextColor = nextRandomColor();
-            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightness, config->speedMillis);
-            floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
+            floower->transitionColor(nextColor.H, nextColor.S, config->colorBrightnessDecimal, config->speedMillis);
+            floower->setPetalsOpenLevel(config->maxOpenLevel, config->speedMillis);
             changeState(STATE_BLOOM_OPEN);
             return true;
         }
         else if (state == STATE_BLOOM_LIGHT) {
             // open
-            floower->setPetalsOpenLevel(config->personification.maxOpenLevel, config->speedMillis);
+            floower->setPetalsOpenLevel(config->maxOpenLevel, config->speedMillis);
             changeState(STATE_BLOOM_OPEN);
             return true;
         }
