@@ -59,12 +59,12 @@ void Floower::init() {
     pixelsOriginColor = colorBlack;
     pixelsTargetColor = colorBlack;
     pixels.Begin();
-    statusPixel.ClearTo(pixelsColor);
+    pixels.ClearTo(pixelsColor);
     pixels.Show();
 
     statusColor = colorBlack;
     statusPixel.Begin();
-    statusPixel.ClearTo(statusColor);
+    statusPixel.SetPixelColor(0, statusColor);
     statusPixel.Show();
 
     // configure ADC for battery level reading

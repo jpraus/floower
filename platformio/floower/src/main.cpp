@@ -62,7 +62,6 @@ void onFloowerChanged(int8_t petalsOpenLevel, HsbColor hsbColor) {
 
 void setup() {
     Serial.begin(115200);
-    //delay(1000);
     ESP_LOGI(LOG_TAG, "Initializing");
 
     // start watchdog timer
@@ -88,7 +87,7 @@ void setup() {
     }
 
     // init hardware
-    //esp_wifi_stop();
+    esp_wifi_stop();
     btStop();
     floower.init();
     floower.enableTouch([=](FloowerTouchEvent event){}, !wokeUp); // enable NOP touch to enable deep sleep wake up function

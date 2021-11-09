@@ -1,5 +1,6 @@
 #include "behavior/SmartPowerBehavior.h"
 #include <esp_task_wdt.h>
+#include <esp_wifi.h>
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -73,9 +74,6 @@ void SmartPowerBehavior::loop() {
         watchDogsTime = now + WATCHDOGS_INTERVAL;
         esp_task_wdt_reset(); // reset watchdog timer
         powerWatchDog();
-        indicateStatus(INDICATE_STATUS_BLUETOOTH, remoteControl->isBluetoothConnected());
-        indicateStatus(INDICATE_STATUS_WIFI, remoteControl->isWifiConnected());
-        //indicateStatus(INDICATE_STATUS_ACTY, true);
     }
     if (bluetoothStartTime > 0 && bluetoothStartTime < now && !floower->arePetalsMoving()) {
         bluetoothStartTime = 0;
@@ -202,7 +200,7 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
     }
 
     remoteControl->updateStatusData(powerState.batteryLevel, powerState.batteryCharging);
-    indicateStatus(INDICATE_STATUS_CHARGING, powerState.batteryCharging);
+    indicateStatus(powerState.batteryCharging);
 }
 
 void SmartPowerBehavior::changeStateIfIdle(state_t fromState, state_t toState) {
@@ -226,31 +224,36 @@ void SmartPowerBehavior::changeState(uint8_t newState) {
     }
 }
 
-void SmartPowerBehavior::indicateStatus(uint8_t status, bool enable) {
-    if (enable && indicatingStatus != status) {
+void SmartPowerBehavior::indicateStatus(bool charging) {
+    uint8_t status = INDICATE_STATUS_IDLE;
+    if (charging) {
+        status = INDICATE_STATUS_CHARGING; // charging has the top priotity
+    }
+    else if (remoteControl->isBluetoothConnected()) {
+        status = INDICATE_STATUS_BLUETOOTH;
+    }
+    else if (remoteControl->isWifiConnected()) {
+        status = INDICATE_STATUS_WIFI;
+    }
+
+    if (indicatingStatus != status) {
         switch (status) {
-            case INDICATE_STATUS_CHARGING: // charging has the top priotity
+            case INDICATE_STATUS_CHARGING: 
                 floower->showStatus(colorRed, FloowerStatusAnimation::PULSATING, 2000);
-                indicatingStatus = status;
                 break;
             case INDICATE_STATUS_BLUETOOTH:
-                if (indicatingStatus != INDICATE_STATUS_CHARGING) {
-                    floower->showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
-                    indicatingStatus = status;
-                }
+                floower->showStatus(colorBlue, FloowerStatusAnimation::PULSATING, 2000);
                 break;
             case INDICATE_STATUS_WIFI:
-                if (indicatingStatus != INDICATE_STATUS_CHARGING && indicatingStatus != INDICATE_STATUS_BLUETOOTH) {
-                    floower->showStatus(colorPurple, FloowerStatusAnimation::PULSATING, 2000);
-                    indicatingStatus = status;
-                }
+                floower->showStatus(colorPurple, FloowerStatusAnimation::PULSATING, 2000);
                 break;
         }
     }
-    else if (!enable && indicatingStatus == status) {
-        indicatingStatus = INDICATE_STATUS_IDLE; // idle status
-        floower->showStatus(colorBlack, FloowerStatusAnimation::STILL, 0);
+    if (status == INDICATE_STATUS_IDLE) {
+        HsbColor color = HsbColor(colorRed.H, colorRed.S, 0.01);
+        floower->showStatus(color, FloowerStatusAnimation::STILL, 0);
     }
+    indicatingStatus = status;
 }
 
 void SmartPowerBehavior::planDeepSleep(long timeoutMs) {
@@ -264,7 +267,7 @@ void SmartPowerBehavior::enterDeepSleep() {
     ESP_LOGI(LOG_TAG, "Going to sleep now");
     floower->beforeDeepSleep();
     esp_sleep_enable_touchpad_wakeup();
-    //esp_wifi_stop();
+    esp_wifi_stop();
     btStop();
     esp_deep_sleep_start();
 }

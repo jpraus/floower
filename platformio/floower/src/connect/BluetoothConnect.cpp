@@ -146,31 +146,35 @@ void BluetoothConnect::reloadConfig() {
     BLECharacteristic* characteristic;
 
     // connect service
-    characteristic = connectService->getCharacteristic(FLOOWER_CHAR_WIFI_SSID);
-    characteristic->setValue(String(config->wifiSsid).c_str());
-    characteristic = connectService->getCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID);
-    characteristic->setValue(String(config->floudDeviceId).c_str());
-    characteristic = connectService->getCharacteristic(FLOOWER_CHAR_FLOUD_TOKEN_HASH);
-    characteristic->setValue(md5(config->floudToken).c_str());
+    if (connectService != nullptr) {
+        characteristic = connectService->getCharacteristic(FLOOWER_CHAR_WIFI_SSID);
+        characteristic->setValue(String(config->wifiSsid).c_str());
+        characteristic = connectService->getCharacteristic(FLOOWER_CHAR_FLOUD_DEVICE_ID);
+        characteristic->setValue(String(config->floudDeviceId).c_str());
+        characteristic = connectService->getCharacteristic(FLOOWER_CHAR_FLOUD_TOKEN_HASH);
+        characteristic->setValue(md5(config->floudToken).c_str());
+    }
 
     // config service
-    characteristic = configService->getCharacteristic(FLOOWER_CHAR_NAME_UUID);
-    characteristic->setValue(String(config->name).c_str());
-    characteristic = configService->getCharacteristic(FLOOWER_CHAR_MAX_OPEN_LEVEL);
-    characteristic->setValue(&config->maxOpenLevel, 1);
-    characteristic = configService->getCharacteristic(FLOOWER_CHAR_COLOR_BRIGHTNESS);
-    characteristic->setValue(&config->colorBrightness, 1);
-    characteristic = configService->getCharacteristic(FLOOWER_CHAR_SPEED_TENTS_OF_SEC);
-    characteristic->setValue(&config->speed, 1);
-    characteristic = configService->getCharacteristic(FLOOWER_COLORS_SCHEME_UUID);
-    size_t size = config->colorSchemeSize * 2;
-    uint8_t bytes[size];
-    for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
-        uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
-        bytes[b] = (valueHS >> 8) & 0xFF;
-        bytes[b + 1] = valueHS & 0xFF;
+    if (configService != nullptr) {
+        characteristic = configService->getCharacteristic(FLOOWER_CHAR_NAME_UUID);
+        characteristic->setValue(String(config->name).c_str());
+        characteristic = configService->getCharacteristic(FLOOWER_CHAR_MAX_OPEN_LEVEL);
+        characteristic->setValue(&config->maxOpenLevel, 1);
+        characteristic = configService->getCharacteristic(FLOOWER_CHAR_COLOR_BRIGHTNESS);
+        characteristic->setValue(&config->colorBrightness, 1);
+        characteristic = configService->getCharacteristic(FLOOWER_CHAR_SPEED_TENTS_OF_SEC);
+        characteristic->setValue(&config->speed, 1);
+        characteristic = configService->getCharacteristic(FLOOWER_COLORS_SCHEME_UUID);
+        size_t size = config->colorSchemeSize * 2;
+        uint8_t bytes[size];
+        for (uint8_t b = 0, i = 0; b < size; b += 2, i++) {
+            uint16_t valueHS = Config::encodeHSColor(config->colorScheme[i].H, config->colorScheme[i].S);
+            bytes[b] = (valueHS >> 8) & 0xFF;
+            bytes[b + 1] = valueHS & 0xFF;
+        }
+        characteristic->setValue(bytes, size);
     }
-    characteristic->setValue(bytes, size);
 }
 
 void BluetoothConnect::startAdvertising() {
@@ -224,12 +228,14 @@ void BluetoothConnect::updateStatusData(uint8_t batteryLevel, bool batteryChargi
 }
 
 void BluetoothConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) {
-    RgbColor color = RgbColor(hsbColor);
-    ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
-    StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
-    BLECharacteristic* stateCharacteristic = this->commandService->getCharacteristic(FLOOWER_CHAR_STATE_UUID);
-    stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
-    stateCharacteristic->notify();
+    if (commandService != nullptr) {
+        RgbColor color = RgbColor(hsbColor);
+        ESP_LOGD(LOG_TAG, "state: %d%%, [%d,%d,%d]", petalsOpenLevel, color.R, color.G, color.B);
+        StateData stateData = {petalsOpenLevel, color.R, color.G, color.B};
+        BLECharacteristic* stateCharacteristic = this->commandService->getCharacteristic(FLOOWER_CHAR_STATE_UUID);
+        stateCharacteristic->setValue((uint8_t *) &stateData, sizeof(stateData));
+        stateCharacteristic->notify();
+    }
 }
 
 BLECharacteristic* BluetoothConnect::createROCharacteristics(BLEService *service, const char *uuid, const char *value) {

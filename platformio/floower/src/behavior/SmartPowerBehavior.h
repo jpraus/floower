@@ -45,7 +45,7 @@ class SmartPowerBehavior : public Behavior {
         void powerWatchDog(bool initial = false, bool wokeUp = false);
         void planDeepSleep(long timeoutMs);
         void enterDeepSleep();
-        void indicateStatus(uint8_t status, bool enable);
+        void indicateStatus(bool charging);
 
         PowerState powerState;
         unsigned long colorsUsed = 0; // used by nextRandomColor
