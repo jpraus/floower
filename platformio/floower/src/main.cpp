@@ -1,5 +1,5 @@
 #define FIRMWARE_VERSION 10
-#define HARDWARE_REVISION 10 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
+#define HARDWARE_REVISION 9 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
 
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
