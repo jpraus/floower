@@ -3,6 +3,7 @@
 RemoteControl::RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandProtocol *cmdInterpreter):
         bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect), cmdInterpreter(cmdInterpreter) {
     cmdInterpreter->onControlCommand([=]() { fireRemoteControl(); });
+    cmdInterpreter->onRunOTAUpdate([=](String firmwareUrl) { fireRunUpdate(firmwareUrl); });
 }
 
 void RemoteControl::onRemoteControl(RemoteControlCallback callback) {
@@ -46,4 +47,22 @@ bool RemoteControl::isWifiEnabled() {
 void RemoteControl::updateStatusData(uint8_t batteryLevel, bool batteryCharging) {
     wifiConnect->updateStatusData(batteryLevel, batteryCharging);
     bluetoothConnect->updateStatusData(batteryLevel, batteryCharging, wifiConnect->getStatus());
+}
+
+void RemoteControl::runUpdate(String firmwareUrl) {
+    wifiConnect->startOTAUpdate(firmwareUrl);
+}
+
+bool RemoteControl::isUpdateRunning() {
+    return wifiConnect->isOTAUpdateRunning();
+}
+
+void RemoteControl::onRunUpdate(RunUpdateCallback callback) {
+    runUpdateCallback = callback;
+}
+
+void RemoteControl::fireRunUpdate(String firmwareUrl) {
+    if (runUpdateCallback != nullptr) {
+        runUpdateCallback(firmwareUrl);
+    }
 }

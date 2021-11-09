@@ -11,6 +11,8 @@
 #define STATE_LOW_BATTERY 2
 #define STATE_BLUETOOTH_PAIRING 3
 #define STATE_REMOTE_CONTROL 4
+#define STATE_UPDATE_INIT 5
+#define STATE_UPDATE_RUNNING 6
 // states 128+ are reserved for child behaviors
 
 class SmartPowerBehavior : public Behavior {
@@ -19,6 +21,7 @@ class SmartPowerBehavior : public Behavior {
         virtual void setup(bool wokeUp = false);
         virtual void loop();
         virtual bool isIdle();
+        virtual void runUpdate(String firmwareUrl);
         
     protected:
         virtual bool onLeafTouch(FloowerTouchEvent event);
@@ -53,5 +56,7 @@ class SmartPowerBehavior : public Behavior {
         unsigned long deepSleepTime = 0;
 
         uint8_t indicatingStatus = 0;
+
+        String updateFirmwareUrl;
     
 };

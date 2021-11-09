@@ -22,7 +22,7 @@ enum CommandType {
     CMD_WRITE_STATE             = 67, // setting both color and petals open level
     CMD_READ_STATE              = 68, // state of Floower (color, petals open level)
     CMD_PLAY_ANIMATION          = 69,
-    CMD_RUN_OTA                 = 70,
+    CMD_RUN_OTA_UPDATE          = 70,
     CMD_WRITE_WIFI              = 71,
     CMD_READ_WIFI               = 72,
     CMD_READ_WIFI_STATUS        = 73,

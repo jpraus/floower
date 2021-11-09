@@ -8,6 +8,7 @@
 #include "WifiConnect.h"
 
 typedef std::function<void()> RemoteControlCallback;
+typedef std::function<void(String firmwareUrl)> RunUpdateCallback;
 
 class RemoteControl {
     public:
@@ -23,11 +24,17 @@ class RemoteControl {
         bool isWifiEnabled();
         void updateStatusData(uint8_t batteryLevel, bool batteryCharging);
 
+        void onRunUpdate(RunUpdateCallback callback);
+        void runUpdate(String firmwareUrl);
+        bool isUpdateRunning();
+
     private:
         BluetoothConnect *bluetoothConnect;
         WifiConnect *wifiConnect;
         CommandProtocol *cmdInterpreter;
         RemoteControlCallback remoteControlCallback;
+        RunUpdateCallback runUpdateCallback;
 
         void fireRemoteControl();
+        void fireRunUpdate(String firmwareUrl);
 };

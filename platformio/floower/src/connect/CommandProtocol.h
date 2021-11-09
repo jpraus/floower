@@ -8,7 +8,7 @@
 #include "CommandProtocolDef.h"
 
 typedef std::function<void()> ControlCommandCallback;
-typedef std::function<void(String firmwareUrl)> RunOTACallback;
+typedef std::function<void(String firmwareUrl)> RunOTAUpdateCallback;
 
 class CommandProtocol {
     public:
@@ -23,7 +23,7 @@ class CommandProtocol {
         uint16_t sendStatus(const uint8_t batteryLevel, const bool charging, char *payload, uint16_t *payloadLength); // returns type of command that should be send
         uint16_t sendState(const int8_t petalsOpenLevel, const HsbColor hsbColor, char *payload, uint16_t *payloadLength); // returns type of command that should be send
         void onControlCommand(ControlCommandCallback callback);
-        void onRunOTA(RunOTACallback callback);
+        void onRunOTAUpdate(RunOTAUpdateCallback callback);
         void enableBluetooth();
         void disbleBluetooth();
         
@@ -32,7 +32,7 @@ class CommandProtocol {
         StaticJsonDocument<MAX_MESSAGE_PAYLOAD_BYTES> jsonPayload;  
         MsgPack::Unpacker payloadUnpacker;
         ControlCommandCallback controlCommandCallback;
-        RunOTACallback runOTACallback;
+        RunOTAUpdateCallback runOTAUpdateCallback;
 
         Config *config;
         Floower *floower;

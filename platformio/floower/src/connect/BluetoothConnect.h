@@ -39,6 +39,7 @@ class BluetoothConnect {
 
         bool deviceConnected = false;
         uint16_t connectionId;
+        bool enabled = false;
         bool advertising = false;
         bool initialized = false;
         char receiveBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string

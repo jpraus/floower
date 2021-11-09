@@ -59,6 +59,7 @@ class Floower {
         void transitionColor(double hue, double saturation, double brightness, int transitionTime = 0);
         void transitionColorBrightness(double brightness, int transitionTime = 0);
         void flashColor(double hue, double saturation, int flashDuration);
+        void circleColor(double hue, double saturation, int flashDuration);
         HsbColor getColor();
         HsbColor getCurrentColor();
         void startAnimation(uint8_t animation);
@@ -81,6 +82,7 @@ class Floower {
         NeoPixelAnimator animations; // animation management object used for both servo and pixels to animate
         void pixelsTransitionAnimationUpdate(const AnimationParam& param);
         void pixelsFlashAnimationUpdate(const AnimationParam& param);
+        void pixelsCircleAnimationUpdate(const AnimationParam& param);
         void pixelsRainbowAnimationUpdate(const AnimationParam& param);
         void pixelsRainbowLoopAnimationUpdate(const AnimationParam& param);
         void pixelsCandleAnimationUpdate(const AnimationParam& param);

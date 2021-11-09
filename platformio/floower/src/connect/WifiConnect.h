@@ -31,7 +31,7 @@ class WifiConnect {
         bool isConnected();
         uint8_t getStatus();
         void startOTAUpdate(String firmwareUrl);
-        void startOTAUpdate2(String firmwareUrl);
+        bool isOTAUpdateRunning();
 
     private:
         void onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info);
@@ -52,9 +52,9 @@ class WifiConnect {
         void sendRequest(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize);
         void sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize);
 
-        void requestOTAData();
-        void receiveOTAData(char *data, size_t len);
-        void finalizeOTA();
+        void requestOTAUpdateData();
+        void receiveOTAUpdateData(char *data, size_t len);
+        void finalizeOTAUpdate();
 
         Config *config;
         CommandProtocol *cmdProtocol;
@@ -77,8 +77,8 @@ class WifiConnect {
         CommandMessageHeader receivedMessage; 
         char receiveBuffer[MAX_MESSAGE_PAYLOAD_BYTES + 1]; // extra space for 0 terminating string
 
-        String otaFirmwareHost;
-        String otaFirmwarePath;
-        size_t otaDataLength;
-        size_t otaReceivedBytes;
+        String updateFirmwareHost;
+        String updateFirmwarePath;
+        size_t updateDataLength;
+        size_t updateReceivedBytes;
 };

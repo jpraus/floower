@@ -64,6 +64,7 @@ BluetoothConnect::BluetoothConnect(Floower *floower, Config *config, CommandProt
 }
 
 void BluetoothConnect::enable() {
+    enabled = true;
     if (!initialized) {
         init();
     }
@@ -71,6 +72,7 @@ void BluetoothConnect::enable() {
 }
 
 void BluetoothConnect::disable() {
+    enabled = false;
     if (advertising) {
         stopAdvertising();
     }
@@ -277,6 +279,8 @@ void BluetoothConnect::ServerCallbacks::onConnect(BLEServer* server) {
 void BluetoothConnect::ServerCallbacks::onDisconnect(BLEServer* server) {
     ESP_LOGI(LOG_TAG, "Disconnected, start advertising");
     bluetoothConnect->deviceConnected = false;
-    server->startAdvertising();
-    bluetoothConnect->advertising = true;
+    if (bluetoothConnect->enabled) {
+        server->startAdvertising();
+        bluetoothConnect->advertising = true;
+    }
 };

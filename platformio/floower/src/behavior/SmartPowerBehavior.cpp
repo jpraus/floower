@@ -51,9 +51,20 @@ void SmartPowerBehavior::setup(bool wokeUp) {
 }
 
 void SmartPowerBehavior::loop() {
-    // reset remote control state in case the floower is idle
     if (state == STATE_REMOTE_CONTROL && !floower->isLit() && !floower->isAnimating() && floower->getCurrentPetalsOpenLevel() == 0) {
+        // reset remote control state in case the floower is idle
         changeState(STATE_STANDBY);
+    }
+    else if (state == STATE_UPDATE_INIT && !floower->arePetalsMoving() && !updateFirmwareUrl.isEmpty()) {
+        // floower is closed, we can start upgrading
+        changeState(STATE_UPDATE_RUNNING);
+        remoteControl->runUpdate(updateFirmwareUrl);
+    }
+    else if (state == STATE_UPDATE_RUNNING && !remoteControl->isUpdateRunning()) {
+        // restore after failed update
+        changeState(STATE_STANDBY);
+        floower->stopAnimation(false);
+        enablePeripherals(false, false);
     }
 
     // timers
@@ -110,6 +121,15 @@ void SmartPowerBehavior::onRemoteControl() {
     changeState(STATE_REMOTE_CONTROL);
 }
 
+void SmartPowerBehavior::runUpdate(String firmwareUrl) {
+    changeState(STATE_UPDATE_INIT);
+    floower->circleColor(colorPurple.H, colorPurple.S, 600);
+    floower->setPetalsOpenLevel(0, 2500);
+    floower->disableTouch();
+    remoteControl->disableBluetooth();
+    updateFirmwareUrl = firmwareUrl;
+}
+
 bool SmartPowerBehavior::canInitializeBluetooth() {
     return state == STATE_STANDBY;
 }
@@ -118,6 +138,7 @@ void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
     floower->initPetals(initial, wokeUp); // TODO
     floower->enableTouch([=](FloowerTouchEvent event){ onLeafTouch(event); }, !wokeUp);
     remoteControl->onRemoteControl([=]() { onRemoteControl(); });
+    remoteControl->onRunUpdate([=](String firmwareUrl) { runUpdate(firmwareUrl); });
     if (config->bluetoothEnabled && config->bluetoothAlwaysOn) {
         bluetoothStartTime = millis() + BLUETOOTH_START_DELAY; // defer init of BLE by 5 seconds
     }

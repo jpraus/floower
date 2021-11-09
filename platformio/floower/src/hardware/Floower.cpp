@@ -284,6 +284,36 @@ void Floower::pixelsFlashAnimationUpdate(const AnimationParam& param) {
     }
 }
 
+void Floower::circleColor(double hue, double saturation, int flashDuration) {
+    pixelsTargetColor = HsbColor(hue, saturation, 1.0);
+    pixelsColor = pixelsTargetColor;
+
+    interruptiblePixelsAnimation = false;
+    animations.StartAnimation(ANIMATION_INDEX_LEDS, flashDuration, [=](const AnimationParam& param){ pixelsCircleAnimationUpdate(param); });
+}
+
+void Floower::pixelsCircleAnimationUpdate(const AnimationParam& param) {
+    int index = (param.progress * 6) + 1;
+    float brightness = 1;
+
+    pixels.ClearTo(colorBlack);
+    for (uint8_t i = 0; i < 3; i++, index--, brightness -= 0.45) {
+        if (index < 1) {
+            index += 6;
+        }
+        if (brightness < 0) {
+            brightness = 0;
+        }
+        pixels.SetPixelColor(index, HsbColor(pixelsColor.H, pixelsColor.S, brightness));
+    }
+
+    if (param.state == AnimationState_Completed) {
+        if (pixelsTargetColor.B > 0) { // while there is something to show
+            animations.RestartAnimation(param.index);
+        }
+    }
+}
+
 HsbColor Floower::getColor() {
     return pixelsTargetColor;
 }

@@ -1,5 +1,5 @@
-#define FIRMWARE_VERSION 9
-#define HARDWARE_REVISION 9 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
+#define FIRMWARE_VERSION 10
+#define HARDWARE_REVISION 10 // Floower revision 9+ is using stepper motor instead of servo and has a sensor platform available
 
 #include <esp_wifi.h>
 #include <esp_task_wdt.h>
@@ -60,10 +60,6 @@ void onFloowerChanged(int8_t petalsOpenLevel, HsbColor hsbColor) {
     bluetoothConnect.updateFloowerState(petalsOpenLevel, hsbColor);
 }
 
-void onCmdProtocolRunOTA(String firmwareUrl) {
-    wifiConnect.startOTAUpdate(firmwareUrl);
-}
-
 void setup() {
     Serial.begin(115200);
     //delay(1000);
@@ -77,7 +73,6 @@ void setup() {
     configure();
     setFeatureFlags(config);
     config.onConfigChanged(onConfigChanged);
-    cmdProtocol.onRunOTA(onCmdProtocolRunOTA);
 
     // after wake up setup
     bool wokeUp = false;
@@ -111,10 +106,6 @@ void setup() {
         //behavior = new TestBehavior(&config, &floower, &remoteControl);
     }
     behavior->setup(wokeUp);
-
-    //config.setWifi("", "");
-    //config.setFloud("nejbezpecnejsi");
-    //config.commit();
 }
 
 void loop() {

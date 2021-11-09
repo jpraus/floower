@@ -23,16 +23,18 @@ static const char* LOG_TAG = "WifiConnect";
 #define STATE_FLOUD_AUTHORIZED 4
 
 // ota state
-#define STATE_OTA_CONNECTING 10
-#define STATE_OTA_CONNECTED 11
-#define STATE_OTA_HEADER 12
-#define STATE_OTA_DATA 13
+#define STATE_OTA_UPDATE_PREPARING 10
+#define STATE_OTA_UPDATE_READY 11
+#define STATE_OTA_UPDATE_CONNECTING 12
+#define STATE_OTA_UPDATE_CONNECTED 13
+#define STATE_OTA_UPDATE_HEADER 14
+#define STATE_OTA_UPDATE_DATA 15
 
 // running mode
 #define MODE_FLOUD 0
-#define MODE_OTA 1
+#define MODE_OTA_UPDATE 1
 
-#define OTA_RESPONSE_TIMEOUT_MS 10000
+#define OTA_UPDATE_RESPONSE_TIMEOUT_MS 10000
 #define SOCKET_RESPONSE_TIMEOUT_MS 2000
 
 #define RECONNECT_INTERVAL_MS 3000
@@ -40,8 +42,7 @@ static const char* LOG_TAG = "WifiConnect";
 
 WifiConnect::WifiConnect(Config *config, CommandProtocol *cmdProtocol) 
         : config(config), cmdProtocol(cmdProtocol) {
-    //mode = MODE_FLOUD;
-    mode = MODE_OTA;
+    mode = MODE_FLOUD;
     state = STATE_FLOUD_DISCONNECTED;
     client = NULL;
 }
@@ -170,14 +171,15 @@ void WifiConnect::loop() {
                 }
             }
         } 
-        // TODO: remove this, its started externally
-        else if (mode == MODE_OTA) {
-            if (state == STATE_FLOUD_DISCONNECTED) {
-                startOTAUpdate("upgrade.floud.cz/10/firmware.bin");
-            }
+        else if (mode == MODE_OTA_UPDATE) {
             switch (state) {
-                case STATE_OTA_CONNECTED:
-                    requestOTAData();
+                case STATE_OTA_UPDATE_READY:
+                    ensureClient();
+                    client->connect(updateFirmwareHost.c_str(), 80);
+                    state = STATE_OTA_UPDATE_CONNECTING;
+                    break;
+                case STATE_OTA_UPDATE_CONNECTED:
+                    requestOTAUpdateData();
                     break;
             }
         }
@@ -301,8 +303,8 @@ void WifiConnect::onSocketData(char *data, size_t len) {
     if (mode == MODE_FLOUD) {
         receiveMessage(data, len);
     }
-    else if (mode == MODE_OTA) {
-        receiveOTAData(data, len);
+    else if (mode == MODE_OTA_UPDATE) {
+        receiveOTAUpdateData(data, len);
     }
 }
 
@@ -312,9 +314,9 @@ void WifiConnect::onSocketConnected() {
         reconnectTime = 0;
         state = STATE_FLOUD_ESTABLISHED;
     }
-    else if (mode == MODE_OTA) {
+    else if (mode == MODE_OTA_UPDATE) {
         ESP_LOGI(LOG_TAG, "Connected to OTA server");
-        state = STATE_OTA_CONNECTED;
+        state = STATE_OTA_UPDATE_CONNECTED;
     }
 }
 
@@ -330,10 +332,13 @@ void WifiConnect::onSocketDisconnected() {
         }
         state = STATE_FLOUD_DISCONNECTED;
     }
-    else if (mode == MODE_OTA) {
-        if (state == STATE_OTA_DATA) {
+    else if (mode == MODE_OTA_UPDATE) {
+        if (state == STATE_OTA_UPDATE_PREPARING) {
+            state = STATE_OTA_UPDATE_READY;
+        }
+        else if (state == STATE_OTA_UPDATE_DATA) {
             ESP_LOGI(LOG_TAG, "OTA data received");
-            finalizeOTA();
+            finalizeOTAUpdate();
         }
         else {
             ESP_LOGI(LOG_TAG, "Disconnected from OTA server");
@@ -370,6 +375,10 @@ void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
 
 // OTA
 
+bool WifiConnect::isOTAUpdateRunning() {
+    return mode == MODE_OTA_UPDATE;
+}
+
 void WifiConnect::startOTAUpdate(String firmwareUrl) {
     if (WiFi.status() == WL_CONNECTED) {
         ESP_LOGI(LOG_TAG, "Staring OTA update: %s", firmwareUrl.c_str());
@@ -386,21 +395,28 @@ void WifiConnect::startOTAUpdate(String firmwareUrl) {
             return;
         }
 
-        mode = MODE_OTA;
-        state = STATE_OTA_CONNECTING;
-        otaFirmwareHost = host;
-        otaFirmwarePath = path;
-        ensureClient();
-        client->connect(host.c_str(), 80);
+        mode = MODE_OTA_UPDATE;
+        receiveTime = 0;
+        received = false;
+        updateFirmwareHost = host;
+        updateFirmwarePath = path;
+
+        if (client != NULL && (client->connecting() || client->connected())) {
+            state = STATE_OTA_UPDATE_PREPARING;
+            client->stop(); // disconnect from floud and wait for confirm
+        }
+        else {
+            state = STATE_OTA_UPDATE_READY;
+        }
     }
 }
 
-void WifiConnect::requestOTAData() {
-    state = STATE_OTA_HEADER;
+void WifiConnect::requestOTAUpdateData() {
+    state = STATE_OTA_UPDATE_HEADER;
 
-    ESP_LOGI(LOG_TAG, "Requesting OTA update: host=%s path=%s", otaFirmwareHost.c_str(), otaFirmwarePath.c_str());
-    client->write(String("GET " + otaFirmwarePath + " HTTP/1.1\r\n").c_str());
-    client->write(String("Host: " + otaFirmwareHost + "\r\n").c_str());
+    ESP_LOGI(LOG_TAG, "Requesting OTA update: host=%s path=%s", updateFirmwareHost.c_str(), updateFirmwarePath.c_str());
+    client->write(String("GET " + updateFirmwarePath + " HTTP/1.1\r\n").c_str());
+    client->write(String("Host: " + updateFirmwareHost + "\r\n").c_str());
     client->write("Cache-Control: no-cache\r\n");
     client->write("Connection: close\r\n\r\n");
 }
@@ -409,8 +425,8 @@ inline String getHeaderValue(String header, String headerName) {
     return header.substring(strlen(headerName.c_str()));
 }
 
-void WifiConnect::receiveOTAData(char *data, size_t len) {
-    if (state == STATE_OTA_HEADER) {
+void WifiConnect::receiveOTAUpdateData(char *data, size_t len) {
+    if (state == STATE_OTA_UPDATE_HEADER) {
         int contentLength = 0;
         bool isValidContentType = false;
         bool isSuccess = false;
@@ -450,9 +466,9 @@ void WifiConnect::receiveOTAData(char *data, size_t len) {
         if (isSuccess && contentLength > 0 && isValidContentType) {
             if (Update.begin(contentLength)) {
                 ESP_LOGI(LOG_TAG, "Running OTA update: size=%d", contentLength);
-                state = STATE_OTA_DATA;
-                otaDataLength = contentLength;
-                otaReceivedBytes = 0;
+                state = STATE_OTA_UPDATE_DATA;
+                updateDataLength = contentLength;
+                updateReceivedBytes = 0;
             }
             else {
                 ESP_LOGI(LOG_TAG, "Low space for OTA: size=%d", contentLength);
@@ -464,13 +480,13 @@ void WifiConnect::receiveOTAData(char *data, size_t len) {
             client->close();
         }
     }
-    else if (state == STATE_OTA_DATA) {
-        otaReceivedBytes += len;
+    else if (state == STATE_OTA_UPDATE_DATA) {
+        updateReceivedBytes += len;
         Update.write((uint8_t *)data, len);
     }
 }
 
-void WifiConnect::finalizeOTA() {
+void WifiConnect::finalizeOTAUpdate() {
     if (Update.end()) {
         if (Update.isFinished()) {
             ESP_LOGI(LOG_TAG, "OTA successful, restarting");
