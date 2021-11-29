@@ -61,6 +61,7 @@ void WifiConnect::enable() {
         WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
         ESP_LOGI(LOG_TAG, "WiFi on: %s", config->wifiSsid.c_str());
         wifiOn = true;
+        wifiFailed = false;
     }
     enabled = true;
 }
@@ -93,6 +94,7 @@ bool WifiConnect::isConnected() {
 void WifiConnect::reconnect() {
     if (enabled) {
         if (wifiOn) {
+            wifiFailed = false;
             WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
             ESP_LOGI(LOG_TAG, "WiFi reconnecting: %s", config->wifiSsid);
         }
@@ -131,8 +133,11 @@ uint8_t WifiConnect::getStatus() {
     else if (authorizationFailed) {
         return WIFI_STATUS_FLOUD_UNAUTHORIZED;
     }
-    else { // failure
-        return WIFI_STATUS_NOT_CONNECTED;
+    else if (wifiFailed) {
+        return WIFI_STATUS_FAILED;
+    }
+    else {
+        return WIFI_STATUS_CONNECTING;
     }   
 }
 
@@ -354,6 +359,7 @@ void WifiConnect::onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     if (!wifiConnected) {
         ESP_LOGI(LOG_TAG, "Failed to connect WiFi");
         reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
+        wifiFailed = true;
     }
     else {
         ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
@@ -371,6 +377,7 @@ void WifiConnect::onWifiGotIp(WiFiEvent_t event, WiFiEventInfo_t info) {
     ESP_LOGI(LOG_TAG, "Wifi got IP");
     reconnectTime = 0;
     wifiConnected = true;
+    wifiFailed = false;
 }
 
 // OTA

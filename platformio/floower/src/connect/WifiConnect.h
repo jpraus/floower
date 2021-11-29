@@ -13,7 +13,8 @@
 // network status
 #define WIFI_STATUS_DISABLED 0
 #define WIFI_STATUS_NOT_CONFIGURED 1
-#define WIFI_STATUS_NOT_CONNECTED 2
+#define WIFI_STATUS_FAILED 2
+#define WIFI_STATUS_CONNECTING 5
 #define WIFI_STATUS_FLOUD_UNAUTHORIZED 3
 #define WIFI_STATUS_FLOUD_CONNECTED 4
 
@@ -62,6 +63,7 @@ class WifiConnect {
         bool enabled = false;
         bool wifiOn = false;
         bool wifiConnected = false;
+        bool wifiFailed = false;
 
         uint8_t mode;
         uint8_t state;
