@@ -54,9 +54,9 @@ void WifiConnect::enable() {
     if (!config->wifiSsid.isEmpty()) {
         WiFi.mode(WIFI_STA);
 
-        WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, SYSTEM_EVENT_STA_CONNECTED);
-        WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, SYSTEM_EVENT_STA_GOT_IP);
-        WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
+        wifiConnectedEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, SYSTEM_EVENT_STA_CONNECTED);
+        wifiGotIpEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, SYSTEM_EVENT_STA_GOT_IP);
+        wifiDisconnectedEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
 
         WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
         ESP_LOGI(LOG_TAG, "WiFi on: %s", config->wifiSsid.c_str());
@@ -73,9 +73,9 @@ void WifiConnect::disable() {
 
     // TODO: disconnect the socket
     WiFi.disconnect(true); // turn off wifi
-    WiFi.removeEvent(SYSTEM_EVENT_STA_CONNECTED);
-    WiFi.removeEvent(SYSTEM_EVENT_STA_GOT_IP);
-    WiFi.removeEvent(SYSTEM_EVENT_STA_DISCONNECTED);
+    WiFi.removeEvent(wifiConnectedEventId);
+    WiFi.removeEvent(wifiGotIpEventId);
+    WiFi.removeEvent(wifiDisconnectedEventId);
     esp_wifi_stop();
 
     ESP_LOGI(LOG_TAG, "Wifi off");
@@ -94,9 +94,14 @@ bool WifiConnect::isConnected() {
 void WifiConnect::reconnect() {
     if (enabled) {
         if (wifiOn) {
-            wifiFailed = false;
-            WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
-            ESP_LOGI(LOG_TAG, "WiFi reconnecting: %s", config->wifiSsid);
+            if (!config->wifiSsid.isEmpty()) {
+                wifiFailed = false;
+                WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
+                ESP_LOGI(LOG_TAG, "WiFi reconnecting: %s", config->wifiSsid);
+            }
+            else {
+                disable();
+            }
         }
         else {
             enable();
@@ -360,11 +365,13 @@ void WifiConnect::onWifiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
         ESP_LOGI(LOG_TAG, "Failed to connect WiFi");
         reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
         wifiFailed = true;
+        WiFi.disconnect(true); // turn off wifi
     }
     else {
         ESP_LOGI(LOG_TAG, "Wifi lost: %d", info.disconnected.reason);
         reconnectTime = millis() + RECONNECT_INTERVAL_MS;
         wifiConnected = false;
+        WiFi.disconnect(true); // turn off wifi
     }
 }
 

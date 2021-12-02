@@ -28,8 +28,10 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                     if (jsonPayload.containsKey("t")) {
                         time = jsonPayload["t"];
                     }
-                    floower->setPetalsOpenLevel(level, time);
-                    fireControlCommandCallback();
+                    if (level >= 0 && level <= 100) {
+                        floower->setPetalsOpenLevel(level, time);
+                        fireControlCommandCallback();
+                    }
                 }
                 return STATUS_OK;
             }
@@ -69,7 +71,7 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                     ));
                     transitionColor = true;
                 }
-                if (level != -1) {
+                if (level >= 0 && level <= 100) {
                     floower->setPetalsOpenLevel(level, time);
                 }
                 if (transitionColor) {

@@ -64,6 +64,9 @@ class WifiConnect {
         bool wifiOn = false;
         bool wifiConnected = false;
         bool wifiFailed = false;
+        wifi_event_id_t wifiConnectedEventId;
+        wifi_event_id_t wifiGotIpEventId;
+        wifi_event_id_t wifiDisconnectedEventId;
 
         uint8_t mode;
         uint8_t state;
