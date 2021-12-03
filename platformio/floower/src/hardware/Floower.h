@@ -7,7 +7,6 @@
 #include <functional>
 #include <NeoPixelBus.h>
 #include <NeoPixelAnimator.h>
-#include <AccelStepper.h>
 
 enum FloowerColorAnimation {
     RAINBOW = 0,
