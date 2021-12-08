@@ -11,7 +11,7 @@
 static const char* LOG_TAG = "WifiConnect";
 #endif
 
-//#define FLOUD_HOST "192.168.0.103"
+//#define FLOUD_HOST "192.168.0.101"
 #define FLOUD_HOST "connect.floud.cz"
 #define FLOUD_PORT 3000
 
@@ -194,7 +194,7 @@ void WifiConnect::loop() {
             }
         }
     }
-    else if (WiFi.status() == WL_DISCONNECTED && reconnectTime > 0 && reconnectTime <= millis()) {
+    else if (reconnectTime > 0 && reconnectTime <= millis()) {
         reconnectTime = millis() + CONNECT_RETRY_INTERVAL_MS;
         reconnect();
     }

@@ -143,6 +143,11 @@ void Floower::update() {
         ESP_LOGI(LOG_TAG, "Touch enabled");
         touchEndedTime = 0;
     }
+
+    if (wasChanged && changeCallback != nullptr) {
+        wasChanged = false;
+        changeCallback(getPetalsOpenLevel(), pixelsTargetColor);
+    }
 }
 
 void Floower::registerOutsideTouch() {
@@ -188,10 +193,7 @@ void Floower::onChange(FloowerChangeCallback callback) {
 
 void Floower::setPetalsOpenLevel(int8_t level, int transitionTime) {
     petals->setPetalsOpenLevel(level, transitionTime);
-
-    if (changeCallback != nullptr) {
-        changeCallback(level, pixelsTargetColor);
-    }
+    wasChanged = true;
 }
 
 int8_t Floower::getPetalsOpenLevel() {
@@ -242,9 +244,7 @@ void Floower::transitionColor(double hue, double saturation, double brightness, 
         animations.StartAnimation(ANIMATION_INDEX_LEDS, transitionTime, [=](const AnimationParam& param){ pixelsTransitionAnimationUpdate(param); });  
     }
 
-    if (changeCallback != nullptr) {
-        changeCallback(getPetalsOpenLevel(), pixelsTargetColor);
-    }
+    wasChanged = true;
 }
 
 void Floower::pixelsTransitionAnimationUpdate(const AnimationParam& param) {

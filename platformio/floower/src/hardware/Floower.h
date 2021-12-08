@@ -93,6 +93,7 @@ class Floower {
 
         Config *config;
         FloowerChangeCallback changeCallback;
+        bool wasChanged = false;
 
         // petals motor
         Petals *petals;
