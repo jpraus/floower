@@ -51,6 +51,7 @@ class SmartPowerBehavior : public Behavior {
         unsigned long colorsUsed = 0; // used by nextRandomColor
 
         unsigned long watchDogsTime = 0;
+        unsigned long updateStatusTime = 0;
         unsigned long bluetoothStartTime = 0;
         unsigned long wifiStartTime = 0;
         unsigned long deepSleepTime = 0;

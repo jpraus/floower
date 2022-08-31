@@ -35,7 +35,7 @@ static const char* LOG_TAG = "WifiConnect";
 #define MODE_OTA_UPDATE 1
 
 #define OTA_UPDATE_RESPONSE_TIMEOUT_MS 10000
-#define SOCKET_RESPONSE_TIMEOUT_MS 2000
+#define SOCKET_RESPONSE_TIMEOUT_MS 3000
 
 #define RECONNECT_INTERVAL_MS 3000
 #define CONNECT_RETRY_INTERVAL_MS 30000
@@ -97,7 +97,7 @@ void WifiConnect::reconnect() {
             if (!config->wifiSsid.isEmpty()) {
                 wifiFailed = false;
                 WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
-                ESP_LOGI(LOG_TAG, "WiFi reconnecting: %s", config->wifiSsid);
+                ESP_LOGI(LOG_TAG, "WiFi reconnecting: %s", config->wifiSsid.c_str());
             }
             else {
                 disable();
@@ -110,18 +110,20 @@ void WifiConnect::reconnect() {
 }
 
 void WifiConnect::updateStatusData(uint8_t batteryLevel, bool batteryCharging) {
+    ESP_LOGI(LOG_TAG, "Will try to update status (enabled %d, state %d)", enabled, state);
     if (enabled && state == STATE_FLOUD_AUTHORIZED) {
         uint16_t payloadSize = 0;
         uint16_t type = cmdProtocol->sendStatus(batteryLevel, batteryCharging, sendBuffer, &payloadSize);
-        sendRequest(type, receivedMessage.id, sendBuffer, payloadSize);
+        sendMessage(type, receivedMessage.id, sendBuffer, payloadSize);
     }
 }
 
 void WifiConnect::updateFloowerState(int8_t petalsOpenLevel, HsbColor hsbColor) {
+    ESP_LOGI(LOG_TAG, "Will try to update floower state (enabled %d, state %d)", enabled, state);
     if (enabled && state == STATE_FLOUD_AUTHORIZED) {
         uint16_t payloadSize = 0;
         uint16_t type = cmdProtocol->sendState(petalsOpenLevel, hsbColor, sendBuffer, &payloadSize);
-        sendRequest(type, receivedMessage.id, sendBuffer, payloadSize);
+        sendMessage(type, receivedMessage.id, sendBuffer, payloadSize);
     }
 }
 
@@ -152,6 +154,8 @@ void WifiConnect::ensureClient() {
         client->onData([=](void* arg, AsyncClient* client, void *data, size_t len){ onSocketData((char *)data, len); });
         client->onConnect([=](void* arg, AsyncClient* client){ onSocketConnected(); });
         client->onDisconnect([=](void* arg, AsyncClient* client){ onSocketDisconnected(); });
+        // handle TCP ACK timeout, mainly for status / state messages that do not have a reply from floud; this way we detect disconnection
+        client->onTimeout([=](void* arg, AsyncClient* client, uint32_t time){ socketReconnect(); });
     }
 }
 
@@ -254,24 +258,29 @@ void WifiConnect::sendAuthorization() {
 }
 
 uint16_t WifiConnect::sendRequest(const uint16_t type, const char* payload, const size_t payloadSize) {
+    // will expect reply
     uint16_t messageId = messageIdCounter++;
     sendRequest(type, messageId, payload, payloadSize);
     return messageId;
 }
 
 void WifiConnect::sendRequest(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize) {
+    // will expect reply
     sendMessage(type, id, payload, payloadSize);
     receiveTime = millis() + SOCKET_RESPONSE_TIMEOUT_MS;
 }
 
 void WifiConnect::sendMessage(const uint16_t type, const uint16_t id, const char* payload, const size_t payloadSize) {
+    ESP_LOGI(LOG_TAG, "Sending message: %d/%d/%d", type, id, payloadSize);
+
     CommandMessageHeader header = {
         htons(type), htons(id), htons(payloadSize)
     };
 
     // TODO: check payload size?
-    client->write((char*) &header, sizeof(header));
-    client->write(payload, payloadSize);
+    client->add((char*) &header, sizeof(header));
+    client->add(payload, payloadSize);
+    client->send();
 }
 
 void WifiConnect::receiveMessage(char *data, size_t len) {
@@ -310,6 +319,8 @@ void WifiConnect::receiveMessage(char *data, size_t len) {
 }
 
 void WifiConnect::onSocketData(char *data, size_t len) {
+    ESP_LOGI(LOG_TAG, "Got data, len %d", len);
+
     if (mode == MODE_FLOUD) {
         receiveMessage(data, len);
     }
