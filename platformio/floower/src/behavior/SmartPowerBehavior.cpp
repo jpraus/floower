@@ -26,6 +26,7 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
+#define UPDATE_STATUS_INTERVAL 15000 // 15 seconds interval to update status via remote control (has to be higher than connection timeouts!)
 
 SmartPowerBehavior::SmartPowerBehavior(Config *config, Floower *floower, RemoteControl *remoteControl)
         : config(config), floower(floower), remoteControl(remoteControl) {
@@ -49,6 +50,8 @@ void SmartPowerBehavior::setup(bool wokeUp) {
 
     // run watchdog at periodic intervals
     watchDogsTime = millis() + WATCHDOGS_INTERVAL; // TODO millis overflow
+    // run update status inside power watchdog at longer intervals
+    updateStatusTime = millis() + UPDATE_STATUS_INTERVAL;
 }
 
 void SmartPowerBehavior::loop() {
@@ -199,7 +202,12 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
         }
     }
 
-    remoteControl->updateStatusData(powerState.batteryLevel, powerState.batteryCharging);
+    long now = millis();
+    if (updateStatusTime < now) {
+        updateStatusTime = now + UPDATE_STATUS_INTERVAL;
+        remoteControl->updateStatusData(powerState.batteryLevel, powerState.batteryCharging);
+    }
+
     indicateStatus(powerState.batteryCharging);
 }
 
