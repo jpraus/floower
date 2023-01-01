@@ -54,9 +54,9 @@ void WifiConnect::enable() {
     if (!config->wifiSsid.isEmpty()) {
         WiFi.mode(WIFI_STA);
 
-        wifiConnectedEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, SYSTEM_EVENT_STA_CONNECTED);
-        wifiGotIpEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, SYSTEM_EVENT_STA_GOT_IP);
-        wifiDisconnectedEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, SYSTEM_EVENT_STA_DISCONNECTED);
+        wifiConnectedEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiConnected(event, info); }, ARDUINO_EVENT_WIFI_STA_CONNECTED);
+        wifiGotIpEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiGotIp(event, info); }, ARDUINO_EVENT_WIFI_STA_GOT_IP);
+        wifiDisconnectedEventId = WiFi.onEvent([=](WiFiEvent_t event, WiFiEventInfo_t info){ onWifiDisconnected(event, info); }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
 
         WiFi.begin(config->wifiSsid.c_str(), config->wifiPassword.c_str());
         ESP_LOGI(LOG_TAG, "WiFi on: %s", config->wifiSsid.c_str());
