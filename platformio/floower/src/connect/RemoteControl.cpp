@@ -1,7 +1,7 @@
 #include "RemoteControl.h"
 
-RemoteControl::RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, CommandProtocol *cmdInterpreter):
-        bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect), cmdInterpreter(cmdInterpreter) {
+RemoteControl::RemoteControl(BluetoothConnect *bluetoothConnect, WifiConnect *wifiConnect, MqttConnect *mqttConnect, CommandProtocol *cmdInterpreter):
+        bluetoothConnect(bluetoothConnect), wifiConnect(wifiConnect), mqttConnect(mqttConnect), cmdInterpreter(cmdInterpreter) {
     cmdInterpreter->onControlCommand([=]() { fireRemoteControl(); });
     cmdInterpreter->onRunOTAUpdate([=](String firmwareUrl) { fireRunUpdate(firmwareUrl); });
 }
@@ -42,6 +42,18 @@ void RemoteControl::disableWifi() {
 
 bool RemoteControl::isWifiEnabled() {
     return wifiConnect->isEnabled();
+}
+
+void RemoteControl::enableMqtt() {
+    mqttConnect->enable();
+}
+
+void RemoteControl::disableMqtt() {
+    mqttConnect->disable();
+}
+
+bool RemoteControl::isMqttConnected() {
+    return mqttConnect->isConnected();
 }
 
 void RemoteControl::updateStatusData(uint8_t batteryLevel, bool batteryCharging) {

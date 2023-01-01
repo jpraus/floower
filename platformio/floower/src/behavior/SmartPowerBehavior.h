@@ -53,6 +53,7 @@ class SmartPowerBehavior : public Behavior {
         unsigned long watchDogsTime = 0;
         unsigned long bluetoothStartTime = 0;
         unsigned long wifiStartTime = 0;
+        unsigned long mqttStartTime = 0;
         unsigned long deepSleepTime = 0;
 
         uint8_t indicatingStatus = 0;
