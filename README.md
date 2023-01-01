@@ -1,5 +1,13 @@
 # [![Floower](https://floower.io/wp-content/uploads/2020/04/floower.png)](https://floower.io)
 
+## Modified version of floower firmware to add an MQTT client
+
+It's a modified version of floower firmware to add a MQTT client.
+It's still in early stage of devlopment.
+It's not tested (but it compiles).
+
+The aim is to add a MQTT client to floower to get rid of "FLOUD" and integrate floower in an open domotic system.
+
 ## Floower is a nature-inspired smart connected device with open-source software that blooms and shines on wish.
 
 Floower can be connected to home assistants, sensors, and other smart devices and create a very original way how to interface with humans. Smart devices don't have to be plastic, square, and ugly. They can be as beautiful and intricate as Floower. It's a smart art.

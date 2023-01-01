@@ -23,6 +23,7 @@ static const char* LOG_TAG = "SmartPowerBehavior";
 
 #define BLUETOOTH_START_DELAY 2000 // delay init of BLE to lower the power surge on startup
 #define WIFI_START_DELAY 2500 // delay init of WiFi to lower the power surge on startup
+#define MQTT_START_DELAY 3000 // delay init of MQTT after wifi
 #define DEEP_SLEEP_INACTIVITY_TIMEOUT 60000 // fall in deep sleep after timeout
 #define LOW_BATTERY_WARNING_DURATION 5000 // how long to show battery dead status
 #define WATCHDOGS_INTERVAL 1000
@@ -82,6 +83,10 @@ void SmartPowerBehavior::loop() {
     if (wifiStartTime > 0 && wifiStartTime < now && !floower->arePetalsMoving()) {
         wifiStartTime = 0;
         remoteControl->enableWifi();
+    }
+    if (mqttStartTime > 0 && mqttStartTime < now && !floower->arePetalsMoving()) {
+        mqttStartTime = 0;
+        remoteControl->enableMqtt();
     }
     if (deepSleepTime != 0 && deepSleepTime < now) {
         deepSleepTime = 0;
@@ -145,6 +150,7 @@ void SmartPowerBehavior::enablePeripherals(bool initial, bool wokeUp) {
 void SmartPowerBehavior::disablePeripherals() {
     floower->disableTouch();
     remoteControl->disableBluetooth();
+    remoteControl->disableMqtt();
     remoteControl->disableWifi();
     // TODO: disconnect remote
     // TODO: disable petals?
@@ -193,8 +199,10 @@ void SmartPowerBehavior::powerWatchDog(bool initial, bool wokeUp) {
         }
         if (config->wifiEnabled && powerState.usbPowered && !remoteControl->isWifiEnabled() && wifiStartTime == 0) {
             wifiStartTime = millis() + WIFI_START_DELAY;
+            mqttStartTime = millis() + MQTT_START_DELAY;
         }
         if (!powerState.usbPowered) {
+            remoteControl->disableMqtt();
             remoteControl->disableWifi();
         }
     }

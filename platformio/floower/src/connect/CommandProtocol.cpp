@@ -131,7 +131,7 @@ uint16_t CommandProtocol::run(const uint16_t type, const char *payload, const ui
                     HsbColor colors[array.size()];
                     ESP_LOGI(LOG_TAG, "New color scheme: %d", array.size());
                     for (uint8_t i = 0; i < array.size(); i++) {\
-                        uint16_t hsValue = array.getElement(i).as<int>();
+                        uint16_t hsValue = array[i].as<int>();
                         colors[i] = Config::decodeHSColor(hsValue);
                         ESP_LOGI(LOG_TAG, "Color %d: %.2f,%.2f", i, colors[i].H, colors[i].S);
                     }

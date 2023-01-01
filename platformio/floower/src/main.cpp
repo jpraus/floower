@@ -38,8 +38,9 @@ Behavior *behavior;
 
 CommandProtocol cmdProtocol(&config, &floower);
 BluetoothConnect bluetoothConnect(&floower, &config, &cmdProtocol);
+MqttConnect mqttConnect(&floower, &config, &cmdProtocol);
 WifiConnect wifiConnect(&config, &cmdProtocol);
-RemoteControl remoteControl(&bluetoothConnect, &wifiConnect, &cmdProtocol);
+RemoteControl remoteControl(&bluetoothConnect, &wifiConnect, &mqttConnect, &cmdProtocol);
 
 void configure();
 void planDeepSleep(long timeoutMs);
